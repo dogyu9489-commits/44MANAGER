@@ -658,8 +658,15 @@
 .lm-toolbar { margin-bottom:16px; }
 .lm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
 .lm-empty { text-align:center; padding:48px 16px; color:var(--text2); font-size:14px; grid-column:1/-1; background:var(--surface); border:1px dashed var(--border); border-radius:var(--radius); }
-.lm-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; cursor:pointer; transition:border-color 0.15s, box-shadow 0.15s, transform 0.15s; display:flex; flex-direction:column; gap:10px; }
+.lm-card { position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; cursor:pointer; transition:border-color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s; display:flex; flex-direction:column; gap:10px; }
 .lm-card:hover { border-color:var(--accent); box-shadow:0 4px 12px rgba(28,58,94,0.08); transform:translateY(-1px); }
+.lm-card.lm-dragging { opacity:0.4; }
+.lm-card.lm-drop-target { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+.lm-drag-handle { position:absolute; top:8px; right:8px; width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:var(--bg); border:1px solid var(--border); color:var(--text2); border-radius:6px; cursor:grab; font-size:14px; font-family:inherit; padding:0; opacity:0; transition:opacity 0.15s, background 0.15s; user-select:none; touch-action:none; z-index:2; }
+.lm-card:hover .lm-drag-handle { opacity:0.7; }
+.lm-drag-handle:hover { opacity:1 !important; background:var(--accent); color:#fff; border-color:var(--accent); }
+.lm-drag-handle:active { cursor:grabbing; }
+.lm-card.lm-search-mode .lm-drag-handle { display:none; }
 .lm-card-head { display:flex; align-items:center; gap:12px; }
 .lm-card-dot { width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(0,0,0,0.08); flex-shrink:0; }
 .lm-card-dot-empty { background:linear-gradient(135deg,#e4e4e0 25%,#f0f0ec 25%,#f0f0ec 50%,#e4e4e0 50%,#e4e4e0 75%,#f0f0ec 75%); background-size:8px 8px; }
@@ -3268,14 +3275,29 @@ function lmRender() {
   if (cntEl) cntEl.textContent = lmLeathers.length;
   if (histEl) histEl.textContent = lmHistory.length;
   if (recentEl) {
-    const recent = lmLeathers[0];
-    recentEl.textContent = (recent && recent.updated_at) ? lmFormatDate(recent.updated_at, false) : '-';
+    let mostRecent = null;
+    for (const l of lmLeathers) {
+      if (l.updated_at && (!mostRecent || new Date(l.updated_at) > new Date(mostRecent.updated_at))) mostRecent = l;
+    }
+    recentEl.textContent = (mostRecent && mostRecent.updated_at) ? lmFormatDate(mostRecent.updated_at, false) : '-';
   }
+
+  // Sort: by user-defined sort_order ascending if present; ties / nulls fall back to updated_at desc.
+  // Items with no sort_order are placed at the end so newly-added items appear last (they get a sort_order assigned next save).
+  lmLeathers.sort((a, b) => {
+    const ao = (a.sort_order != null) ? Number(a.sort_order) : Number.POSITIVE_INFINITY;
+    const bo = (b.sort_order != null) ? Number(b.sort_order) : Number.POSITIVE_INFINITY;
+    if (ao !== bo) return ao - bo;
+    const at = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+    const bt = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+    return bt - at;
+  });
 
   const list = document.getElementById('lmList');
   if (!list) return;
   const searchEl = document.getElementById('lmSearch');
   const q = (searchEl ? searchEl.value : '').toLowerCase().trim();
+  const isSearching = q.length > 0;
   const filtered = q
     ? lmLeathers.filter(l =>
         (l.company_name || '').toLowerCase().includes(q) ||
@@ -3299,8 +3321,11 @@ function lmRender() {
     const stockStr = (l.current_stock != null && l.current_stock !== '')
       ? '재고: <b>' + lmEsc(l.current_stock) + '</b>'
       : '<span style="color:var(--text3)">재고 미입력</span>';
+    const dragAttrs = isSearching ? '' : ' draggable="true"';
+    const handleHtml = isSearching ? '' : '<button type="button" class="lm-drag-handle" title="드래그하여 순서 변경" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">⋮⋮</button>';
     return '' +
-      '<div class="lm-card" onclick="lmOpenHist(\'' + lmEsc(l.id) + '\')">' +
+      '<div class="lm-card' + (isSearching ? ' lm-search-mode' : '') + '" data-leather-id="' + lmEsc(l.id) + '"' + dragAttrs + ' onclick="lmOpenHist(\'' + lmEsc(l.id) + '\')">' +
+        handleHtml +
         (l.image_url ? '<img src="' + lmEsc(l.image_url) + '" class="lm-card-img" alt="">' : '') +
         '<div class="lm-card-head">' +
           dotHtml +
@@ -3319,6 +3344,104 @@ function lmRender() {
         '</div>' +
       '</div>';
   }).join('');
+
+  if (!isSearching) lmAttachDragHandlers();
+}
+
+// ── Drag & drop reordering ──
+let lmDragSrcId = null;
+
+function lmAttachDragHandlers() {
+  const list = document.getElementById('lmList');
+  if (!list) return;
+  const cards = list.querySelectorAll('.lm-card[draggable="true"]');
+  cards.forEach(card => {
+    card.addEventListener('dragstart', lmOnDragStart);
+    card.addEventListener('dragover', lmOnDragOver);
+    card.addEventListener('dragleave', lmOnDragLeave);
+    card.addEventListener('drop', lmOnDrop);
+    card.addEventListener('dragend', lmOnDragEnd);
+  });
+}
+
+function lmOnDragStart(e) {
+  lmDragSrcId = this.dataset.leatherId;
+  this.classList.add('lm-dragging');
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', lmDragSrcId); } catch (_) {}
+  }
+}
+
+function lmOnDragOver(e) {
+  if (!lmDragSrcId) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  if (this.dataset.leatherId !== lmDragSrcId) this.classList.add('lm-drop-target');
+}
+
+function lmOnDragLeave() {
+  this.classList.remove('lm-drop-target');
+}
+
+function lmOnDragEnd() {
+  document.querySelectorAll('.lm-card.lm-dragging').forEach(c => c.classList.remove('lm-dragging'));
+  document.querySelectorAll('.lm-card.lm-drop-target').forEach(c => c.classList.remove('lm-drop-target'));
+  lmDragSrcId = null;
+}
+
+async function lmOnDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  this.classList.remove('lm-drop-target');
+  const targetId = this.dataset.leatherId;
+  const sourceId = lmDragSrcId;
+  if (!sourceId || !targetId || sourceId === targetId) return;
+
+  // Reorder lmLeathers in-place: remove source, insert before target
+  const srcIdx = lmLeathers.findIndex(l => l.id === sourceId);
+  const tgtIdx = lmLeathers.findIndex(l => l.id === targetId);
+  if (srcIdx === -1 || tgtIdx === -1) return;
+  const previous = lmLeathers.slice();
+  const [moved] = lmLeathers.splice(srcIdx, 1);
+  // After splice, adjust target index if source was before target
+  const newTgtIdx = lmLeathers.findIndex(l => l.id === targetId);
+  lmLeathers.splice(newTgtIdx, 0, moved);
+
+  // Reassign sort_order to all items based on new positions
+  lmLeathers.forEach((l, idx) => { l.sort_order = (idx + 1) * 10; });
+
+  // Re-render immediately (optimistic)
+  lmRender();
+
+  // Persist all changed orders. We only push the rows whose sort_order actually changed.
+  const changed = [];
+  for (let i = 0; i < lmLeathers.length; i++) {
+    const cur = lmLeathers[i];
+    const before = previous.find(p => p.id === cur.id);
+    if (!before || before.sort_order !== cur.sort_order) changed.push(cur);
+  }
+
+  try {
+    for (const l of changed) {
+      // Send a partial upsert containing id + sort_order only.
+      // supaUpsert preserves other columns by row replacement, so include the rest too.
+      await supaUpsert('leathers', {
+        id: l.id,
+        company_name: l.company_name,
+        color: l.color,
+        current_stock: l.current_stock,
+        image_url: l.image_url || null,
+        sort_order: l.sort_order,
+        updated_at: l.updated_at
+      });
+    }
+  } catch (err) {
+    console.error('[lm] reorder save failed:', err);
+    lmLeathers = previous;
+    lmRender();
+    alert('순서 저장 실패: ' + (err && err.message ? err.message : err) + '\n\n`leathers` 테이블에 `sort_order` 컬럼이 추가되어 있는지 확인하세요.');
+  }
 }
 
 function lmPopulateColorList() {
@@ -3527,13 +3650,19 @@ async function lmSave() {
   let optimisticHistoryItems = [];
 
   if (isNew) {
-    // Insert new leather at top
+    // Compute a sort_order smaller than the current minimum so the new leather sits at the top.
+    let minOrder = 0;
+    for (const l of lmLeathers) {
+      if (l.sort_order != null && Number(l.sort_order) < minOrder) minOrder = Number(l.sort_order);
+    }
+    const newOrder = minOrder - 10;
     lmLeathers = [{
       id: newId,
       company_name: company,
       color,
       current_stock: stock,
       image_url: lmFormImage,
+      sort_order: newOrder,
       updated_at: now
     }, ...lmLeathers];
     optimisticHistoryItems.push({
@@ -3595,12 +3724,15 @@ async function lmSave() {
 
   // Now persist to backend in the background
   try {
+    // Find the current row in lmLeathers so we can grab its sort_order (set above for new, preserved for edit)
+    const persistedRow = lmLeathers.find(l => l.id === newId);
     await supaUpsert('leathers', {
       id: newId,
       company_name: company,
       color,
       current_stock: stock,
       image_url: lmFormImage,
+      sort_order: persistedRow ? persistedRow.sort_order : null,
       updated_at: now
     });
     for (const h of optimisticHistoryItems) {
