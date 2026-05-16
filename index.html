@@ -5870,7 +5870,7 @@ const CRITERIA = [
   { name: "Enable Logo Outline = Yes",      field: "Enable Logo Outline",      match: "eq",  value: "Yes",              exclude: [] },
   { name: "Logo Style = Embroidered Flag",  field: "Logo Style",               match: "eq",  value: "Embroidered Flag", exclude: [] },
   { name: "Palm Logo ≠ 44 Logo",            field: "Palm Logo",                match: "ne",  value: "44 Logo",          exclude: [] },
-  { name: "Enable Tricolor Laces = Yes",    field: "Enable Tricolor Laces",    match: "eq",  value: "Yes",              exclude: [] },
+  { name: "Enable Tricolor Laces = Yes (3색 끈 다를 때만)", field: "Enable Tricolor Laces", match: "eq", value: "Yes", exclude: [], tricolorCheck: true },
   { name: "Comfort Pro Thumb Sleeve = Yes", field: "Comfort Pro Thumb Sleeve", match: "eq",  value: "Yes",              exclude: ["Ex10", "PRX"] },
   { name: "Web Graphic (값 있음)",          field: "Web Graphic",              match: "any", value: "",                 exclude: [] },
   { name: "Enable Wrist Text = Yes",        field: "Enable Wrist Text",        match: "eq",  value: "Yes",              exclude: [] },
@@ -5878,7 +5878,7 @@ const CRITERIA = [
   { name: "Inlay Color (Mesh 제외, 색상만)",  field: "Inlay Color",              match: "ne_contains", value: "Mesh",        exclude: [] },
 ];
 
-function detectColumnAnchors(words, minCount=4, minGap=50){
+function detectColumnAnchors(words, minCount=4, minGap=80){
   const counts = {};
   for (const w of words){ const rx = Math.round(w.x); counts[rx] = (counts[rx]||0)+1; }
   const cands = Object.keys(counts).map(Number).filter(x=>counts[x]>=minCount).sort((a,b)=>a-b);
@@ -6066,8 +6066,22 @@ paQ("pa-analyzeBtn").addEventListener("click", async () => {
           evals.push({match:false, value:`(N/A: ${model})`});
         } else {
           const [, v] = findValue(fields, c.field);
-          const m = evaluate(v, c.match, c.value);
-          evals.push({match:m, value: v||""});
+          let m = evaluate(v, c.match, c.value);
+          let displayValue = v || "";
+          // tricolor 특수 검사: Web/Palm/Wrist 끈 색상 3개가 모두 같으면 제외
+          if (m && c.tricolorCheck){
+            const [, web]   = findValue(fields, "Web and Finger Laces Color");
+            const [, palm]  = findValue(fields, "Palm Laces Color");
+            const [, wrist] = findValue(fields, "Wrist and Wingtip Laces Color");
+            const cs = [web, palm, wrist].map(x => x ? x.trim().toLowerCase() : null).filter(x => x);
+            if (cs.length >= 2 && new Set(cs).size === 1){
+              m = false;
+              displayValue = `Yes (3색 동일: ${web}) — 제외`;
+            } else if (cs.length >= 2){
+              displayValue = `Yes (W:${web}/P:${palm}/Wr:${wrist})`;
+            }
+          }
+          evals.push({match:m, value: displayValue});
           if (m) totals[j]++;
         }
       }
