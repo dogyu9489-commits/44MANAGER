@@ -5926,8 +5926,28 @@ function pairLinesByGap(lines, maxGap=10){
   }
   return pairs;
 }
+async function paReadFileSafe(file){
+  // 1) 모던 API 시도
+  try { return await file.arrayBuffer(); } catch(e1){}
+  // 2) FileReader 폴백
+  try {
+    return await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(fr.error || new Error("read error"));
+      fr.readAsArrayBuffer(file);
+    });
+  } catch(e2){}
+  // 3) 500ms 후 한 번 더 (iCloud 다운로드 대기)
+  await new Promise(r => setTimeout(r, 500));
+  try { return await file.arrayBuffer(); }
+  catch(e3){
+    throw new Error("파일 읽기 실패 — iCloud Drive 파일이면 Finder에서 우클릭 → '지금 다운로드' 후 다시 시도. (브라우저는 Chrome 권장)");
+  }
+}
+
 async function extractPdfFields(file){
-  const buffer = await file.arrayBuffer();
+  const buffer = await paReadFileSafe(file);
   const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
   const fields = {};
   for (let p=1; p<=pdf.numPages; p++){
