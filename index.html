@@ -5875,7 +5875,7 @@ const CRITERIA = [
   { name: "Web Graphic (값 있음)",          field: "Web Graphic",              match: "any", value: "",                 exclude: [] },
   { name: "Enable Wrist Text = Yes",        field: "Enable Wrist Text",        match: "eq",  value: "Yes",              exclude: [] },
   { name: "Flag ≠ None",                    field: "Flag",                     match: "ne",  value: "None",             exclude: [] },
-  { name: "Inlay Color ≠ Complete Mesh",    field: "Inlay Color",              match: "ne",  value: "Complete Mesh",    exclude: [] },
+  { name: "Inlay Color (Mesh 제외, 색상만)",  field: "Inlay Color",              match: "ne_contains", value: "Mesh",        exclude: [] },
 ];
 
 function detectColumnAnchors(words, minCount=4, minGap=50){
@@ -5970,6 +5970,7 @@ function evaluate(value, matchType, expected){
   const e = String(expected).trim().toLowerCase();
   if (matchType==="eq") return v===e;
   if (matchType==="ne") return v!==e;
+  if (matchType==="ne_contains") return !v.includes(e);
   if (matchType==="any") return true;
   return false;
 }
