@@ -838,6 +838,7 @@
   <button class="page-tab" data-page="order">오더 시트</button>
   <button class="page-tab" data-page="purchase">구매 요청서</button>
   <button class="page-tab" data-page="pdf-analyzer">추가비용 분석</button>
+  <button class="page-tab" data-page="outbound">출고 자동화</button>
   <button class="page-tab admin-only" data-page="budget" style="display:none">💰 예산 보고서 <span style="font-size:10px;opacity:0.7;margin-left:2px">🔒</span></button>
 </nav>
 
@@ -4284,6 +4285,72 @@ window.schSelectColor = schSelectColor;
   </div>
 </div><!-- /page-pdf-analyzer -->
 
+<!-- PAGE: 출고 자동화 -->
+<div id="page-outbound" class="page-content">
+  <div class="container">
+    <div style="margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">출고 자동화</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">패킹리스트 워드(.docx)와 원본/출고 폴더 두 개를 지정하면 박스별 하위 폴더가 자동 생성되고 PDF가 이동됩니다. <b>Chrome 또는 Edge 필요</b> (File System Access API).</div>
+    </div>
+
+    <!-- 1단계: 워드 업로드 -->
+    <div style="margin-top:16px">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">① 패킹리스트 업로드 (.docx)</div>
+      <div id="ob-drop" class="pa-drop">
+        <div style="font-size:32px;margin-bottom:4px">📦</div>
+        <div style="font-weight:600">워드 파일을 끌어다 놓거나 클릭</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">Box#1 (10pcs) 구조 인식</div>
+        <input id="ob-fileInput" type="file" accept=".docx" style="display:none">
+      </div>
+      <div id="ob-parseInfo" class="pa-file-section">
+        <div class="pa-file-head">
+          <span id="ob-parseSummary"></span>
+          <button id="ob-resetWord" class="pa-btn pa-btn-danger">초기화</button>
+        </div>
+        <div id="ob-parseDetail" class="pa-file-list" style="max-height:200px"></div>
+      </div>
+    </div>
+
+    <!-- 2단계: 폴더 선택 -->
+    <div style="margin-top:18px">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">② 폴더 선택</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">원본 폴더 (PDF가 들어있는 곳)</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button id="ob-srcBtn" class="pa-btn">선택</button>
+            <span id="ob-srcName" style="font-size:13px;color:var(--text);word-break:break-all">— 미선택 —</span>
+          </div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">출고 폴더 (이동 대상)</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button id="ob-destBtn" class="pa-btn">선택</button>
+            <span id="ob-destName" style="font-size:13px;color:var(--text);word-break:break-all">— 미선택 —</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3단계: 실행 -->
+    <div style="margin-top:18px;display:flex;gap:10px;align-items:center">
+      <button id="ob-moveBtn" class="pa-btn pa-btn-primary" disabled>이동 시작</button>
+      <span id="ob-status" style="color:var(--text2);font-size:13px;margin-left:auto"></span>
+    </div>
+    <div id="ob-progress" class="pa-progress"><div id="ob-progressBar" class="pa-progress-bar"></div></div>
+
+    <!-- 결과 -->
+    <div id="ob-results" class="pa-results">
+      <div style="font-size:16px;font-weight:700;margin:22px 0 10px">결과</div>
+      <div id="ob-summary" style="display:flex;gap:14px;margin-bottom:14px"></div>
+      <table class="pa-table">
+        <thead><tr><th>Box</th><th style="width:100px">오더 #</th><th>파일명</th><th style="width:110px">상태</th></tr></thead>
+        <tbody id="ob-resultBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /page-outbound -->
+
 <!-- CHAT FAB + PANEL -->
 <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="팀 채팅">
   💬
@@ -6164,6 +6231,253 @@ paQ("pa-dlBtn").addEventListener("click", () => {
   const ts = new Date().toISOString().replace(/[-:T]/g,"").slice(0,14);
   XLSX.writeFile(wb, `glove_orders_${ts}.xlsx`);
 });
+})();
+</script>
+
+<!-- ── 출고 자동화: 워드 파싱 + File System Access API ── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+if (typeof JSZip === 'undefined') return;
+
+let obBoxes = [];           // [{boxNum, orders: [...]}, ...]
+let obSrcHandle = null;     // FileSystemDirectoryHandle
+let obDestHandle = null;    // FileSystemDirectoryHandle
+
+const obQ = id => document.getElementById(id);
+const obEsc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+function obRefreshMoveBtn(){
+  obQ('ob-moveBtn').disabled = !(obBoxes.length && obSrcHandle && obDestHandle);
+}
+
+// ── 워드 파싱 ──
+async function obParseDocx(file){
+  const buf = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  const xml = await zip.file('word/document.xml').async('text');
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+  // paragraph 단위로 텍스트 추출
+  const paras = [];
+  for (const p of doc.getElementsByTagNameNS(NS, 'p')){
+    const ts = p.getElementsByTagNameNS(NS, 't');
+    let s = '';
+    for (const t of ts) s += t.textContent || '';
+    s = s.trim();
+    if (s) paras.push(s);
+  }
+
+  // Box# 패턴으로 분할
+  const boxes = [];
+  let cur = null;
+  for (const line of paras){
+    const m = line.match(/Box\s*#?\s*(\d+)/i);
+    if (m){
+      if (cur) boxes.push(cur);
+      cur = { boxNum: parseInt(m[1]), orders: [] };
+      continue;
+    }
+    if (!cur) continue;
+    // 라인에 6~8자리 숫자가 있으면 오더번호로 추출
+    // ("AMBI 1248726", "PROPLAYER 1234567" 등 prefix 붙은 경우도 처리)
+    const om = line.match(/\b(\d{6,8})\b/);
+    if (om) cur.orders.push(om[1]);
+  }
+  if (cur) boxes.push(cur);
+  return boxes;
+}
+
+obQ('ob-drop').addEventListener('click', () => obQ('ob-fileInput').click());
+['dragenter','dragover'].forEach(ev => obQ('ob-drop').addEventListener(ev, e => { e.preventDefault(); obQ('ob-drop').classList.add('dragging'); }));
+['dragleave','drop'].forEach(ev => obQ('ob-drop').addEventListener(ev, e => { e.preventDefault(); if (ev==='dragleave' && e.target!==obQ('ob-drop')) return; obQ('ob-drop').classList.remove('dragging'); }));
+
+async function obHandleWord(file){
+  if (!file || !file.name.toLowerCase().endsWith('.docx')){
+    alert('.docx 파일만 지원됩니다.');
+    return;
+  }
+  try {
+    obBoxes = await obParseDocx(file);
+    const totalOrders = obBoxes.reduce((s,b) => s + b.orders.length, 0);
+    obQ('ob-parseSummary').textContent = `${obBoxes.length}박스 / 총 ${totalOrders}개 오더 (파일: ${file.name})`;
+    const list = obQ('ob-parseDetail');
+    list.innerHTML = '';
+    for (const box of obBoxes){
+      const row = document.createElement('div');
+      row.className = 'pa-file-row';
+      row.innerHTML = `<span class="pa-name">Box ${String(box.boxNum).padStart(2,'0')} (${box.orders.length}개): ${box.orders.join(', ')}</span>`;
+      list.appendChild(row);
+    }
+    obQ('ob-parseInfo').classList.add('show');
+    obRefreshMoveBtn();
+  } catch(e){
+    alert('워드 파싱 실패: ' + e.message);
+  }
+}
+
+obQ('ob-fileInput').addEventListener('change', e => {
+  obHandleWord(e.target.files[0]);
+  e.target.value = '';
+});
+obQ('ob-drop').addEventListener('drop', e => {
+  e.preventDefault();
+  obQ('ob-drop').classList.remove('dragging');
+  if (e.dataTransfer.files[0]) obHandleWord(e.dataTransfer.files[0]);
+});
+obQ('ob-resetWord').addEventListener('click', () => {
+  obBoxes = [];
+  obQ('ob-parseInfo').classList.remove('show');
+  obRefreshMoveBtn();
+});
+
+// ── 폴더 선택 ──
+async function obPickDir(role){
+  if (!window.showDirectoryPicker){
+    alert('이 브라우저는 File System Access API 를 지원하지 않습니다.\nChrome 또는 Edge를 사용해주세요.');
+    return null;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    return handle;
+  } catch(e){
+    if (e.name !== 'AbortError') alert('폴더 선택 실패: ' + e.message);
+    return null;
+  }
+}
+obQ('ob-srcBtn').addEventListener('click', async () => {
+  const h = await obPickDir('src');
+  if (h){ obSrcHandle = h; obQ('ob-srcName').textContent = '📁 ' + h.name; obRefreshMoveBtn(); }
+});
+obQ('ob-destBtn').addEventListener('click', async () => {
+  const h = await obPickDir('dest');
+  if (h){ obDestHandle = h; obQ('ob-destName').textContent = '📁 ' + h.name; obRefreshMoveBtn(); }
+});
+
+// ── 재귀 폴더 워크 ──
+async function* obWalk(dirHandle){
+  for await (const [name, entry] of dirHandle.entries()){
+    if (entry.kind === 'file' && name.toLowerCase().endsWith('.pdf')){
+      yield { handle: entry, parent: dirHandle, name };
+    } else if (entry.kind === 'directory'){
+      yield* obWalk(entry);
+    }
+  }
+}
+
+// ── 파일 이동 (move() 지원 시 사용, 아니면 copy+delete) ──
+async function obMoveFile(srcHandle, srcParent, destDir, newName){
+  // 새 move() API 시도
+  if (typeof srcHandle.move === 'function'){
+    try {
+      await srcHandle.move(destDir, newName);
+      return;
+    } catch(e){ /* 폴백 */ }
+  }
+  // 폴백: copy + delete
+  const file = await srcHandle.getFile();
+  const newHandle = await destDir.getFileHandle(newName, { create: true });
+  const writable = await newHandle.createWritable();
+  await writable.write(file);
+  await writable.close();
+  await srcParent.removeEntry(srcHandle.name);
+}
+
+// ── 메인 이동 로직 ──
+obQ('ob-moveBtn').addEventListener('click', async () => {
+  if (!obBoxes.length || !obSrcHandle || !obDestHandle){
+    alert('워드 파일과 두 폴더 모두 선택해주세요.');
+    return;
+  }
+  obQ('ob-moveBtn').disabled = true;
+  obQ('ob-progress').classList.add('show');
+  obQ('ob-progressBar').style.width = '5%';
+  obQ('ob-status').textContent = '원본 폴더 인덱싱 중...';
+  obQ('ob-results').classList.remove('show');
+
+  // 원본 폴더 안의 모든 PDF 매핑: orderNum -> {handle, parent, name}
+  const fileMap = new Map();
+  try {
+    for await (const f of obWalk(obSrcHandle)){
+      // 파일명에서 #뒤의 숫자 추출
+      const m = f.name.match(/#\s*(\d{4,10})/);
+      if (m) fileMap.set(m[1], f);
+    }
+  } catch(e){
+    alert('원본 폴더 인덱싱 실패: ' + e.message);
+    obQ('ob-moveBtn').disabled = false;
+    return;
+  }
+  obQ('ob-progressBar').style.width = '15%';
+
+  // 박스별 하위 폴더 캐시
+  const dirCache = new Map();
+  async function getBoxDir(boxNum){
+    const key = String(boxNum).padStart(2, '0');
+    if (dirCache.has(key)) return dirCache.get(key);
+    const dh = await obDestHandle.getDirectoryHandle('Box' + key, { create: true });
+    dirCache.set(key, dh);
+    return dh;
+  }
+
+  const total = obBoxes.reduce((s,b) => s + b.orders.length, 0);
+  let done = 0;
+  const rows = [];   // {box, order, name, status, error}
+  const counts = { moved: 0, notFound: 0, failed: 0 };
+
+  for (const box of obBoxes){
+    for (const order of box.orders){
+      done++;
+      obQ('ob-progressBar').style.width = (15 + done/total*80) + '%';
+      obQ('ob-status').textContent = `이동 중 ${done}/${total}: Box${String(box.boxNum).padStart(2,'0')} - #${order}`;
+
+      const f = fileMap.get(order);
+      if (!f){
+        rows.push({ box: box.boxNum, order, name: '', status: 'notFound' });
+        counts.notFound++;
+        continue;
+      }
+      try {
+        const dest = await getBoxDir(box.boxNum);
+        await obMoveFile(f.handle, f.parent, dest, f.name);
+        rows.push({ box: box.boxNum, order, name: f.name, status: 'moved' });
+        counts.moved++;
+        fileMap.delete(order);
+      } catch(e){
+        rows.push({ box: box.boxNum, order, name: f.name, status: 'failed', error: String(e) });
+        counts.failed++;
+      }
+    }
+  }
+
+  obQ('ob-progressBar').style.width = '100%';
+  obQ('ob-status').textContent = `완료! 성공 ${counts.moved} / 못 찾음 ${counts.notFound} / 실패 ${counts.failed}`;
+
+  // 결과 표시
+  obQ('ob-summary').innerHTML =
+    `<div style="background:#dcfce7;color:#166534;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✓ 이동 ${counts.moved}</div>` +
+    `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠ 못 찾음 ${counts.notFound}</div>` +
+    `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✕ 실패 ${counts.failed}</div>`;
+
+  const body = obQ('ob-resultBody');
+  body.innerHTML = '';
+  for (const r of rows){
+    const tr = document.createElement('tr');
+    const statusCell = r.status === 'moved'
+      ? '<span style="color:#16a34a;font-weight:600">✓ 이동</span>'
+      : r.status === 'notFound'
+      ? '<span style="color:#d97706;font-weight:600">⚠ 못 찾음</span>'
+      : `<span style="color:#dc2626;font-weight:600" title="${obEsc(r.error||'')}">✕ 실패</span>`;
+    tr.innerHTML = `<td>Box${String(r.box).padStart(2,'0')}</td><td>${obEsc(r.order)}</td><td style="font-family:ui-monospace,monospace;font-size:12px">${obEsc(r.name)}</td><td>${statusCell}</td>`;
+    body.appendChild(tr);
+  }
+  obQ('ob-results').classList.add('show');
+
+  obQ('ob-moveBtn').disabled = false;
+  setTimeout(() => obQ('ob-progress').classList.remove('show'), 800);
+});
+
 })();
 </script>
 
