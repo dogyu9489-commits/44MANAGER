@@ -838,6 +838,7 @@
   <button class="page-tab" data-page="order">오더 시트</button>
   <button class="page-tab" data-page="purchase">구매 요청서</button>
   <button class="page-tab" data-page="pdf-analyzer">추가비용 분석</button>
+  <button class="page-tab" data-page="order-classify">오더유형 분류</button>
   <button class="page-tab" data-page="outbound">출고 자동화</button>
   <button class="page-tab admin-only" data-page="budget" style="display:none">💰 예산 보고서 <span style="font-size:10px;opacity:0.7;margin-left:2px">🔒</span></button>
 </nav>
@@ -4285,6 +4286,62 @@ window.schSelectColor = schSelectColor;
   </div>
 </div><!-- /page-pdf-analyzer -->
 
+<!-- PAGE: 오더유형 분류 -->
+<div id="page-order-classify" class="page-content">
+  <div class="container">
+    <div style="margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">오더유형 분류</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">PDF나 폴더를 업로드하면 Glove Model 별로 자동 분류 + 수량 집계 + 비고 자동 생성 → 워드 양식 다운로드.</div>
+    </div>
+
+    <!-- 1) 업로드 -->
+    <div id="oc-drop" class="pa-drop">
+      <div style="font-size:32px;margin-bottom:4px">📥</div>
+      <div style="font-weight:600">PDF 또는 폴더 통째로 드래그</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">폴더로 드래그하면 폴더명 자동 분석 → 비고 작성</div>
+      <input id="oc-fileInput" type="file" multiple accept=".pdf" style="display:none">
+    </div>
+
+    <div id="oc-fileSection" class="pa-file-section">
+      <div class="pa-file-head">
+        <span id="oc-fileCount">선택된 파일: 0개</span>
+        <button id="oc-clearBtn" class="pa-btn pa-btn-danger">전체 비우기</button>
+      </div>
+      <div id="oc-fileList" class="pa-file-list" style="max-height:200px"></div>
+    </div>
+
+    <!-- 2) 옵션 -->
+    <div style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:13px;color:var(--text)">주문 날짜
+          <input id="oc-date" type="text" placeholder="01/26" style="margin-left:6px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;width:120px">
+        </label>
+        <span style="font-size:12px;color:var(--text2)">— 워드 첫 행 "주문 날짜" 셀에 입력됨. 비워두면 "/" 그대로.</span>
+      </div>
+    </div>
+
+    <!-- 3) 분석 -->
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+      <button id="oc-analyzeBtn" class="pa-btn pa-btn-primary" disabled>분석 시작</button>
+      <span id="oc-status" style="color:var(--text2);font-size:13px;margin-left:auto"></span>
+    </div>
+    <div id="oc-progress" class="pa-progress"><div id="oc-progressBar" class="pa-progress-bar"></div></div>
+
+    <!-- 4) 결과 -->
+    <div id="oc-results" class="pa-results">
+      <div style="font-size:16px;font-weight:700;margin:22px 0 10px">분류 결과</div>
+      <table class="pa-table">
+        <thead><tr><th>글러브</th><th style="width:90px">주문수량</th><th style="width:80px">Flag</th><th style="width:80px">Inlay</th><th>비고</th></tr></thead>
+        <tbody id="oc-resultBody"></tbody>
+      </table>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button id="oc-dlBtn" class="pa-btn pa-btn-primary">워드 다운로드 (.docx)</button>
+        <button id="oc-copyBtn" class="pa-btn">비고만 복사</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-order-classify -->
+
 <!-- PAGE: 출고 자동화 -->
 <div id="page-outbound" class="page-content">
   <div class="container">
@@ -5946,9 +6003,11 @@ const CRITERIA = [
 ];
 
 function detectColumnAnchors(words, minCount=4, minGap=80){
+  // 페이지 단어 수가 적으면 minCount 자동 낮춤 (2페이지 PDF의 끝페이지 처럼 단어가 적은 경우)
+  const adjusted = Math.min(minCount, Math.max(2, Math.floor(words.length / 5)));
   const counts = {};
   for (const w of words){ const rx = Math.round(w.x); counts[rx] = (counts[rx]||0)+1; }
-  const cands = Object.keys(counts).map(Number).filter(x=>counts[x]>=minCount).sort((a,b)=>a-b);
+  const cands = Object.keys(counts).map(Number).filter(x=>counts[x]>=adjusted).sort((a,b)=>a-b);
   if (!cands.length) return [];
   const anchors = [cands[0]];
   for (const x of cands.slice(1)){ if (x - anchors[anchors.length-1] >= minGap) anchors.push(x); }
@@ -5982,16 +6041,20 @@ function groupWordsIntoLines(words, yTol=3){
   return lines;
 }
 function pairLinesByGap(lines, maxGap=10){
+  // 페어링: 인접한 두 라인의 y-gap이 작으면 (label, value) 쌍.
+  // 페이지 마지막 라인이 페어링 안 되면 orphanLast로 반환 (다음 페이지 첫 줄과 페어링용).
   const pairs = []; let i=0;
+  let orphanLast = null;
   while (i<lines.length){
     const a = lines[i];
     if (i+1<lines.length){
       const b = lines[i+1];
       if ((a.y - b.y) < maxGap){ pairs.push([a.text.trim(), b.text.trim()]); i+=2; continue; }
     }
+    if (i === lines.length - 1) orphanLast = a;  // 마지막 unpaired
     i++;
   }
-  return pairs;
+  return { pairs, orphanLast };
 }
 async function paReadFileSafe(file){
   // 1) 모던 API 시도
@@ -6024,6 +6087,9 @@ async function extractPdfFields(file){
   });
   const pdf = await loadingTask.promise;
   const fields = {};
+  let _firstPageText = '';  // AMBI 등 특수 양식 감지용
+  // 컬럼별 orphan 라벨 (페이지 끝에서 페어링 안 된 마지막 라인) — 다음 페이지 첫 줄을 값으로
+  let prevOrphans = {};  // anchor x → orphan text
   try {
     for (let p=1; p<=pdf.numPages; p++){
       const page = await pdf.getPage(p);
@@ -6033,23 +6099,53 @@ async function extractPdfFields(file){
         for (const it of content.items){
           const txt = (it.str||"").trim();
           if (!txt) continue;
+          if (p === 1) _firstPageText += txt + ' ';
           words.push({x: it.transform[4], y: it.transform[5], text: txt});
         }
         if (!words.length) continue;
         const anchors = detectColumnAnchors(words);
-        if (!anchors.length) continue;
+        if (!anchors.length){
+          // anchor 못 찾았지만 이전 페이지 orphan 있으면 그 위치 근처 단어로 페어링 시도
+          if (Object.keys(prevOrphans).length > 0){
+            for (const axStr of Object.keys(prevOrphans)){
+              const ax = parseFloat(axStr);
+              const orphan = prevOrphans[axStr];
+              const nearby = words.filter(w => Math.abs(w.x - ax) < 30);
+              if (!nearby.length) continue;
+              nearby.sort((a, b) => b.y - a.y);  // PDF.js: y 큰 게 페이지 상단
+              const topY = nearby[0].y;
+              const sameLine = nearby.filter(w => Math.abs(w.y - topY) < 3).sort((a, b) => a.x - b.x);
+              const value = sameLine.map(w => w.text).join(' ').trim();
+              if (orphan && !(orphan in fields)) fields[orphan] = value;
+            }
+            prevOrphans = {};
+          }
+          continue;
+        }
         const colWords = {};
         for (const w of words){
           const ci = assignColumn(w.x, anchors);
           if (ci!==null){ (colWords[ci]=colWords[ci]||[]).push(w); }
         }
+        const currentOrphans = {};
         for (const ci of Object.keys(colWords)){
-          const lines = groupWordsIntoLines(colWords[ci]);
-          const pairs = pairLinesByGap(lines);
+          let lines = groupWordsIntoLines(colWords[ci]);
+          // 이전 페이지의 orphan 라벨이 있으면 이 페이지 첫 줄을 값으로 페어링
+          // (컬럼 anchor x로 매칭)
+          const anchorX = anchors[ci];
+          const orphan = prevOrphans[anchorX];
+          if (orphan && lines.length > 0){
+            const firstValue = lines[0].text.trim();
+            if (orphan && !(orphan in fields)) fields[orphan] = firstValue;
+            lines = lines.slice(1);  // 첫 줄 사용됨
+          }
+          const { pairs, orphanLast } = pairLinesByGap(lines);
           for (const [field, value] of pairs){
             if (field && !(field in fields)) fields[field] = value;
           }
+          if (orphanLast) currentOrphans[anchorX] = orphanLast.text.trim();
         }
+        prevOrphans = currentOrphans;
       } finally {
         // 페이지별 자원 해제
         if (page.cleanup) page.cleanup();
@@ -6061,6 +6157,23 @@ async function extractPdfFields(file){
     try { await loadingTask.destroy(); } catch(_){}
     buffer = null;  // ArrayBuffer 참조 끊기
   }
+  // 특수 양식 자동 감지: Glove Model 필드가 없을 때
+  if (!fields['Glove Model']){
+    const fname = (file && file.name) || '';
+    // 1) 파일명 패턴 우선 (가장 확실)
+    //    - "Custom Design #..." (Glove/v3 없음) → AMBI
+    if (/^Custom Design #/i.test(fname)){
+      fields['Glove Model'] = 'Ambidextrious Gloves';
+    }
+    // 2) 첫 페이지 텍스트로 추정 (백업)
+    else if (/ambidextrious|ambidextrous/i.test(_firstPageText)){
+      fields['Glove Model'] = 'Ambidextrious Gloves';
+    } else if (/\bpancake\b/i.test(_firstPageText)){
+      fields['Glove Model'] = 'Pancake';
+    } else if (/\bpro\s*trainer\b/i.test(_firstPageText)){
+      fields['Glove Model'] = 'Pro Trainer';
+    }
+  }
   return fields;
 }
 function findValue(fields, query){
@@ -6069,6 +6182,9 @@ function findValue(fields, query){
   for (const k of Object.keys(fields)){ if (k.toLowerCase()===q) return [k, fields[k]]; }
   return [null, null];
 }
+// 다른 IIFE(오더유형 분류 등)에서도 호출할 수 있도록 window에 노출
+window.extractPdfFields = extractPdfFields;
+window.findValue = findValue;
 function evaluate(value, matchType, expected){
   if (value==null) return false;
   const v = String(value).trim().toLowerCase();
@@ -6506,6 +6622,392 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
 
   obQ('ob-moveBtn').disabled = false;
   setTimeout(() => obQ('ob-progress').classList.remove('show'), 800);
+});
+
+})();
+</script>
+
+<!-- ── 오더유형 분류: PDF 파싱 + 카테고리 분류 + docx 생성 ── -->
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+<script>
+(function(){
+if (typeof pdfjsLib === 'undefined' || typeof docx === 'undefined') return;
+
+const OC_CATEGORIES = ['Pro44', 'CB44', 'Pro Trainer', 'HND', 'Japan select', 'Pancake', 'AMBI', 'C2', 'EX-10', 'PRX'];
+
+const ocQ = id => document.getElementById(id);
+const ocEsc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+// 폴더명 → 카테고리 추정 (예상되는 카테고리)
+function ocFolderCategory(name){
+  const up = (name || '').toUpperCase();
+  if (/\bCB\s*44\b/.test(up)) return 'CB44';
+  if (/\bC2\b/.test(up)) return 'C2';
+  if (/\bEX[\s-]?10\b/.test(up)) return 'EX-10';
+  if (/\bHND\b/.test(up)) return 'HND';
+  if (/\bJPS\b|\bJAPAN\s*SELECT\b/.test(up)) return 'Japan select';
+  if (/\bPRX\b/.test(up)) return 'PRX';
+  if (/\bAMBI\b/.test(up)) return 'AMBI';
+  if (/\bTRAINER\b/.test(up)) return 'Pro Trainer';
+  if (/\bPANCAKE\b/.test(up)) return 'Pancake';
+  if (/\bPRO\s*44\b|\bPRO44\b|\b574\b|\bCROWN\b|\bCXR\b|\bJP\s*11\b|\bJP11\b|\bRB\s*5\b|\bRB5\b|\bCF\b|\bPROPLAYER\b|\bPRO\s*PLAYER\b/.test(up)) return 'Pro44';
+  return null;  // 알 수 없음 (ORDERS, NY, SAMPLE 등)
+}
+
+// 실제 Glove Model 값 → 카테고리
+function ocModelCategory(model){
+  const m = (model || '').toLowerCase().trim();
+  if (/cb\s*44/.test(m)) return 'CB44';
+  if (/^c2\b/.test(m)) return 'C2';
+  if (/ex.?10/.test(m)) return 'EX-10';
+  if (/hnd/.test(m)) return 'HND';
+  if (/japan\s*select/.test(m)) return 'Japan select';
+  if (/^prx\b/.test(m)) return 'PRX';
+  if (/ambi/.test(m)) return 'AMBI';
+  if (/pancake/.test(m)) return 'Pancake';
+  if (/trainer/.test(m)) return 'Pro Trainer';
+  if (/pro\s*44|574|crown\s*tip|^cxr$|jp\s*11|^rb\s*5$|^cf$/.test(m)) return 'Pro44';
+  return 'Unknown';
+}
+
+// 경로 세그먼트에서 카테고리 추정 (가장 깊은 의미있는 폴더 우선)
+function ocPathCategory(relPath){
+  const parts = relPath.split('/').slice(0, -1);
+  // 안쪽 폴더부터 검사
+  for (let i = parts.length - 1; i >= 0; i--){
+    const cat = ocFolderCategory(parts[i]);
+    if (cat) return { categoryGuess: cat, folder: parts[i] };
+  }
+  // 카테고리 못 찾으면 가장 안쪽의 의미있는 폴더명 (숫자만 아닌)
+  for (let i = parts.length - 1; i >= 0; i--){
+    if (!/^\d+$/.test(parts[i])) return { categoryGuess: null, folder: parts[i] };
+  }
+  return { categoryGuess: null, folder: parts[0] || '' };
+}
+
+// 오더번호 추출 (파일명에서 #뒤 6~8자리)
+function ocExtractOrderNum(filename){
+  const m = filename.match(/#\s*(\d{6,8})/);
+  return m ? m[1] : '';
+}
+
+// ── 파일 수집 (드래그&드롭 폴더 지원, 경로 보존) ──
+let ocFiles = [];   // [{ file, relPath }, ...]
+let ocResults = null;
+
+function ocRender(){
+  ocQ('oc-fileCount').textContent = `선택된 파일: ${ocFiles.length}개`;
+  ocQ('oc-fileSection').classList.toggle('show', ocFiles.length > 0);
+  ocQ('oc-analyzeBtn').disabled = ocFiles.length === 0;
+  const list = ocQ('oc-fileList');
+  list.innerHTML = '';
+  ocFiles.forEach((f, i) => {
+    const row = document.createElement('div');
+    row.className = 'pa-file-row';
+    row.innerHTML = `<span class="pa-name">${ocEsc(f.relPath)}</span><button data-i="${i}">✕</button>`;
+    list.appendChild(row);
+  });
+}
+function ocAdd(items){
+  const seen = new Set(ocFiles.map(x => x.relPath + ':' + x.file.size));
+  for (const it of items){
+    if (!it.file.name.toLowerCase().endsWith('.pdf')) continue;
+    const k = it.relPath + ':' + it.file.size;
+    if (!seen.has(k)){ ocFiles.push(it); seen.add(k); }
+  }
+  ocRender();
+}
+
+function ocWalk(entry, out, prefix){
+  return new Promise(resolve => {
+    if (entry.isFile){
+      entry.file(f => { out.push({ file: f, relPath: prefix + f.name }); resolve(); });
+    } else if (entry.isDirectory){
+      const r = entry.createReader();
+      const read = () => r.readEntries(async es => {
+        if (!es.length) return resolve();
+        await Promise.all(es.map(e => ocWalk(e, out, prefix + entry.name + '/')));
+        read();
+      });
+      read();
+    } else resolve();
+  });
+}
+
+ocQ('oc-fileList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-i]');
+  if (!btn) return;
+  ocFiles.splice(parseInt(btn.dataset.i), 1);
+  ocRender();
+});
+ocQ('oc-clearBtn').addEventListener('click', () => { ocFiles = []; ocRender(); });
+ocQ('oc-drop').addEventListener('click', () => ocQ('oc-fileInput').click());
+ocQ('oc-fileInput').addEventListener('change', e => {
+  ocAdd(Array.from(e.target.files).map(f => ({ file: f, relPath: f.name })));
+  e.target.value = '';
+});
+['dragenter','dragover'].forEach(ev => ocQ('oc-drop').addEventListener(ev, e => { e.preventDefault(); ocQ('oc-drop').classList.add('dragging'); }));
+['dragleave','drop'].forEach(ev => ocQ('oc-drop').addEventListener(ev, e => { e.preventDefault(); if (ev==='dragleave' && e.target!==ocQ('oc-drop')) return; ocQ('oc-drop').classList.remove('dragging'); }));
+ocQ('oc-drop').addEventListener('drop', async e => {
+  e.preventDefault();
+  ocQ('oc-drop').classList.remove('dragging');
+  const collected = [];
+  const items = e.dataTransfer.items;
+  if (items && items.length && items[0].webkitGetAsEntry){
+    const ps = [];
+    for (const it of items){
+      const en = it.webkitGetAsEntry();
+      if (en) ps.push(ocWalk(en, collected, ''));
+    }
+    await Promise.all(ps);
+  } else {
+    for (const f of e.dataTransfer.files) collected.push({ file: f, relPath: f.name });
+  }
+  ocAdd(collected);
+});
+
+// ── 분석 실행 ──
+ocQ('oc-analyzeBtn').addEventListener('click', async () => {
+  if (!ocFiles.length) return;
+  ocQ('oc-analyzeBtn').disabled = true;
+  ocQ('oc-progress').classList.add('show');
+  ocQ('oc-results').classList.remove('show');
+
+  // 각 카테고리별 통계 + 항목들
+  const stats = {};
+  for (const c of OC_CATEGORIES) stats[c] = { qty: 0, flag: 0, inlay: 0, items: [] };
+  let unknownCount = 0;
+  const folderItems = {};  // { folderName: [{orderNum, model, modelCat, expected}] }
+  const perFile = [];  // 파일별 인식 결과 (디버그용)
+
+  for (let i = 0; i < ocFiles.length; i++){
+    const { file, relPath } = ocFiles[i];
+    ocQ('oc-status').textContent = `분석 중 ${i+1}/${ocFiles.length}: ${file.name}`;
+    ocQ('oc-progressBar').style.width = ((i+1)/ocFiles.length*100) + '%';
+
+    try {
+      const fields = await extractPdfFields(file);
+      const model = (fields['Glove Model'] || '').trim();
+      const modelCat = ocModelCategory(model);
+      const orderNum = ocExtractOrderNum(file.name) || ocExtractOrderNum(relPath);
+      const { categoryGuess, folder } = ocPathCategory(relPath);
+
+      // Flag / Inlay 평가
+      const [, flagVal] = findValue(fields, 'Flag');
+      const hasFlag = flagVal && flagVal.trim().toLowerCase() !== 'none';
+      const [, inlayVal] = findValue(fields, 'Inlay Color');
+      const hasInlay = inlayVal && !inlayVal.trim().toLowerCase().includes('mesh');
+
+      // 디버그 로그 + 파일별 결과 저장
+      console.log(`[오더분류] ${file.name} → model="${model}" → cat=${modelCat}`);
+      perFile.push({ name: file.name, model, cat: modelCat, folder });
+
+      if (modelCat === 'Unknown'){
+        unknownCount++;
+      } else {
+        const s = stats[modelCat];
+        s.qty++;
+        if (hasFlag) s.flag++;
+        if (hasInlay) s.inlay++;
+        s.items.push({ orderNum, model, folder, categoryGuess });
+      }
+
+      // 폴더-카테고리 불일치 추적
+      if (folder){
+        folderItems[folder] = folderItems[folder] || { expected: categoryGuess, list: [] };
+        folderItems[folder].list.push({ orderNum, modelCat, model });
+      }
+    } catch (e){
+      console.error(`[오더분류] ${file.name} 실패:`, e);
+      perFile.push({ name: file.name, model: '(분석실패)', cat: 'Error', error: String(e) });
+    }
+    if ((i+1) % 50 === 0 && i+1 < ocFiles.length){
+      let pressure = new Uint8Array(50 * 1024 * 1024); pressure[0] = 1; pressure = null;
+      await new Promise(r => setTimeout(r, 300));
+    } else {
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  // ── 비고 생성 ──
+  // 폴더의 추정 카테고리와 다른 모델이 섞여있으면 비고. 추정 카테고리가 없는 폴더는 모든 모델을 비고에.
+  // 동일 폴더 + 동일 카테고리는 묶어서 표시. 카테고리별 column에 들어감.
+  function ocFolderShortName(folder){
+    // "0414 ORDERS 25" → "ORDERS", "0126 PRO44 375" → "PRO44"
+    let m = folder.match(/^\d{2,4}\s+(.+?)\s+\d+$/);
+    if (m) return m[1].trim();
+    m = folder.match(/^\d{2,4}\s+(.+)$/);
+    if (m) return m[1].trim();
+    return folder;
+  }
+  // 카테고리별 비고 모음
+  for (const c of OC_CATEGORIES) stats[c].notes = [];
+  const notes = [];   // 전체 합본 (Word 등에서 사용)
+  for (const [folder, info] of Object.entries(folderItems)){
+    const expected = info.expected;
+    const short = ocFolderShortName(folder);
+    const byCat = {};
+    for (const it of info.list){
+      if (it.modelCat === 'Unknown') continue;
+      if (expected === null || it.modelCat !== expected){
+        byCat[it.modelCat] = byCat[it.modelCat] || [];
+        byCat[it.modelCat].push(it.orderNum);
+      }
+    }
+    for (const [cat, orders] of Object.entries(byCat)){
+      if (cat === 'Pro44') continue;   // Pro44는 비고에 기록하지 않음 (기본 카테고리)
+      const orderList = orders.filter(Boolean);
+      if (!orderList.length) continue;
+      // 형식: "<오더번호들> – <폴더> 폴더 안에 <카테고리> 오더 <N>개 포함"
+      const line = `${orderList.join(', ')} – ${short} 폴더 안에 ${cat} 오더 ${orderList.length}개 포함`;
+      if (stats[cat]) stats[cat].notes.push(line);
+      notes.push(line);
+    }
+  }
+
+  ocResults = { stats, notes, unknownCount, perFile, date: ocQ('oc-date').value.trim() };
+  ocQ('oc-status').textContent = `완료! ${ocFiles.length}개 분석`;
+  setTimeout(() => ocQ('oc-progress').classList.remove('show'), 600);
+  ocShowResults();
+  ocQ('oc-analyzeBtn').disabled = false;
+});
+
+function ocShowResults(){
+  const { stats, notes, unknownCount } = ocResults;
+  const body = ocQ('oc-resultBody');
+  body.innerHTML = '';
+  let totalQty = 0, totalFlag = 0, totalInlay = 0;
+  for (const cat of OC_CATEGORIES){
+    const s = stats[cat];
+    totalQty += s.qty; totalFlag += s.flag; totalInlay += s.inlay;
+    const tr = document.createElement('tr');
+    // 0도 항상 표시 (0이면 회색으로 흐리게)
+    const dim = v => v ? `<span>${v}</span>` : `<span style="color:var(--text3,#a0a09c)">0</span>`;
+    // 카테고리별 비고
+    const catNotes = (s.notes || []).map(n => ocEsc(n)).join('<br>');
+    tr.innerHTML = `<td>${ocEsc(cat)}</td><td class="pa-num">${dim(s.qty)}</td><td class="pa-num">${dim(s.flag)}</td><td class="pa-num">${dim(s.inlay)}</td><td style="font-size:11px;color:var(--text2);line-height:1.5">${catNotes}</td>`;
+    body.appendChild(tr);
+  }
+  // 합계
+  const totalTr = document.createElement('tr');
+  totalTr.style.fontWeight = '700';
+  totalTr.innerHTML = `<td>합계</td><td class="pa-num">${totalQty}</td><td class="pa-num">${totalFlag}</td><td class="pa-num">${totalInlay}</td><td></td>`;
+  body.appendChild(totalTr);
+  // 비고
+  if (notes.length){
+    const noteTr = document.createElement('tr');
+    noteTr.innerHTML = `<td colspan="5" style="background:var(--bg);font-size:12px;color:var(--text2);padding:10px 14px"><b>비고:</b><br>${notes.map(n => ocEsc(n)).join('<br>')}</td>`;
+    body.appendChild(noteTr);
+  }
+  if (unknownCount){
+    const uTr = document.createElement('tr');
+    uTr.innerHTML = `<td colspan="5" style="background:#fef3c7;color:#92400e;font-size:12px;padding:10px 14px">⚠ 카테고리 미분류 ${unknownCount}개 (Glove Model 값을 못 읽었거나 매핑 규칙에 없음). 브라우저 콘솔(F12)에서 [오더분류] 로그로 원인 확인.</td>`;
+    body.appendChild(uTr);
+  }
+  // 파일별 인식 결과 (디버그 + 검증)
+  const perFile = ocResults.perFile || [];
+  if (perFile.length){
+    const dTr = document.createElement('tr');
+    let html = `<td colspan="5" style="background:var(--bg);font-size:11px;padding:10px 14px"><b style="font-size:12px">파일별 인식 결과:</b><br><div style="margin-top:6px;max-height:200px;overflow-y:auto">`;
+    for (const f of perFile){
+      const color = f.cat === 'Unknown' ? '#92400e' : f.cat === 'Error' ? '#dc2626' : 'var(--text)';
+      html += `<div style="font-family:ui-monospace,monospace;color:${color}">${ocEsc(f.name)} → <b>${ocEsc(f.model || '(없음)')}</b> → ${ocEsc(f.cat)}</div>`;
+    }
+    html += `</div></td>`;
+    dTr.innerHTML = html;
+    body.appendChild(dTr);
+  }
+  ocResults.totals = { totalQty, totalFlag, totalInlay };
+  ocQ('oc-results').classList.add('show');
+}
+
+// ── 워드 다운로드 ──
+ocQ('oc-dlBtn').addEventListener('click', async () => {
+  if (!ocResults) return;
+  const { stats, notes, totals, date } = ocResults;
+  const D = docx;
+  const cellBorders = {
+    top: { style: D.BorderStyle.SINGLE, size: 4, color: '999999' },
+    bottom: { style: D.BorderStyle.SINGLE, size: 4, color: '999999' },
+    left: { style: D.BorderStyle.SINGLE, size: 4, color: '999999' },
+    right: { style: D.BorderStyle.SINGLE, size: 4, color: '999999' },
+  };
+  function cell(text, opts = {}){
+    // 여러 줄 텍스트 (비고)는 라인마다 별도 Paragraph 로
+    const lines = String(text).split('\n');
+    const paragraphs = lines.map(line => new D.Paragraph({
+      alignment: opts.align || D.AlignmentType.CENTER,
+      children: [new D.TextRun({ text: line, bold: !!opts.bold, size: opts.size || 20 })]
+    }));
+    return new D.TableCell({
+      borders: cellBorders,
+      shading: opts.shade ? { type: D.ShadingType.SOLID, color: opts.shade } : undefined,
+      verticalAlign: D.VerticalAlign.CENTER,
+      columnSpan: opts.span,
+      children: paragraphs.length ? paragraphs : [new D.Paragraph({ children: [] })]
+    });
+  }
+
+  const rows = [];
+  // Row 0: 제목
+  rows.push(new D.TableRow({ children: [cell('추가비용', { bold: true, span: 6, shade: 'D9E2F3' })] }));
+  // Row 1: 헤더
+  rows.push(new D.TableRow({
+    children: ['주문 날짜','글러브','주문수량','Flag','Inlay','비고'].map(h => cell(h, { bold: true, shade: 'F0F0F0' }))
+  }));
+  // Row 2~11: 카테고리. 비고는 각 카테고리별 column에.
+  for (let i = 0; i < OC_CATEGORIES.length; i++){
+    const cat = OC_CATEGORIES[i];
+    const s = stats[cat];
+    const catNote = (s.notes || []).join('\n');
+    rows.push(new D.TableRow({ children: [
+      cell(i === 0 ? (date || '/') : ''),
+      cell(cat, { align: D.AlignmentType.LEFT }),
+      cell(s.qty || ''),
+      cell(s.flag || ''),
+      cell(s.inlay || ''),
+      cell(catNote, { align: D.AlignmentType.LEFT }),
+    ]}));
+  }
+  // Row 12: 합계
+  rows.push(new D.TableRow({ children: [
+    cell('합계', { bold: true, shade: 'F0F0F0', span: 2 }),
+    cell(totals.totalQty, { bold: true, shade: 'F0F0F0' }),
+    cell(totals.totalFlag, { bold: true, shade: 'F0F0F0' }),
+    cell(totals.totalInlay, { bold: true, shade: 'F0F0F0' }),
+    cell('', { shade: 'F0F0F0' }),
+  ]}));
+
+  const table = new D.Table({
+    rows,
+    width: { size: 100, type: D.WidthType.PERCENTAGE },
+  });
+
+  const doc = new D.Document({
+    sections: [{ children: [new D.Paragraph({ text: '오더유형 분류', heading: D.HeadingLevel.HEADING_2 }), table] }]
+  });
+
+  const blob = await D.Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const stamp = new Date().toISOString().slice(0,10).replace(/-/g, '');
+  a.download = `order_classify_${stamp}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+// ── 비고만 복사 ──
+ocQ('oc-copyBtn').addEventListener('click', () => {
+  if (!ocResults) return;
+  const text = ocResults.notes.join('\n') || '(비고 없음)';
+  navigator.clipboard.writeText(text).then(() => {
+    const o = ocQ('oc-copyBtn').textContent;
+    ocQ('oc-copyBtn').textContent = '복사됨 ✓';
+    setTimeout(() => ocQ('oc-copyBtn').textContent = o, 1500);
+  });
 });
 
 })();
