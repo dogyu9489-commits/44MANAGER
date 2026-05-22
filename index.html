@@ -4347,7 +4347,7 @@ window.schSelectColor = schSelectColor;
   <div class="container">
     <div style="margin-bottom:16px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">출고 자동화</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">패킹리스트 워드(.docx)와 원본/출고 폴더 두 개를 지정하면 박스별 하위 폴더가 자동 생성되고 PDF가 이동됩니다. <b>Chrome 또는 Edge 필요</b> (File System Access API).</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">패킹리스트 워드(.docx)와 원본/출고 폴더 두 개를 지정하면 박스별 하위 폴더가 자동 생성되고 PDF가 이동됩니다. <b>Chrome 또는 Edge 필요</b> (File System Access API).<br>💡 <b>팁:</b> 원본과 출고 폴더를 <b>같은 상위 폴더</b> 아래에 두면 빠른 이동(move) 으로 처리. 다른 곳이면 안전한 복사+삭제 방식으로 처리되며 결과는 동일합니다 (양쪽에 잔존하면 ✕ 실패로 표시).</div>
     </div>
 
     <!-- 1단계: 워드 업로드 -->
@@ -6513,21 +6513,48 @@ async function* obWalk(dirHandle){
 }
 
 // ── 파일 이동 (move() 지원 시 사용, 아니면 copy+delete) ──
+// 원본이 실제로 사라졌는지 확인
+async function obSourceStillExists(srcParent, name){
+  try {
+    await srcParent.getFileHandle(name);
+    return true;  // 아직 있음
+  } catch(e){
+    return false;  // 사라짐 (정상)
+  }
+}
+
 async function obMoveFile(srcHandle, srcParent, destDir, newName){
-  // 새 move() API 시도
+  let moveErr = null;
+  // 1) move() API 시도 (원자적, 빠름, 메타데이터 보존)
   if (typeof srcHandle.move === 'function'){
     try {
       await srcHandle.move(destDir, newName);
-      return;
-    } catch(e){ /* 폴백 */ }
+      // 검증: 원본이 정말 사라졌는지
+      if (!await obSourceStillExists(srcParent, srcHandle.name)){
+        return 'move';
+      }
+      moveErr = new Error('move() 호출 성공했으나 원본이 잔존');
+    } catch(e){
+      moveErr = e;
+    }
   }
-  // 폴백: copy + delete
+  // 2) 폴백: 복사 → 삭제 → 검증
   const file = await srcHandle.getFile();
   const newHandle = await destDir.getFileHandle(newName, { create: true });
   const writable = await newHandle.createWritable();
   await writable.write(file);
   await writable.close();
-  await srcParent.removeEntry(srcHandle.name);
+  // 원본 삭제
+  try {
+    await srcParent.removeEntry(srcHandle.name);
+  } catch(removeErr){
+    throw new Error(`복사 완료 — 원본 삭제 실패: ${removeErr.message || removeErr.name || removeErr} (양쪽에 파일 잔존, 수동 정리 필요)`);
+  }
+  // 삭제 검증: 정말 사라졌는지 한 번 더 확인
+  if (await obSourceStillExists(srcParent, srcHandle.name)){
+    throw new Error('복사 완료 — 원본 삭제 호출됐으나 파일이 여전히 존재 (양쪽 잔존)');
+  }
+  return 'copy+delete';
 }
 
 // ── 메인 이동 로직 ──
@@ -6538,10 +6565,32 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   }
   obQ('ob-moveBtn').disabled = true;
   obQ('ob-progress').classList.add('show');
-  obQ('ob-progressBar').style.width = '5%';
-  obQ('ob-status').textContent = '원본 폴더 인덱싱 중...';
+  obQ('ob-progressBar').style.width = '3%';
+  obQ('ob-status').textContent = '권한 확인 중...';
   obQ('ob-results').classList.remove('show');
 
+  // 시작 전 권한 확인 — readwrite 보장 안 되면 삭제 단계 실패할 수 있음
+  async function obEnsureRW(handle, label){
+    if (typeof handle.requestPermission !== 'function') return true;
+    let perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') return true;
+    perm = await handle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted'){
+      alert(`${label} 폴더에 쓰기 권한이 없습니다. 폴더를 다시 선택하고 권한 허용해주세요.`);
+      return false;
+    }
+    return true;
+  }
+  if (!await obEnsureRW(obSrcHandle, '원본')){
+    obQ('ob-moveBtn').disabled = false;
+    return;
+  }
+  if (!await obEnsureRW(obDestHandle, '출고')){
+    obQ('ob-moveBtn').disabled = false;
+    return;
+  }
+
+  obQ('ob-status').textContent = '원본 폴더 인덱싱 중...';
   // 원본 폴더 안의 모든 PDF 매핑: orderNum -> {handle, parent, name}
   const fileMap = new Map();
   try {
@@ -6569,8 +6618,8 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
 
   const total = obBoxes.reduce((s,b) => s + b.orders.length, 0);
   let done = 0;
-  const rows = [];   // {box, order, name, status, error}
-  const counts = { moved: 0, notFound: 0, failed: 0 };
+  const rows = [];   // {box, order, name, status, method, error}
+  const counts = { moved: 0, copied: 0, notFound: 0, failed: 0 };
 
   for (const box of obBoxes){
     for (const order of box.orders){
@@ -6586,23 +6635,26 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
       }
       try {
         const dest = await getBoxDir(box.boxNum);
-        await obMoveFile(f.handle, f.parent, dest, f.name);
-        rows.push({ box: box.boxNum, order, name: f.name, status: 'moved' });
-        counts.moved++;
+        const method = await obMoveFile(f.handle, f.parent, dest, f.name);
+        const status = method === 'move' ? 'moved' : 'copied';
+        rows.push({ box: box.boxNum, order, name: f.name, status, method });
+        if (status === 'moved') counts.moved++;
+        else counts.copied++;
         fileMap.delete(order);
       } catch(e){
-        rows.push({ box: box.boxNum, order, name: f.name, status: 'failed', error: String(e) });
+        rows.push({ box: box.boxNum, order, name: f.name, status: 'failed', error: String(e && e.message || e) });
         counts.failed++;
       }
     }
   }
 
   obQ('ob-progressBar').style.width = '100%';
-  obQ('ob-status').textContent = `완료! 성공 ${counts.moved} / 못 찾음 ${counts.notFound} / 실패 ${counts.failed}`;
+  obQ('ob-status').textContent = `완료! 이동 ${counts.moved} / 복사+삭제 ${counts.copied} / 못 찾음 ${counts.notFound} / 실패 ${counts.failed}`;
 
   // 결과 표시
   obQ('ob-summary').innerHTML =
     `<div style="background:#dcfce7;color:#166534;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✓ 이동 ${counts.moved}</div>` +
+    (counts.copied ? `<div style="background:#dbeafe;color:#1e40af;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">↺ 복사+삭제 ${counts.copied}</div>` : '') +
     `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠ 못 찾음 ${counts.notFound}</div>` +
     `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✕ 실패 ${counts.failed}</div>`;
 
@@ -6610,11 +6662,16 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   body.innerHTML = '';
   for (const r of rows){
     const tr = document.createElement('tr');
-    const statusCell = r.status === 'moved'
-      ? '<span style="color:#16a34a;font-weight:600">✓ 이동</span>'
-      : r.status === 'notFound'
-      ? '<span style="color:#d97706;font-weight:600">⚠ 못 찾음</span>'
-      : `<span style="color:#dc2626;font-weight:600" title="${obEsc(r.error||'')}">✕ 실패</span>`;
+    let statusCell;
+    if (r.status === 'moved'){
+      statusCell = '<span style="color:#16a34a;font-weight:600">✓ 이동</span>';
+    } else if (r.status === 'copied'){
+      statusCell = '<span style="color:#1e40af;font-weight:600" title="원본 폴더와 출고 폴더가 별도 root라 복사 후 삭제 방식으로 처리됨. 결과는 동일.">↺ 복사+삭제</span>';
+    } else if (r.status === 'notFound'){
+      statusCell = '<span style="color:#d97706;font-weight:600">⚠ 못 찾음</span>';
+    } else {
+      statusCell = `<span style="color:#dc2626;font-weight:600" title="${obEsc(r.error||'')}">✕ 실패</span>`;
+    }
     tr.innerHTML = `<td>Box${String(r.box).padStart(2,'0')}</td><td>${obEsc(r.order)}</td><td style="font-family:ui-monospace,monospace;font-size:12px">${obEsc(r.name)}</td><td>${statusCell}</td>`;
     body.appendChild(tr);
   }
