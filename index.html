@@ -840,6 +840,7 @@
   <button class="page-tab" data-page="pdf-analyzer">추가비용 분석</button>
   <button class="page-tab" data-page="order-classify">오더유형 분류</button>
   <button class="page-tab" data-page="outbound">출고 자동화</button>
+  <button class="page-tab" data-page="dupcheck">파일 중복검사</button>
   <button class="page-tab admin-only" data-page="budget" style="display:none">💰 예산 보고서 <span style="font-size:10px;opacity:0.7;margin-left:2px">🔒</span></button>
 </nav>
 
@@ -4408,6 +4409,57 @@ window.schSelectColor = schSelectColor;
   </div>
 </div><!-- /page-outbound -->
 
+<!-- PAGE: 파일 중복검사 -->
+<div id="page-dupcheck" class="page-content">
+  <div class="container">
+    <div style="margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">파일 중복검사</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
+    </div>
+
+    <!-- 신규 폴더 -->
+    <div style="margin-top:16px">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">① 신규 오더 폴더</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;gap:10px">
+        <button id="dc-newBtn" class="pa-btn">폴더 선택</button>
+        <span id="dc-newName" style="font-size:13px;color:var(--text);word-break:break-all">— 미선택 —</span>
+      </div>
+    </div>
+
+    <!-- 기존 폴더 (여러 개) -->
+    <div style="margin-top:14px">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">② 기존 보관 폴더 (여러 개 추가 가능)</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+          <button id="dc-addExistingBtn" class="pa-btn">+ 기존 폴더 추가</button>
+          <span style="font-size:12px;color:var(--text2)">예: 작년 보관 폴더, 출고 완료 폴더 등 여러 곳 추가 가능</span>
+        </div>
+        <div id="dc-existingList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+
+    <!-- 실행 -->
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+      <button id="dc-checkBtn" class="pa-btn pa-btn-primary" disabled>중복 검사 시작</button>
+      <span id="dc-status" style="color:var(--text2);font-size:13px;margin-left:auto"></span>
+    </div>
+    <div id="dc-progress" class="pa-progress"><div id="dc-progressBar" class="pa-progress-bar"></div></div>
+
+    <!-- 결과 -->
+    <div id="dc-results" class="pa-results">
+      <div style="font-size:16px;font-weight:700;margin:22px 0 10px">검사 결과</div>
+      <div id="dc-summary" style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap"></div>
+      <table class="pa-table">
+        <thead><tr><th style="width:80px">상태</th><th style="width:110px">오더#</th><th>신규 파일</th><th>기존 위치</th></tr></thead>
+        <tbody id="dc-resultBody"></tbody>
+      </table>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button id="dc-dlBtn" class="pa-btn">중복 목록 복사</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-dupcheck -->
+
 <!-- CHAT FAB + PANEL -->
 <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="팀 채팅">
   💬
@@ -6174,6 +6226,8 @@ async function extractPdfFields(file){
       fields['Glove Model'] = 'Pro Trainer';
     }
   }
+  // 첫 페이지 raw 텍스트를 non-enumerable 속성으로 부착 (중복검사 등에서 활용)
+  Object.defineProperty(fields, '__firstPageText', { value: _firstPageText, enumerable: false });
   return fields;
 }
 function findValue(fields, query){
@@ -7064,6 +7118,221 @@ ocQ('oc-copyBtn').addEventListener('click', () => {
     const o = ocQ('oc-copyBtn').textContent;
     ocQ('oc-copyBtn').textContent = '복사됨 ✓';
     setTimeout(() => ocQ('oc-copyBtn').textContent = o, 1500);
+  });
+});
+
+})();
+</script>
+
+<!-- ── 파일 중복검사: File System Access API ── -->
+<script>
+(function(){
+const dcQ = id => document.getElementById(id);
+const dcEsc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+let dcNewHandle = null;
+let dcExistingHandles = [];   // [{handle, name}]
+let dcResults = null;
+
+function dcRefreshBtn(){
+  dcQ('dc-checkBtn').disabled = !(dcNewHandle && dcExistingHandles.length);
+}
+function dcRenderExisting(){
+  const list = dcQ('dc-existingList');
+  list.innerHTML = '';
+  if (!dcExistingHandles.length){
+    list.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:4px 0">— 폴더 없음 —</div>';
+    return;
+  }
+  dcExistingHandles.forEach((it, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;background:var(--bg);padding:6px 10px;border-radius:6px';
+    row.innerHTML = `<span style="flex:1">📁 ${dcEsc(it.name)}</span><button data-i="${i}" style="border:none;background:transparent;color:#dc2626;font-size:14px;cursor:pointer">✕</button>`;
+    list.appendChild(row);
+  });
+}
+dcRenderExisting();
+
+async function dcPickDir(){
+  if (!window.showDirectoryPicker){
+    alert('이 브라우저는 File System Access API를 지원하지 않습니다.\nChrome 또는 Edge 사용해주세요.');
+    return null;
+  }
+  try { return await window.showDirectoryPicker({ mode: 'read' }); }
+  catch(e){ if (e.name !== 'AbortError') alert('폴더 선택 실패: ' + e.message); return null; }
+}
+
+dcQ('dc-newBtn').addEventListener('click', async () => {
+  const h = await dcPickDir();
+  if (h){ dcNewHandle = h; dcQ('dc-newName').textContent = '📁 ' + h.name; dcRefreshBtn(); }
+});
+dcQ('dc-addExistingBtn').addEventListener('click', async () => {
+  const h = await dcPickDir();
+  if (h){ dcExistingHandles.push({ handle: h, name: h.name }); dcRenderExisting(); dcRefreshBtn(); }
+});
+dcQ('dc-existingList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-i]');
+  if (!btn) return;
+  dcExistingHandles.splice(parseInt(btn.dataset.i), 1);
+  dcRenderExisting();
+  dcRefreshBtn();
+});
+
+// 폴더 재귀 워크 → [{handle, relPath, name, orderNum}, ...]
+async function* dcWalk(dirHandle, prefix = ''){
+  for await (const [name, entry] of dirHandle.entries()){
+    if (entry.kind === 'file'){
+      yield { handle: entry, relPath: prefix + name, name };
+    } else if (entry.kind === 'directory'){
+      yield* dcWalk(entry, prefix + name + '/');
+    }
+  }
+}
+// 인식 패턴:
+//   "Custom Glove Design v3 #NNNNNNN.pdf"
+//   "Custom Glove Design v3 #NNNNNNN (1).pdf"  ← 브라우저 중복 다운로드 접미사
+//   "Custom Design #NNNNNNN.pdf"               ← AMBI 양식
+//   "Custom Design #NNNNNNN (2).pdf"
+// 그 외 (mockup, 디자인 도안 등) 자동 제외.
+function dcMatchFilename(name){
+  const m = name.match(/^Custom\s+(?:Glove\s+Design\s+v\d+|Design)\s+#(\d{4,10})(?:\s+\(\d+\))?\.pdf$/i);
+  return m ? m[1] : null;
+}
+
+dcQ('dc-checkBtn').addEventListener('click', async () => {
+  if (!dcNewHandle || !dcExistingHandles.length){
+    alert('신규 폴더와 기존 폴더 모두 선택해주세요.');
+    return;
+  }
+  dcQ('dc-checkBtn').disabled = true;
+  dcQ('dc-progress').classList.add('show');
+  dcQ('dc-progressBar').style.width = '10%';
+  dcQ('dc-results').classList.remove('show');
+  dcQ('dc-status').textContent = '기존 폴더 인덱싱 중...';
+
+  // 1) 기존 폴더 인덱싱 — 패턴 일치 파일만, orderNum → [{folder, relPath, name}]
+  const existingMap = new Map();
+  let existingTotal = 0, existingMatched = 0;
+  try {
+    for (const ent of dcExistingHandles){
+      for await (const f of dcWalk(ent.handle)){
+        if (!f.name.toLowerCase().endsWith('.pdf')) continue;
+        existingTotal++;
+        const order = dcMatchFilename(f.name);
+        if (!order) continue;   // 패턴 불일치 → 스킵
+        existingMatched++;
+        if (!existingMap.has(order)) existingMap.set(order, []);
+        existingMap.get(order).push({ folder: ent.name, relPath: f.relPath, name: f.name });
+      }
+    }
+  } catch(e){
+    alert('기존 폴더 읽기 실패: ' + e.message);
+    dcQ('dc-checkBtn').disabled = false;
+    return;
+  }
+  dcQ('dc-progressBar').style.width = '60%';
+  dcQ('dc-status').textContent = `기존 ${existingMatched}/${existingTotal} 인덱싱. 신규 검사 중...`;
+
+  // 2) 신규 폴더 검사
+  const duplicates = [];
+  const uniques = [];
+  let newTotal = 0, newMatched = 0;
+  const skippedNew = [];   // 패턴 불일치 신규 파일
+  try {
+    for await (const f of dcWalk(dcNewHandle)){
+      if (!f.name.toLowerCase().endsWith('.pdf')) continue;
+      newTotal++;
+      const order = dcMatchFilename(f.name);
+      if (!order){
+        skippedNew.push({ relPath: f.relPath, name: f.name });
+        continue;
+      }
+      newMatched++;
+      const matches = existingMap.get(order);
+      if (matches && matches.length){
+        duplicates.push({ order, relPath: f.relPath, name: f.name, existing: matches });
+      } else {
+        uniques.push({ order, relPath: f.relPath, name: f.name });
+      }
+    }
+  } catch(e){
+    alert('신규 폴더 읽기 실패: ' + e.message);
+    dcQ('dc-checkBtn').disabled = false;
+    return;
+  }
+  dcQ('dc-progressBar').style.width = '100%';
+
+  dcResults = {
+    duplicates, uniques, skippedNew,
+    newTotal, newMatched, existingTotal, existingMatched,
+  };
+  dcShowResults();
+  dcQ('dc-status').textContent = `완료! 신규 ${newMatched} / 기존 ${existingMatched} / 중복 ${duplicates.length}`;
+  dcQ('dc-checkBtn').disabled = false;
+  setTimeout(() => dcQ('dc-progress').classList.remove('show'), 600);
+});
+
+function dcShowResults(){
+  const { duplicates, uniques, skippedNew, newTotal, newMatched, existingTotal, existingMatched } = dcResults;
+  dcQ('dc-summary').innerHTML =
+    `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠ 중복 ${duplicates.length}</div>` +
+    `<div style="background:#dcfce7;color:#166534;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✓ 신규 ${uniques.length}</div>` +
+    `<div style="background:var(--bg);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border)">신규 ${newMatched}/${newTotal} · 기존 ${existingMatched}/${existingTotal}</div>` +
+    (skippedNew.length ? `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="패턴 불일치로 검사 제외">⊘ 제외 ${skippedNew.length}</div>` : '');
+
+  const body = dcQ('dc-resultBody');
+  body.innerHTML = '';
+
+  // 중복 먼저
+  for (const d of duplicates){
+    const tr = document.createElement('tr');
+    const existingDisp = d.existing.map(e =>
+      `<div style="font-size:11px;color:var(--text2)"><b>[${dcEsc(e.folder)}]</b> ${dcEsc(e.relPath)}</div>`
+    ).join('');
+    tr.innerHTML = `<td><span style="color:#dc2626;font-weight:600">⚠ 중복</span></td>
+      <td><span style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.order)}</span></td>
+      <td style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.relPath)}</td>
+      <td>${existingDisp}</td>`;
+    body.appendChild(tr);
+  }
+  // 정상 신규
+  for (const u of uniques){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><span style="color:#16a34a;font-weight:600">✓ 신규</span></td>
+      <td><span style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(u.order)}</span></td>
+      <td style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(u.relPath)}</td>
+      <td style="color:var(--text2);font-size:11px">-</td>`;
+    body.appendChild(tr);
+  }
+  // 패턴 불일치로 검사 제외된 파일
+  for (const s of skippedNew){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf 형식이 아니라서 검사에서 제외">⊘ 제외</span></td>
+      <td style="color:var(--text2);font-size:11px">-</td>
+      <td style="font-family:ui-monospace,monospace;font-size:12px;color:var(--text2)">${dcEsc(s.relPath)}</td>
+      <td style="color:var(--text2);font-size:11px">-</td>`;
+    body.appendChild(tr);
+  }
+  if (!duplicates.length && !uniques.length && !skippedNew.length){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="4" style="text-align:center;padding:20px;color:var(--text2)">신규 폴더에 PDF가 없습니다.</td>`;
+    body.appendChild(tr);
+  }
+  dcQ('dc-results').classList.add('show');
+}
+
+// 중복 목록 복사
+dcQ('dc-dlBtn').addEventListener('click', () => {
+  if (!dcResults) return;
+  const lines = dcResults.duplicates.map(d => {
+    const existing = d.existing.map(e => `[${e.folder}] ${e.relPath}`).join(' | ');
+    return `${d.order}\t신규: ${d.relPath}\t기존: ${existing}`;
+  });
+  const text = lines.join('\n') || '(중복 없음)';
+  navigator.clipboard.writeText(text).then(() => {
+    const o = dcQ('dc-dlBtn').textContent;
+    dcQ('dc-dlBtn').textContent = '복사됨 ✓';
+    setTimeout(() => dcQ('dc-dlBtn').textContent = o, 1500);
   });
 });
 
