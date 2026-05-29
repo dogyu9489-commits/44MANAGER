@@ -4426,9 +4426,9 @@ window.schSelectColor = schSelectColor;
       </div>
     </div>
 
-    <!-- 기존 폴더 (여러 개) -->
+    <!-- 기존 폴더 (선택사항, 여러 개 가능) -->
     <div style="margin-top:14px">
-      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">② 기존 보관 폴더 (여러 개 추가 가능)</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">② 기존 보관 폴더 <span style="font-weight:400;font-size:12px;color:var(--text2)">(선택사항 — 안 추가하면 신규 폴더 내부 중복만 검사)</span></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
           <button id="dc-addExistingBtn" class="pa-btn">+ 기존 폴더 추가</button>
@@ -7135,7 +7135,8 @@ let dcExistingHandles = [];   // [{handle, name}]
 let dcResults = null;
 
 function dcRefreshBtn(){
-  dcQ('dc-checkBtn').disabled = !(dcNewHandle && dcExistingHandles.length);
+  // 신규 폴더만 있어도 검사 가능 (자체 중복 검사). 기존 폴더는 선택사항.
+  dcQ('dc-checkBtn').disabled = !dcNewHandle;
 }
 function dcRenderExisting(){
   const list = dcQ('dc-existingList');
@@ -7200,44 +7201,45 @@ function dcMatchFilename(name){
 }
 
 dcQ('dc-checkBtn').addEventListener('click', async () => {
-  if (!dcNewHandle || !dcExistingHandles.length){
-    alert('신규 폴더와 기존 폴더 모두 선택해주세요.');
+  if (!dcNewHandle){
+    alert('신규 폴더를 선택해주세요.');
     return;
   }
   dcQ('dc-checkBtn').disabled = true;
   dcQ('dc-progress').classList.add('show');
   dcQ('dc-progressBar').style.width = '10%';
   dcQ('dc-results').classList.remove('show');
-  dcQ('dc-status').textContent = '기존 폴더 인덱싱 중...';
+  dcQ('dc-status').textContent = dcExistingHandles.length ? '기존 폴더 인덱싱 중...' : '신규 폴더 검사 중...';
 
-  // 1) 기존 폴더 인덱싱 — 패턴 일치 파일만, orderNum → [{folder, relPath, name}]
+  // 1) 기존 폴더 인덱싱 (선택사항)
   const existingMap = new Map();
   let existingTotal = 0, existingMatched = 0;
-  try {
-    for (const ent of dcExistingHandles){
-      for await (const f of dcWalk(ent.handle)){
-        if (!f.name.toLowerCase().endsWith('.pdf')) continue;
-        existingTotal++;
-        const order = dcMatchFilename(f.name);
-        if (!order) continue;   // 패턴 불일치 → 스킵
-        existingMatched++;
-        if (!existingMap.has(order)) existingMap.set(order, []);
-        existingMap.get(order).push({ folder: ent.name, relPath: f.relPath, name: f.name });
+  if (dcExistingHandles.length){
+    try {
+      for (const ent of dcExistingHandles){
+        for await (const f of dcWalk(ent.handle)){
+          if (!f.name.toLowerCase().endsWith('.pdf')) continue;
+          existingTotal++;
+          const order = dcMatchFilename(f.name);
+          if (!order) continue;
+          existingMatched++;
+          if (!existingMap.has(order)) existingMap.set(order, []);
+          existingMap.get(order).push({ folder: ent.name, relPath: f.relPath, name: f.name });
+        }
       }
+    } catch(e){
+      alert('기존 폴더 읽기 실패: ' + e.message);
+      dcQ('dc-checkBtn').disabled = false;
+      return;
     }
-  } catch(e){
-    alert('기존 폴더 읽기 실패: ' + e.message);
-    dcQ('dc-checkBtn').disabled = false;
-    return;
   }
   dcQ('dc-progressBar').style.width = '60%';
-  dcQ('dc-status').textContent = `기존 ${existingMatched}/${existingTotal} 인덱싱. 신규 검사 중...`;
 
-  // 2) 신규 폴더 검사
-  const duplicates = [];
-  const uniques = [];
-  let newTotal = 0, newMatched = 0;
-  const skippedNew = [];   // 패턴 불일치 신규 파일
+  // 2) 신규 폴더 파일 목록 + 내부 카운팅 (자체 중복 감지용)
+  const newFiles = [];          // 패턴 일치 파일
+  const skippedNew = [];        // 패턴 불일치 파일
+  const internalCount = new Map();  // orderNum → 같은 폴더 내 파일들
+  let newTotal = 0;
   try {
     for await (const f of dcWalk(dcNewHandle)){
       if (!f.name.toLowerCase().endsWith('.pdf')) continue;
@@ -7247,52 +7249,90 @@ dcQ('dc-checkBtn').addEventListener('click', async () => {
         skippedNew.push({ relPath: f.relPath, name: f.name });
         continue;
       }
-      newMatched++;
-      const matches = existingMap.get(order);
-      if (matches && matches.length){
-        duplicates.push({ order, relPath: f.relPath, name: f.name, existing: matches });
-      } else {
-        uniques.push({ order, relPath: f.relPath, name: f.name });
-      }
+      newFiles.push({ order, relPath: f.relPath, name: f.name });
+      if (!internalCount.has(order)) internalCount.set(order, []);
+      internalCount.get(order).push({ relPath: f.relPath, name: f.name });
     }
   } catch(e){
     alert('신규 폴더 읽기 실패: ' + e.message);
     dcQ('dc-checkBtn').disabled = false;
     return;
   }
+
+  // 3) 신규 파일 각각 분류
+  const dupExt = [];      // 기존 폴더와 중복
+  const dupInt = [];      // 신규 폴더 내부 중복
+  const uniques = [];
+  for (const f of newFiles){
+    const internalDups = internalCount.get(f.order) || [];
+    const isInternalDup = internalDups.length > 1;
+    const externalMatches = existingMap.get(f.order);
+    const row = {
+      order: f.order,
+      relPath: f.relPath,
+      name: f.name,
+      existing: externalMatches || [],
+      internalDups: isInternalDup ? internalDups.filter(d => d.relPath !== f.relPath) : [],
+    };
+    if (externalMatches && externalMatches.length){
+      dupExt.push(row);
+    } else if (isInternalDup){
+      dupInt.push(row);
+    } else {
+      uniques.push(row);
+    }
+  }
   dcQ('dc-progressBar').style.width = '100%';
 
   dcResults = {
-    duplicates, uniques, skippedNew,
-    newTotal, newMatched, existingTotal, existingMatched,
+    dupExt, dupInt, uniques, skippedNew,
+    newTotal, newMatched: newFiles.length,
+    existingTotal, existingMatched,
+    hasExisting: dcExistingHandles.length > 0,
   };
   dcShowResults();
-  dcQ('dc-status').textContent = `완료! 신규 ${newMatched} / 기존 ${existingMatched} / 중복 ${duplicates.length}`;
+  const parts = [`신규 ${newFiles.length}`];
+  if (dcExistingHandles.length) parts.push(`기존 ${existingMatched}`);
+  parts.push(`외부중복 ${dupExt.length}`, `내부중복 ${dupInt.length}`);
+  dcQ('dc-status').textContent = '완료! ' + parts.join(' / ');
   dcQ('dc-checkBtn').disabled = false;
   setTimeout(() => dcQ('dc-progress').classList.remove('show'), 600);
 });
 
 function dcShowResults(){
-  const { duplicates, uniques, skippedNew, newTotal, newMatched, existingTotal, existingMatched } = dcResults;
+  const { dupExt, dupInt, uniques, skippedNew, newTotal, newMatched, existingTotal, existingMatched, hasExisting } = dcResults;
   dcQ('dc-summary').innerHTML =
-    `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠ 중복 ${duplicates.length}</div>` +
+    (hasExisting ? `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="기존 폴더에 이미 존재">⚠ 외부 중복 ${dupExt.length}</div>` : '') +
+    `<div style="background:#fde68a;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="신규 폴더 내부에 같은 오더# 파일이 2개 이상 존재">⚠ 내부 중복 ${dupInt.length}</div>` +
     `<div style="background:#dcfce7;color:#166534;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✓ 신규 ${uniques.length}</div>` +
-    `<div style="background:var(--bg);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border)">신규 ${newMatched}/${newTotal} · 기존 ${existingMatched}/${existingTotal}</div>` +
+    `<div style="background:var(--bg);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border)">신규 ${newMatched}/${newTotal}${hasExisting ? ` · 기존 ${existingMatched}/${existingTotal}` : ''}</div>` +
     (skippedNew.length ? `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="패턴 불일치로 검사 제외">⊘ 제외 ${skippedNew.length}</div>` : '');
 
   const body = dcQ('dc-resultBody');
   body.innerHTML = '';
 
-  // 중복 먼저
-  for (const d of duplicates){
+  // 외부 중복 먼저 (기존 폴더와 중복)
+  for (const d of dupExt){
     const tr = document.createElement('tr');
     const existingDisp = d.existing.map(e =>
       `<div style="font-size:11px;color:var(--text2)"><b>[${dcEsc(e.folder)}]</b> ${dcEsc(e.relPath)}</div>`
     ).join('');
-    tr.innerHTML = `<td><span style="color:#dc2626;font-weight:600">⚠ 중복</span></td>
+    tr.innerHTML = `<td><span style="color:#dc2626;font-weight:600">⚠ 외부중복</span></td>
       <td><span style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.order)}</span></td>
       <td style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.relPath)}</td>
       <td>${existingDisp}</td>`;
+    body.appendChild(tr);
+  }
+  // 내부 중복 (같은 폴더 안에 여러 개)
+  for (const d of dupInt){
+    const tr = document.createElement('tr');
+    const dupDisp = d.internalDups.map(x =>
+      `<div style="font-size:11px;color:var(--text2)">↳ ${dcEsc(x.relPath)}</div>`
+    ).join('');
+    tr.innerHTML = `<td><span style="color:#b45309;font-weight:600" title="같은 신규 폴더 안에 같은 오더# PDF가 여러 개 존재">⚠ 내부중복</span></td>
+      <td><span style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.order)}</span></td>
+      <td style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.relPath)}</td>
+      <td>${dupDisp}</td>`;
     body.appendChild(tr);
   }
   // 정상 신규
@@ -7307,13 +7347,13 @@ function dcShowResults(){
   // 패턴 불일치로 검사 제외된 파일
   for (const s of skippedNew){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf 형식이 아니라서 검사에서 제외">⊘ 제외</span></td>
+    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf 등 인식 패턴이 아니라서 검사에서 제외">⊘ 제외</span></td>
       <td style="color:var(--text2);font-size:11px">-</td>
       <td style="font-family:ui-monospace,monospace;font-size:12px;color:var(--text2)">${dcEsc(s.relPath)}</td>
       <td style="color:var(--text2);font-size:11px">-</td>`;
     body.appendChild(tr);
   }
-  if (!duplicates.length && !uniques.length && !skippedNew.length){
+  if (!dupExt.length && !dupInt.length && !uniques.length && !skippedNew.length){
     const tr = document.createElement('tr');
     tr.innerHTML = `<td colspan="4" style="text-align:center;padding:20px;color:var(--text2)">신규 폴더에 PDF가 없습니다.</td>`;
     body.appendChild(tr);
@@ -7324,10 +7364,15 @@ function dcShowResults(){
 // 중복 목록 복사
 dcQ('dc-dlBtn').addEventListener('click', () => {
   if (!dcResults) return;
-  const lines = dcResults.duplicates.map(d => {
+  const lines = [];
+  for (const d of dcResults.dupExt){
     const existing = d.existing.map(e => `[${e.folder}] ${e.relPath}`).join(' | ');
-    return `${d.order}\t신규: ${d.relPath}\t기존: ${existing}`;
-  });
+    lines.push(`${d.order}\t[외부중복]\t신규: ${d.relPath}\t기존: ${existing}`);
+  }
+  for (const d of dcResults.dupInt){
+    const others = d.internalDups.map(x => x.relPath).join(' | ');
+    lines.push(`${d.order}\t[내부중복]\t파일: ${d.relPath}\t다른 위치: ${others}`);
+  }
   const text = lines.join('\n') || '(중복 없음)';
   navigator.clipboard.writeText(text).then(() => {
     const o = dcQ('dc-dlBtn').textContent;
