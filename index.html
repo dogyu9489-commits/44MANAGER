@@ -841,6 +841,7 @@
   <button class="page-tab" data-page="order-classify">오더유형 분류</button>
   <button class="page-tab" data-page="outbound">출고 자동화</button>
   <button class="page-tab" data-page="dupcheck">파일 중복검사</button>
+  <button class="page-tab" data-page="orderagg">오더 수량 집계</button>
   <button class="page-tab admin-only" data-page="budget" style="display:none">💰 예산 보고서 <span style="font-size:10px;opacity:0.7;margin-left:2px">🔒</span></button>
 </nav>
 
@@ -4248,7 +4249,7 @@ window.schSelectColor = schSelectColor;
   <div class="container">
     <div style="margin-bottom:16px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">추가비용 분석</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">글러브 오더 PDF를 드래그하거나 (추가비용 항목 자동 집계) 클릭해서 업로드 → 10가지 기준 자동 집계 → 엑셀 다운로드. 파일은 브라우저 안에서만 처리되며 어디로도 전송되지 않습니다.</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">글러브 오더 PDF를 드래그하거나 (추가비용 항목 자동 집계) 클릭해서 업로드 → 11가지 기준 자동 집계 → 엑셀 다운로드. 파일은 브라우저 안에서만 처리되며 어디로도 전송되지 않습니다.</div>
     </div>
 
     <div id="pa-drop" class="pa-drop">
@@ -4459,6 +4460,123 @@ window.schSelectColor = schSelectColor;
     </div>
   </div>
 </div><!-- /page-dupcheck -->
+
+<!-- PAGE: 오더 수량 집계 -->
+<div id="page-orderagg" class="page-content">
+  <div class="container">
+    <div style="margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">오더 수량 집계</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">연도별 · 월별 오더 수량을 입력하면 자동 집계 + 전년대비 증가율 + 차트 + 12개월 예측. 데이터는 이 브라우저에 자동 저장됩니다 (localStorage).</div>
+    </div>
+
+    <!-- 데이터 입력 -->
+    <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input id="oa-yearInput" type="number" placeholder="예: 2026" min="2000" max="2099" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;width:120px">
+        <button id="oa-addYearBtn" class="pa-btn">+ 연도 추가</button>
+        <button id="oa-importBtn" class="pa-btn" title="CSV (연도,1월,2월,...,12월) 또는 탭 구분으로 붙여넣기">📋 붙여넣기 가져오기</button>
+        <button id="oa-exportBtn" class="pa-btn">⬇ JSON 백업</button>
+        <button id="oa-clearBtn" class="pa-btn pa-btn-danger">전체 비우기</button>
+        <span style="font-size:12px;color:var(--text2);margin-left:auto">셀 클릭해서 직접 입력 가능</span>
+      </div>
+    </div>
+
+    <!-- 일별 카테고리별 상세 -->
+    <div style="margin-top:22px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">📅 일별 카테고리별 상세</div>
+        <select id="oad-year" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px"></select>
+        <select id="oad-month" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px">
+          <option value="1">JAN</option><option value="2">FEB</option><option value="3">MAR</option><option value="4">APR</option><option value="5">MAY</option><option value="6">JUN</option><option value="7">JUL</option><option value="8">AUG</option><option value="9">SEP</option><option value="10">OCT</option><option value="11">NOV</option><option value="12">DEC</option>
+        </select>
+        <button id="oad-prev" class="pa-btn" style="padding:4px 12px">◀</button>
+        <button id="oad-next" class="pa-btn" style="padding:4px 12px">▶</button>
+        <input id="oad-sale" placeholder='SALE 기간 (예: 1/16~1/26)' style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;width:200px">
+        <input id="oad-extraHoliday" placeholder='추가 휴일 (예: 1,15)' style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;width:160px" title="일요일은 자동 표시. 추가로 표시할 휴일/특별일을 콤마로 입력">
+        <button id="oad-addCat" class="pa-btn" style="padding:4px 12px">+ 카테고리</button>
+        <span style="font-size:11px;color:#16a34a;background:#dcfce7;padding:4px 10px;border-radius:6px" title="일별 데이터 변경 시 그 달 합계가 자동으로 아래 월별/연도별 표에 반영됩니다">✓ 월별표 자동 동기화</span>
+      </div>
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
+        <table id="oad-table" style="border-collapse:collapse;font-size:11px;width:100%;min-width:1900px"></table>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:6px">셀 직접 입력. 빈칸=0. 카테고리명 클릭하면 이름 수정. 우측 ✕ 로 삭제. SALE/빨강날짜는 헤더에 표시만 됩니다.</div>
+    </div>
+
+    <!-- 연도별 수량 표 -->
+    <div style="margin-top:22px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text)">📊 연도별 수량 (월별, 합계 자동)</div>
+      <div style="overflow-x:auto">
+        <table class="pa-table" id="oa-dataTable" style="min-width:700px"></table>
+      </div>
+    </div>
+
+    <!-- 전년대비 증가율 -->
+    <div style="margin-top:22px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text)">📈 전년대비 증가율 (%)</div>
+      <div style="overflow-x:auto">
+        <table class="pa-table" id="oa-yoyTable" style="min-width:700px"></table>
+      </div>
+    </div>
+
+    <!-- 차트 -->
+    <div style="margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text)">월별 추세 (선)</div>
+        <canvas id="oa-lineChart" style="max-height:320px"></canvas>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text)">월별 비교 (막대)</div>
+        <canvas id="oa-barChart" style="max-height:320px"></canvas>
+      </div>
+    </div>
+
+    <!-- 예측 -->
+    <div style="margin-top:22px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">🔮 다음 12개월 예측</div>
+        <select id="oa-predictYear" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px"></select>
+        <select id="oa-predictMethod" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px">
+          <option value="seasonal">계절성 + 추세 (권장)</option>
+          <option value="weighted">최근 가중평균</option>
+          <option value="linear">선형 회귀</option>
+        </select>
+        <span style="font-size:11px;color:var(--text2)">데이터 누적될수록 정확도 향상</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="pa-table" id="oa-predictTable" style="min-width:700px"></table>
+      </div>
+      <div style="margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px">
+        <canvas id="oa-predictChart" style="max-height:260px"></canvas>
+      </div>
+    </div>
+  </div>
+<!-- 카테고리 추가 모달 -->
+<div id="oad-catModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:14px;padding:24px;width:420px;max-width:92%;box-shadow:0 10px 40px rgba(0,0,0,0.3)">
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:var(--text)">새 카테고리 추가</div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px">이름</div>
+      <input id="oad-newName" placeholder="예: SPECIAL" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">색상 (24가지 프리셋)</div>
+      <div id="oad-colorPalette" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px"></div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--text2)">직접 선택:</div>
+        <input id="oad-customColor" type="color" value="#FEF3C7" style="width:50px;height:30px;cursor:pointer;border:1px solid var(--border);border-radius:4px;padding:0">
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--text2)">미리보기:</span>
+          <div id="oad-colorPreview" style="width:60px;height:28px;border:1px solid var(--border);border-radius:4px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:11px;color:#1a1a18;font-weight:600">샘플</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button id="oad-modalCancel" class="pa-btn">취소</button>
+      <button id="oad-modalAdd" class="pa-btn pa-btn-primary">추가</button>
+    </div>
+  </div>
+</div>
+</div><!-- /page-orderagg -->
 
 <!-- CHAT FAB + PANEL -->
 <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="팀 채팅">
@@ -6052,6 +6170,7 @@ const CRITERIA = [
   { name: "Enable Wrist Text = Yes",        field: "Enable Wrist Text",        match: "eq",  value: "Yes",              exclude: [] },
   { name: "Flag ≠ None",                    field: "Flag",                     match: "ne",  value: "None",             exclude: [] },
   { name: "Inlay Color (Mesh 제외, 색상만)",  field: "Inlay Color",              match: "ne_contains", value: "Mesh",        exclude: [] },
+  { name: "Web Style = Card Holder Web",    field: "Web Style",                match: "eq",  value: "Card Holder Web",  exclude: [] },
 ];
 
 function detectColumnAnchors(words, minCount=4, minGap=80){
@@ -7381,6 +7500,847 @@ dcQ('dc-dlBtn').addEventListener('click', () => {
   });
 });
 
+})();
+</script>
+
+<!-- ── 오더 수량 집계: Chart.js + localStorage + 간단 예측 ── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+if (typeof Chart === 'undefined') return;
+
+const OA_STORAGE_KEY = 'oa_monthly_data_v1';
+const oaQ = id => document.getElementById(id);
+const oaEsc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const oaFmt = n => (n == null || isNaN(n)) ? '' : Math.round(Number(n)).toLocaleString();
+
+// 데이터: { "2019": { "1": 1768, "2": 1975, ..., "12": 4047 }, "2020": {...} }
+let oaData = {};
+
+function oaLoad(){
+  try {
+    const raw = localStorage.getItem(OA_STORAGE_KEY);
+    if (raw) oaData = JSON.parse(raw);
+  } catch(_){ oaData = {}; }
+  // 첫 사용자: 샘플 데이터 자동 채움 안 함. 빈 상태.
+}
+function oaSave(){
+  try { localStorage.setItem(OA_STORAGE_KEY, JSON.stringify(oaData)); } catch(_){}
+}
+function oaYears(){
+  return Object.keys(oaData).map(Number).sort((a,b) => a-b);
+}
+function oaYearTotal(y){
+  const d = oaData[String(y)] || {};
+  let s = 0;
+  for (let m=1; m<=12; m++){ const v = d[m]; if (v != null) s += Number(v) || 0; }
+  return s;
+}
+function oaMonthTotal(){
+  // 모든 연도의 같은 월 총합
+  const ms = {};
+  for (let m=1; m<=12; m++){
+    let s = 0;
+    for (const y of oaYears()){
+      const v = (oaData[y]||{})[m];
+      if (v != null) s += Number(v) || 0;
+    }
+    ms[m] = s;
+  }
+  return ms;
+}
+
+// ── 표 1: 연도별 수량 (편집 가능) ──
+function oaRenderDataTable(){
+  const years = oaYears();
+  const tbl = oaQ('oa-dataTable');
+  if (!years.length){
+    tbl.innerHTML = '<thead><tr><th style="padding:14px;text-align:center;color:var(--text2)">연도를 추가하고 월별 값을 입력하세요</th></tr></thead>';
+    return;
+  }
+  let html = '<thead><tr><th style="width:60px"></th>';
+  for (const y of years){
+    html += `<th style="text-align:center">${y}<button class="oa-rmYear" data-y="${y}" style="margin-left:6px;border:none;background:transparent;color:#dc2626;cursor:pointer;font-size:12px" title="이 연도 삭제">✕</button></th>`;
+  }
+  html += '</tr></thead><tbody>';
+  for (let m=1; m<=12; m++){
+    html += `<tr><td style="font-weight:600">${m}월</td>`;
+    for (const y of years){
+      const v = (oaData[y]||{})[m];
+      const display = v == null ? '' : oaFmt(v);
+      html += `<td style="text-align:right;padding:4px 8px"><input class="oa-cell" data-y="${y}" data-m="${m}" value="${display}" style="width:100%;border:none;background:transparent;color:var(--text);text-align:right;font-variant-numeric:tabular-nums;padding:4px"></td>`;
+    }
+    html += '</tr>';
+  }
+  // 합계 행
+  html += '<tr style="background:var(--bg);font-weight:700"><td>계</td>';
+  for (const y of years){
+    html += `<td style="text-align:right;padding:8px;font-variant-numeric:tabular-nums">${oaFmt(oaYearTotal(y))}</td>`;
+  }
+  html += '</tr></tbody>';
+  tbl.innerHTML = html;
+}
+
+// 셀 입력 처리
+oaQ('oa-dataTable').addEventListener('change', e => {
+  if (!e.target.classList.contains('oa-cell')) return;
+  const y = e.target.dataset.y, m = e.target.dataset.m;
+  const raw = e.target.value.replace(/[, ]/g, '').trim();
+  if (!oaData[y]) oaData[y] = {};
+  if (raw === '' || isNaN(Number(raw))){
+    delete oaData[y][m];
+  } else {
+    oaData[y][m] = Number(raw);
+  }
+  oaSave();
+  oaRenderAll();
+});
+oaQ('oa-dataTable').addEventListener('click', e => {
+  const btn = e.target.closest('.oa-rmYear');
+  if (!btn) return;
+  if (!confirm(`${btn.dataset.y}년 데이터를 모두 삭제할까요?`)) return;
+  delete oaData[btn.dataset.y];
+  oaSave();
+  oaRenderAll();
+});
+
+// ── 표 2: 전년대비 증가율 ──
+function oaRenderYoY(){
+  const years = oaYears();
+  const tbl = oaQ('oa-yoyTable');
+  if (years.length < 2){
+    tbl.innerHTML = '<thead><tr><th style="padding:14px;text-align:center;color:var(--text2)">2개 이상의 연도가 필요합니다</th></tr></thead>';
+    return;
+  }
+  let html = '<thead><tr><th style="width:60px"></th>';
+  for (let i=1; i<years.length; i++){
+    html += `<th style="text-align:center">${years[i-1]} → ${years[i]}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  for (let m=1; m<=12; m++){
+    html += `<tr><td style="font-weight:600">${m}월</td>`;
+    for (let i=1; i<years.length; i++){
+      const a = (oaData[years[i-1]]||{})[m];
+      const b = (oaData[years[i]]||{})[m];
+      let cell = '-';
+      if (a && b){
+        const pct = ((b - a) / a) * 100;
+        const c = pct >= 0 ? '#16a34a' : '#dc2626';
+        cell = `<span style="color:${c};font-weight:600">${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%</span>`;
+      }
+      html += `<td style="text-align:right;padding:6px 10px">${cell}</td>`;
+    }
+    html += '</tr>';
+  }
+  // 합계 행
+  html += '<tr style="background:var(--bg);font-weight:700"><td>계</td>';
+  for (let i=1; i<years.length; i++){
+    const a = oaYearTotal(years[i-1]);
+    const b = oaYearTotal(years[i]);
+    let cell = '-';
+    if (a){
+      const pct = ((b - a) / a) * 100;
+      const c = pct >= 0 ? '#16a34a' : '#dc2626';
+      cell = `<span style="color:${c}">${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%</span>`;
+    }
+    html += `<td style="text-align:right;padding:8px">${cell}</td>`;
+  }
+  html += '</tr></tbody>';
+  tbl.innerHTML = html;
+}
+
+// ── 차트 ──
+let oaLineCh = null, oaBarCh = null, oaPredCh = null;
+function oaChartColors(){
+  // 연도별 색상 팔레트
+  return ['#2563eb','#ea580c','#6b7280','#facc15','#06b6d4','#16a34a','#1e293b','#dc2626','#9333ea','#f97316'];
+}
+function oaRenderCharts(){
+  const years = oaYears();
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const palette = oaChartColors();
+  const datasets = years.map((y, i) => ({
+    label: String(y),
+    data: Array.from({length:12}, (_,k) => (oaData[y]||{})[k+1] || null),
+    backgroundColor: palette[i % palette.length],
+    borderColor: palette[i % palette.length],
+    borderWidth: 2,
+    tension: 0.2,
+  }));
+  // 선 차트
+  if (oaLineCh) oaLineCh.destroy();
+  oaLineCh = new Chart(oaQ('oa-lineChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true } },
+    },
+  });
+  // 막대 차트
+  if (oaBarCh) oaBarCh.destroy();
+  oaBarCh = new Chart(oaQ('oa-barChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: months, datasets: datasets.map(d => ({...d})) },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true } },
+    },
+  });
+}
+
+// ── 예측 ──
+function oaPredict(targetYear, method){
+  const years = oaYears();
+  if (!years.length) return null;
+  const last = years[years.length-1];
+  const result = {};
+
+  if (method === 'weighted'){
+    // 최근 가중평균 (최근 연도 가중치 높음)
+    for (let m=1; m<=12; m++){
+      let totalW = 0, sumW = 0;
+      for (const y of years){
+        const v = (oaData[y]||{})[m];
+        if (v == null) continue;
+        const dist = targetYear - y;
+        if (dist <= 0) continue;
+        const w = 1 / dist;
+        sumW += v * w; totalW += w;
+      }
+      result[m] = totalW > 0 ? Math.round(sumW / totalW) : null;
+    }
+  } else if (method === 'linear'){
+    // 월별 선형 회귀
+    for (let m=1; m<=12; m++){
+      const points = [];
+      for (const y of years){
+        const v = (oaData[y]||{})[m];
+        if (v != null) points.push({x: y, y: v});
+      }
+      if (points.length < 2){ result[m] = null; continue; }
+      const n = points.length;
+      const sumX = points.reduce((s,p) => s+p.x, 0);
+      const sumY = points.reduce((s,p) => s+p.y, 0);
+      const sumXY = points.reduce((s,p) => s+p.x*p.y, 0);
+      const sumXX = points.reduce((s,p) => s+p.x*p.x, 0);
+      const b = (n*sumXY - sumX*sumY) / (n*sumXX - sumX*sumX);
+      const a = (sumY - b*sumX) / n;
+      result[m] = Math.max(0, Math.round(a + b*targetYear));
+    }
+  } else {
+    // seasonal: 계절성 + 추세
+    // 1) 연도 합계의 선형 추세 → 다음 연도 합계 예측
+    const yearTotals = years.map(y => ({x:y, y: oaYearTotal(y)})).filter(p => p.y > 0);
+    if (yearTotals.length < 1){
+      for (let m=1; m<=12; m++) result[m] = null;
+    } else {
+      let nextTotal;
+      if (yearTotals.length === 1){
+        nextTotal = yearTotals[0].y;
+      } else {
+        const n = yearTotals.length;
+        const sumX = yearTotals.reduce((s,p) => s+p.x, 0);
+        const sumY = yearTotals.reduce((s,p) => s+p.y, 0);
+        const sumXY = yearTotals.reduce((s,p) => s+p.x*p.y, 0);
+        const sumXX = yearTotals.reduce((s,p) => s+p.x*p.x, 0);
+        const b = (n*sumXY - sumX*sumY) / (n*sumXX - sumX*sumX);
+        const a = (sumY - b*sumX) / n;
+        nextTotal = Math.max(0, a + b*targetYear);
+      }
+      // 2) 월별 비율 (평균 % of yearly total)
+      const monthRatio = {};
+      for (let m=1; m<=12; m++){
+        let s = 0, c = 0;
+        for (const y of years){
+          const total = oaYearTotal(y);
+          const v = (oaData[y]||{})[m];
+          if (v != null && total > 0){
+            s += v / total; c++;
+          }
+        }
+        monthRatio[m] = c > 0 ? s / c : 1/12;
+      }
+      // 정규화 (합 = 1)
+      const ratioSum = Object.values(monthRatio).reduce((s,v) => s+v, 0);
+      for (let m=1; m<=12; m++){
+        result[m] = Math.round((monthRatio[m] / ratioSum) * nextTotal);
+      }
+    }
+  }
+  return result;
+}
+
+function oaRenderPrediction(){
+  const years = oaYears();
+  if (!years.length){
+    oaQ('oa-predictTable').innerHTML = '<thead><tr><th style="padding:14px;text-align:center;color:var(--text2)">데이터 없음</th></tr></thead>';
+    if (oaPredCh){ oaPredCh.destroy(); oaPredCh = null; }
+    return;
+  }
+  // 예측 연도 옵션 채우기
+  const sel = oaQ('oa-predictYear');
+  if (!sel.options.length || sel.dataset.lastYear !== String(years[years.length-1])){
+    const last = years[years.length-1];
+    sel.innerHTML = '';
+    for (let y = last+1; y <= last+3; y++){
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y + '년';
+      sel.appendChild(opt);
+    }
+    sel.dataset.lastYear = String(last);
+  }
+  const targetYear = parseInt(sel.value);
+  const method = oaQ('oa-predictMethod').value;
+  const pred = oaPredict(targetYear, method);
+  // 표
+  let html = '<thead><tr><th></th>';
+  for (let m=1; m<=12; m++) html += `<th>${m}월</th>`;
+  html += '<th>합계</th></tr></thead><tbody>';
+  html += `<tr><td style="font-weight:600">${targetYear} 예측</td>`;
+  let total = 0;
+  for (let m=1; m<=12; m++){
+    const v = pred[m];
+    if (v != null) total += v;
+    html += `<td style="text-align:right;font-variant-numeric:tabular-nums">${v != null ? oaFmt(v) : '-'}</td>`;
+  }
+  html += `<td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">${oaFmt(total)}</td>`;
+  html += '</tr></tbody>';
+  oaQ('oa-predictTable').innerHTML = html;
+
+  // 차트: 과거 + 예측
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const palette = oaChartColors();
+  const datasets = years.slice(-3).map((y, i) => ({   // 최근 3년만
+    label: String(y),
+    data: Array.from({length:12}, (_,k) => (oaData[y]||{})[k+1] || null),
+    backgroundColor: palette[i % palette.length] + '60',
+    borderColor: palette[i % palette.length],
+    borderWidth: 1.5,
+    tension: 0.2,
+  }));
+  datasets.push({
+    label: targetYear + ' 예측',
+    data: Array.from({length:12}, (_,k) => pred[k+1]),
+    borderColor: '#dc2626',
+    backgroundColor: '#dc262640',
+    borderWidth: 2.5,
+    borderDash: [6,3],
+    tension: 0.2,
+  });
+  if (oaPredCh) oaPredCh.destroy();
+  oaPredCh = new Chart(oaQ('oa-predictChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true } },
+    },
+  });
+}
+
+// 전체 다시 그리기
+function oaRenderAll(){
+  oaRenderDataTable();
+  oaRenderYoY();
+  oaRenderCharts();
+  oaRenderPrediction();
+}
+
+// 연도 추가
+oaQ('oa-addYearBtn').addEventListener('click', () => {
+  const y = parseInt(oaQ('oa-yearInput').value);
+  if (!y || y < 2000 || y > 2099){ alert('유효한 연도를 입력하세요 (2000~2099)'); return; }
+  if (!oaData[y]) oaData[y] = {};
+  oaSave();
+  oaRenderAll();
+  oaQ('oa-yearInput').value = '';
+});
+
+// 전체 비우기
+oaQ('oa-clearBtn').addEventListener('click', () => {
+  if (!confirm('모든 연도/월 데이터를 삭제합니다. 진행할까요?')) return;
+  oaData = {};
+  oaSave();
+  oaRenderAll();
+});
+
+// JSON 내보내기
+oaQ('oa-exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(oaData, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `order_qty_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+// 붙여넣기 가져오기 (탭/콤마 구분, 첫 줄 헤더 자동 감지)
+oaQ('oa-importBtn').addEventListener('click', () => {
+  const raw = prompt('데이터 붙여넣기 (탭 또는 콤마 구분).\n예: 연도\\t1월\\t2월\\t...\\t12월\n행 1개당 한 연도. 헤더 행 자동 감지.');
+  if (!raw) return;
+  const lines = raw.trim().split(/\r?\n/);
+  let added = 0;
+  for (const line of lines){
+    const cells = line.split(/[\t,]/).map(s => s.trim().replace(/,/g, ''));
+    if (cells.length < 2) continue;
+    const y = parseInt(cells[0]);
+    if (!y || y < 2000 || y > 2099) continue;  // 헤더 또는 비유효 행 스킵
+    if (!oaData[y]) oaData[y] = {};
+    for (let m=1; m<=12 && m < cells.length; m++){
+      const v = parseInt(cells[m].replace(/,/g, ''));
+      if (!isNaN(v)) oaData[y][m] = v;
+    }
+    added++;
+  }
+  if (added > 0){
+    oaSave(); oaRenderAll();
+    alert(`${added}개 연도 가져왔습니다.`);
+  } else {
+    alert('가져올 데이터가 없습니다.');
+  }
+});
+
+oaQ('oa-predictYear').addEventListener('change', oaRenderPrediction);
+oaQ('oa-predictMethod').addEventListener('change', oaRenderPrediction);
+
+// ════════════════════════════════════════════════════════════════════
+// 일별 카테고리별 상세 (daily)
+// ════════════════════════════════════════════════════════════════════
+const OAD_KEY = 'oa_daily_data_v1';
+let oaDaily = {};   // { "2026-1": { cats:[...], data:{cat:{day:n}}, sale:"", redDays:"" } }
+
+const OAD_DEFAULT_CATS = [
+  ['PRO44', '#FEF3C7'], ['574','#FEF3C7'], ['CB44','#FEF3C7'], ['CROWN','#FEF3C7'],
+  ['HND','#FEF3C7'], ['JP11','#FEF3C7'], ['JPS','#FEF3C7'], ['NY','#FEF3C7'],
+  ['PRX','#FEF3C7'], ['RB5','#FEF3C7'], ['TFB','#FEF3C7'], ['TRAINER','#FEF3C7'],
+  ['EX-10','#FEF3C7'], ['CF','#FEF3C7'],
+  ['C2', '#D1FAE5'], ['PANCAKE','#E9D5FF'], ['AMBI','#D1D5DB'], ['TTRAINER','#BFDBFE'],
+  ['RUSH/PRO','#FECACA'], ['SAMPLE','#FBCFE8'], ['REMAKE','#FED7AA'],
+];
+const OAD_CAT_COLOR = Object.fromEntries(OAD_DEFAULT_CATS);
+
+function oadLoad(){
+  try {
+    const raw = localStorage.getItem(OAD_KEY);
+    if (raw) oaDaily = JSON.parse(raw);
+  } catch(_){ oaDaily = {}; }
+}
+function oadSave(){
+  try { localStorage.setItem(OAD_KEY, JSON.stringify(oaDaily)); } catch(_){}
+}
+function oadKey(y, m){ return `${y}-${m}`; }
+function oadGet(y, m){
+  const k = oadKey(y, m);
+  if (!oaDaily[k]){
+    oaDaily[k] = {
+      cats: OAD_DEFAULT_CATS.map(c => c[0]),
+      data: {},
+      sale: '',
+      redDays: '',
+    };
+  }
+  return oaDaily[k];
+}
+function oadDaysInMonth(y, m){
+  return new Date(y, m, 0).getDate();
+}
+// 해당 년도/월의 일요일 자동 계산
+function oadSundaysOf(y, m){
+  const days = oadDaysInMonth(y, m);
+  const out = new Set();
+  for (let d=1; d<=days; d++){
+    if (new Date(y, m-1, d).getDay() === 0) out.add(d);  // 0 = Sunday
+  }
+  return out;
+}
+
+// 일별 → 월별 자동 동기화
+function oadSyncMonthly(y, m){
+  if (!y || !m) return;
+  const k = oadKey(y, m);
+  const entry = oaDaily[k];
+  if (!entry) return;
+  const days = oadDaysInMonth(y, m);
+  let total = 0;
+  for (const cat of entry.cats){
+    const row = entry.data[cat] || {};
+    for (let d=1; d<=days; d++) total += Number(row[d]) || 0;
+  }
+  if (!oaData[y]) oaData[y] = {};
+  if (total > 0) oaData[y][m] = total;
+  else delete oaData[y][m];
+}
+// 모든 일별 데이터 → 월별 일괄 동기화 (init 등)
+function oadFullSync(){
+  for (const k of Object.keys(oaDaily)){
+    if (k.startsWith('_')) continue;
+    const [y, m] = k.split('-').map(Number);
+    if (y && m) oadSyncMonthly(y, m);
+  }
+}
+// 일별 변경 → 저장 + 월별 동기화 + 전체 화면 갱신
+function oadCommitChange(){
+  oadSave();
+  const y = parseInt(oaQ('oad-year').value);
+  const m = parseInt(oaQ('oad-month').value);
+  if (y && m){
+    oadSyncMonthly(y, m);
+    oaSave();
+  }
+  oadRenderTable();
+  oaRenderAll();
+}
+// 전역 카테고리 색상 (모든 월에 공유)
+function oadGlobalColors(){
+  if (!oaDaily._globalCatColors) oaDaily._globalCatColors = {};
+  return oaDaily._globalCatColors;
+}
+function oadCatColor(cat){
+  const g = oadGlobalColors();
+  if (g[cat]) return g[cat];
+  return OAD_CAT_COLOR[cat] || '#FFFFFF';
+}
+function oadSetCatColor(cat, color){
+  const g = oadGlobalColors();
+  if (color) g[cat] = color;
+  else delete g[cat];
+}
+
+// SALE 문자열 → 해당 월의 날짜 Set
+// 지원 형식:
+//   "5/1-5/2", "5/1~5/2", "1/16~1/26"  — 월/일 범위 (현재 월과 일치할 때만 적용)
+//   "1-5", "16~26"                      — 일자 범위
+//   "1,3,5"                             — 개별 일자 (콤마 구분)
+//   "5/1,5/3,5/5"                       — 월/일 개별 (현재 월만)
+function oadParseSaleDays(saleStr, currentMonth){
+  const out = new Set();
+  if (!saleStr) return out;
+  const parts = saleStr.split(/[,\s]+/).filter(Boolean);
+  for (const part of parts){
+    // 월/일 범위
+    let m = part.match(/^(\d+)\/(\d+)\s*[-~]\s*(\d+)\/(\d+)$/);
+    if (m){
+      const [, m1, d1, m2, d2] = m.map(Number);
+      if (m1 === currentMonth && m2 === currentMonth){
+        for (let d = Math.min(d1,d2); d <= Math.max(d1,d2); d++) out.add(d);
+      } else if (m1 === currentMonth){
+        for (let d = d1; d <= 31; d++) out.add(d);
+      } else if (m2 === currentMonth){
+        for (let d = 1; d <= d2; d++) out.add(d);
+      }
+      continue;
+    }
+    // 일자 범위
+    m = part.match(/^(\d+)\s*[-~]\s*(\d+)$/);
+    if (m){
+      const s = parseInt(m[1]), e = parseInt(m[2]);
+      for (let d = Math.min(s,e); d <= Math.max(s,e); d++) out.add(d);
+      continue;
+    }
+    // 월/일 단독
+    m = part.match(/^(\d+)\/(\d+)$/);
+    if (m){
+      const mm = parseInt(m[1]), dd = parseInt(m[2]);
+      if (mm === currentMonth) out.add(dd);
+      continue;
+    }
+    // 일자 단독
+    const d = parseInt(part);
+    if (d) out.add(d);
+  }
+  return out;
+}
+
+function oadRenderTable(){
+  const y = parseInt(oaQ('oad-year').value);
+  const m = parseInt(oaQ('oad-month').value);
+  if (!y || !m) return;
+  const entry = oadGet(y, m);
+  const days = oadDaysInMonth(y, m);
+  // 일요일 자동 + 추가 휴일 (사용자가 입력한 것)
+  const redSet = oadSundaysOf(y, m);
+  if (entry.extraHoliday){
+    for (const s of entry.extraHoliday.split(/[,\s]+/)){
+      const d = parseInt(s);
+      if (d && d >= 1 && d <= days) redSet.add(d);
+    }
+  }
+  const saleSet = oadParseSaleDays(entry.sale || '', m);
+
+  // 그랜드 토탈 먼저 계산
+  let grandTotal = 0;
+  for (const cat of entry.cats){
+    const row = entry.data[cat] || {};
+    for (let d=1; d<=days; d++) grandTotal += Number(row[d]) || 0;
+  }
+
+  // 헤더 — 빨강 날짜는 빨강 배경, 세일 날짜는 녹색 배경 (빨강 우선)
+  let html = '<thead><tr style="background:var(--bg)"><th style="position:sticky;left:0;background:var(--bg);min-width:90px;padding:6px;border:1px solid var(--border);text-align:center;font-weight:700">' + oaQ('oad-month').selectedOptions[0].text + '</th>';
+  for (let d=1; d<=days; d++){
+    const isRed = redSet.has(d);
+    const isSale = saleSet.has(d);
+    let extra = '';
+    if (isRed){
+      extra = 'background:#fca5a5;color:#7f1d1d;font-weight:700';
+    } else if (isSale){
+      extra = 'background:#86efac;color:#14532d;font-weight:700';
+    }
+    html += `<th style="min-width:38px;padding:4px;border:1px solid var(--border);text-align:center;${extra}" title="${isSale ? 'SALE' : ''}">${d}</th>`;
+  }
+  html += '<th style="min-width:60px;padding:4px;border:1px solid var(--border);background:var(--bg);font-weight:700">TOTAL</th>';
+  html += '<th style="min-width:54px;padding:4px;border:1px solid var(--border);background:var(--bg)">%</th>';
+  html += '</tr>';
+  html += '</thead><tbody>';
+
+  // 각 카테고리 행
+  const colTotals = Array(days+1).fill(0);   // index 1..days
+  for (let ci=0; ci<entry.cats.length; ci++){
+    const cat = entry.cats[ci];
+    const row = entry.data[cat] || {};
+    const bg = oadCatColor(cat);
+    let rowTotal = 0;
+    let cellsHtml = '';
+    for (let d=1; d<=days; d++){
+      const v = row[d] != null ? Number(row[d]) : 0;
+      rowTotal += v;
+      colTotals[d] += v;
+      const display = v === 0 ? '' : oaFmt(v);
+      cellsHtml += `<td style="border:1px solid var(--border);padding:0;background:${bg}"><input class="oad-cell" data-cat="${oaEsc(cat)}" data-d="${d}" value="${display}" style="width:100%;border:none;background:transparent;color:#1a1a18;font-size:11px;text-align:center;padding:3px 2px"></td>`;
+    }
+    const pct = grandTotal > 0 ? (rowTotal / grandTotal * 100).toFixed(1) : '0.0';
+    html += `<tr><td style="position:sticky;left:0;border:1px solid var(--border);padding:0;background:${bg};color:#1a1a18;font-weight:600;min-width:120px">
+      <div style="display:flex;align-items:center;gap:3px;padding:4px 6px">
+        <input class="oad-rowColor" data-cat="${oaEsc(cat)}" type="color" value="${bg}" title="행 색상 변경" style="width:18px;height:18px;border:none;background:transparent;cursor:pointer;padding:0;flex-shrink:0">
+        <input class="oad-catname" data-i="${ci}" value="${oaEsc(cat)}" style="border:none;background:transparent;color:inherit;font-weight:inherit;font-size:11px;width:70px;flex:1">
+        <button class="oad-rmCat" data-i="${ci}" style="border:none;background:transparent;color:#dc2626;cursor:pointer;font-size:11px;flex-shrink:0" title="삭제">✕</button>
+      </div>
+    </td>${cellsHtml}<td style="border:1px solid var(--border);padding:4px;text-align:center;font-weight:700;background:${bg};color:#1a1a18">${oaFmt(rowTotal)}</td><td style="border:1px solid var(--border);padding:4px;text-align:center;background:${bg};color:${pct === '0.0' ? '#dc2626' : '#1a1a18'}">${pct}%</td></tr>`;
+  }
+  // TOTAL 행
+  html += '<tr style="font-weight:700;background:#dbeafe;color:#1e3a8a"><td style="position:sticky;left:0;background:#dbeafe;padding:6px;border:1px solid var(--border);text-align:center">TOTAL</td>';
+  for (let d=1; d<=days; d++){
+    html += `<td style="padding:4px;border:1px solid var(--border);text-align:center">${colTotals[d] || 0}</td>`;
+  }
+  html += `<td style="padding:6px;border:1px solid var(--border);text-align:center;background:#bfdbfe">${oaFmt(grandTotal)}</td><td style="padding:4px;border:1px solid var(--border);background:#bfdbfe">100%</td></tr>`;
+  html += '</tbody>';
+  oaQ('oad-table').innerHTML = html;
+}
+
+// 이벤트 위임
+oaQ('oad-table').addEventListener('change', e => {
+  const t = e.target;
+  if (t.classList.contains('oad-cell')){
+    const y = parseInt(oaQ('oad-year').value);
+    const m = parseInt(oaQ('oad-month').value);
+    const entry = oadGet(y, m);
+    const cat = t.dataset.cat;
+    const d = parseInt(t.dataset.d);
+    const raw = t.value.replace(/[, ]/g,'').trim();
+    if (!entry.data[cat]) entry.data[cat] = {};
+    if (raw === '' || isNaN(Number(raw))) delete entry.data[cat][d];
+    else entry.data[cat][d] = Number(raw);
+    oadCommitChange();
+  } else if (t.classList.contains('oad-catname')){
+    const y = parseInt(oaQ('oad-year').value);
+    const m = parseInt(oaQ('oad-month').value);
+    const entry = oadGet(y, m);
+    const i = parseInt(t.dataset.i);
+    const newName = t.value.trim();
+    if (!newName) return;
+    const oldName = entry.cats[i];
+    if (oldName === newName) return;
+    entry.cats[i] = newName;
+    if (entry.data[oldName]){ entry.data[newName] = entry.data[oldName]; delete entry.data[oldName]; }
+    const g = oadGlobalColors();
+    if (g[oldName]){ g[newName] = g[oldName]; delete g[oldName]; }
+    oadCommitChange();
+  } else if (t.classList.contains('oad-rowColor')){
+    oadSetCatColor(t.dataset.cat, t.value);
+    oadSave();
+    oadRenderTable();   // 색상 변경은 합계에 영향 없으므로 월별 갱신 불필요
+  }
+});
+oaQ('oad-table').addEventListener('click', e => {
+  const btn = e.target.closest('.oad-rmCat');
+  if (!btn) return;
+  const y = parseInt(oaQ('oad-year').value);
+  const m = parseInt(oaQ('oad-month').value);
+  const entry = oadGet(y, m);
+  const i = parseInt(btn.dataset.i);
+  const cat = entry.cats[i];
+  if (!confirm(`'${cat}' 카테고리 삭제할까요?`)) return;
+  entry.cats.splice(i, 1);
+  delete entry.data[cat];
+  oadCommitChange();
+});
+
+// 카테고리 추가 — 모달
+const OAD_PALETTE = [
+  // 노랑 톤
+  '#FEF3C7','#FDE68A','#FCD34D','#FBCF24',
+  // 주황 톤
+  '#FED7AA','#FDBA74','#FB923C','#F97316',
+  // 빨강/핑크 톤
+  '#FECACA','#FCA5A5','#F87171','#FBCFE8','#F9A8D4',
+  // 보라 톤
+  '#E9D5FF','#D8B4FE','#C084FC',
+  // 파랑 톤
+  '#BFDBFE','#93C5FD','#A5F3FC','#67E8F9',
+  // 녹색 톤
+  '#D1FAE5','#A7F3D0','#86EFAC','#D9F99D',
+  // 회색/중성
+  '#D1D5DB','#E5E7EB','#F3F4F6','#E7E5E4','#FFFFFF',
+];
+let oadCurrentColor = '#FEF3C7';
+
+function oadRenderPalette(){
+  const p = oaQ('oad-colorPalette');
+  p.innerHTML = '';
+  for (const c of OAD_PALETTE){
+    const sw = document.createElement('div');
+    const selected = c.toLowerCase() === oadCurrentColor.toLowerCase();
+    sw.style.cssText = `width:38px;height:28px;border:${selected ? '3px solid #1c3a5e' : '1px solid var(--border)'};border-radius:5px;background:${c};cursor:pointer;transition:transform 0.1s`;
+    sw.dataset.c = c;
+    sw.onmouseover = () => sw.style.transform = 'scale(1.1)';
+    sw.onmouseout = () => sw.style.transform = 'scale(1)';
+    p.appendChild(sw);
+  }
+}
+oaQ('oad-colorPalette').addEventListener('click', e => {
+  const sw = e.target.closest('[data-c]');
+  if (!sw) return;
+  oadCurrentColor = sw.dataset.c;
+  oaQ('oad-customColor').value = oadCurrentColor;
+  oaQ('oad-colorPreview').style.background = oadCurrentColor;
+  oadRenderPalette();
+});
+oaQ('oad-customColor').addEventListener('input', e => {
+  oadCurrentColor = e.target.value;
+  oaQ('oad-colorPreview').style.background = oadCurrentColor;
+  oadRenderPalette();
+});
+
+oaQ('oad-addCat').addEventListener('click', () => {
+  oaQ('oad-newName').value = '';
+  oadCurrentColor = '#FEF3C7';
+  oaQ('oad-customColor').value = oadCurrentColor;
+  oaQ('oad-colorPreview').style.background = oadCurrentColor;
+  oadRenderPalette();
+  oaQ('oad-catModal').style.display = 'flex';
+  setTimeout(() => oaQ('oad-newName').focus(), 50);
+});
+oaQ('oad-modalCancel').addEventListener('click', () => {
+  oaQ('oad-catModal').style.display = 'none';
+});
+oaQ('oad-catModal').addEventListener('click', e => {
+  if (e.target === oaQ('oad-catModal')) oaQ('oad-catModal').style.display = 'none';
+});
+oaQ('oad-modalAdd').addEventListener('click', () => {
+  const name = oaQ('oad-newName').value.trim();
+  if (!name){ alert('이름을 입력해주세요'); return; }
+  const y = parseInt(oaQ('oad-year').value);
+  const m = parseInt(oaQ('oad-month').value);
+  const entry = oadGet(y, m);
+  if (entry.cats.includes(name)){ alert('이미 있는 카테고리입니다.'); return; }
+  entry.cats.push(name);
+  oadSetCatColor(name, oadCurrentColor);
+  oaQ('oad-catModal').style.display = 'none';
+  oadCommitChange();
+});
+oaQ('oad-newName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') oaQ('oad-modalAdd').click();
+  else if (e.key === 'Escape') oaQ('oad-modalCancel').click();
+});
+
+// SALE / 빨강날짜
+oaQ('oad-sale').addEventListener('change', () => {
+  const y = parseInt(oaQ('oad-year').value);
+  const m = parseInt(oaQ('oad-month').value);
+  oadGet(y, m).sale = oaQ('oad-sale').value.trim();
+  oadSave();
+  oadRenderTable();
+});
+oaQ('oad-extraHoliday').addEventListener('change', () => {
+  const y = parseInt(oaQ('oad-year').value);
+  const m = parseInt(oaQ('oad-month').value);
+  oadGet(y, m).extraHoliday = oaQ('oad-extraHoliday').value.trim();
+  oadSave();
+  oadRenderTable();
+});
+
+// 연도/월 선택
+function oadRefreshYearSel(){
+  const sel = oaQ('oad-year');
+  const cur = parseInt(sel.value) || new Date().getFullYear();
+  sel.innerHTML = '';
+  // 과거 5년 + 현재 + 3년 미래
+  const now = new Date().getFullYear();
+  const years = new Set([cur, now]);
+  for (let y = now - 5; y <= now + 3; y++) years.add(y);
+  for (const y of oaYears()) years.add(y);
+  for (const y of [...years].sort((a,b) => a-b)){
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y + '년';
+    if (y === cur) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+oaQ('oad-year').addEventListener('change', () => {
+  loadCurrentDailyControls();
+  oadRenderTable();
+});
+oaQ('oad-month').addEventListener('change', () => {
+  loadCurrentDailyControls();
+  oadRenderTable();
+});
+oaQ('oad-prev').addEventListener('click', () => {
+  let m = parseInt(oaQ('oad-month').value);
+  let y = parseInt(oaQ('oad-year').value);
+  m--; if (m < 1){ m = 12; y--; oaQ('oad-year').value = y; oadRefreshYearSel(); oaQ('oad-year').value = y; }
+  oaQ('oad-month').value = m;
+  loadCurrentDailyControls();
+  oadRenderTable();
+});
+oaQ('oad-next').addEventListener('click', () => {
+  let m = parseInt(oaQ('oad-month').value);
+  let y = parseInt(oaQ('oad-year').value);
+  m++; if (m > 12){ m = 1; y++; oadRefreshYearSel(); oaQ('oad-year').value = y; }
+  oaQ('oad-month').value = m;
+  loadCurrentDailyControls();
+  oadRenderTable();
+});
+
+function loadCurrentDailyControls(){
+  const y = parseInt(oaQ('oad-year').value);
+  const m = parseInt(oaQ('oad-month').value);
+  if (!y || !m) return;
+  const entry = oadGet(y, m);
+  oaQ('oad-sale').value = entry.sale || '';
+  oaQ('oad-extraHoliday').value = entry.extraHoliday || '';
+}
+
+// 초기화
+oaLoad();
+oadLoad();
+oadFullSync();      // 기존 일별 데이터를 월별 표로 일괄 동기화
+oaSave();
+oaRenderAll();
+oadRefreshYearSel();
+const _now = new Date();
+oaQ('oad-month').value = _now.getMonth() + 1;
+oaQ('oad-year').value = _now.getFullYear();
+loadCurrentDailyControls();
+oadRenderTable();
+
+// 다크모드 변경 감지 (차트 색상 새로고침)
+if (window.matchMedia){
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', oaRenderCharts);
+}
 })();
 </script>
 
