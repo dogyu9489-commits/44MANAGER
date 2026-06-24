@@ -74,6 +74,8 @@
     --radius-sm: 6px;
   }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  /* 네이티브 폼 컨트롤(datalist·날짜·셀렉트 등)을 항상 라이트모드로 — OS 다크모드에서 흰글씨/흰배경 가독성 문제 방지 */
+  :root, input, select, textarea { color-scheme: light; }
 
   /* TOP BAR */
   .topbar { background: var(--accent); color: #fff; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
@@ -1037,10 +1039,6 @@
             <div id="lrRefOptBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;align-items:start"></div>
           </div>
         </div>
-        <datalist id="lr-dl-color"></datalist>
-        <datalist id="lr-dl-origin"></datalist>
-        <datalist id="lr-dl-company"></datalist>
-        <datalist id="lr-dl-ltype"></datalist>
 
         <!-- 변경 항목들 -->
         <div id="lrItemsWrap"></div>
@@ -5592,10 +5590,10 @@ function lrAddRefRow(itemN,type){
       <option value="before"${selType==='before'?' selected':''}>변경 전</option>
       <option value="after"${selType==='after'?' selected':''}>변경 후</option>
     </select></td>
-    <td><input type="text" class="lr-r-color" list="lr-dl-color" placeholder="Grey"></td>
-    <td><input type="text" class="lr-r-origin" list="lr-dl-origin" placeholder="일본"></td>
-    <td><input type="text" class="lr-r-company" list="lr-dl-company" placeholder="KODERA"></td>
-    <td><input type="text" class="lr-r-ltype" list="lr-dl-ltype" placeholder="스티어"></td>
+    <td><input type="text" class="lr-r-color" data-combo="color" autocomplete="off" placeholder="Grey"></td>
+    <td><input type="text" class="lr-r-origin" data-combo="origin" autocomplete="off" placeholder="일본"></td>
+    <td><input type="text" class="lr-r-company" data-combo="company" autocomplete="off" placeholder="KODERA"></td>
+    <td><input type="text" class="lr-r-ltype" data-combo="ltype" autocomplete="off" placeholder="스티어"></td>
     <td><div class="lr-grades" id="${rid}">
       <button type="button" class="lr-grade-add" onclick="lrAddGrade(this.parentNode)">+ 등급</button>
     </div></td>
@@ -5812,6 +5810,37 @@ function lrRenderRefOpts(){lrRenderRefOptMgr();lrRenderDatalists();}
     });
   }
 })();
+
+/* ── 커스텀 드롭다운 (네이티브 datalist는 macOS 다크모드에서 글자가 흰색으로 안 보여 직접 구현) ── */
+let lrComboMenu=null, lrComboInput=null;
+function lrComboEnsure(){
+  if(lrComboMenu)return lrComboMenu;
+  const m=document.createElement('div');m.id='lrComboMenu';
+  m.style.cssText='position:absolute;z-index:99999;background:#fff;color:#1a1a18;border:1px solid #d0d0cc;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.18);max-height:230px;overflow:auto;display:none;font-size:13px';
+  m.addEventListener('mousedown',e=>{const it=e.target.closest('[data-val]');if(!it)return;e.preventDefault();if(lrComboInput){lrComboInput.value=it.getAttribute('data-val');lrComboInput.dispatchEvent(new Event('input',{bubbles:true}));}lrComboHide();});
+  m.addEventListener('mouseover',e=>{const it=e.target.closest('[data-val]');if(it){[].forEach.call(m.children,c=>c.style.background='#fff');it.style.background='#e8f0fb';}});
+  document.body.appendChild(m);lrComboMenu=m;return m;
+}
+function lrComboHide(){if(lrComboMenu)lrComboMenu.style.display='none';lrComboInput=null;}
+function lrComboShow(input){
+  const key=input.getAttribute('data-combo');const all=(lrRefOpts[key]||[]).filter(v=>v&&v.trim());
+  const q=(input.value||'').toLowerCase();const f=all.filter(v=>v.toLowerCase().indexOf(q)>=0);
+  const list=(q&&f.length)?f:all;
+  if(!list.length){lrComboHide();return;}
+  const m=lrComboEnsure();lrComboInput=input;
+  m.innerHTML=list.map(v=>'<div data-val="'+lrEsc(v)+'" style="padding:7px 12px;cursor:pointer;white-space:nowrap">'+lrEsc(v)+'</div>').join('');
+  const r=input.getBoundingClientRect();
+  m.style.left=(r.left+window.scrollX)+'px';m.style.top=(r.bottom+window.scrollY+2)+'px';m.style.minWidth=r.width+'px';m.style.display='block';
+}
+function lrComboReposition(){if(lrComboInput&&lrComboMenu&&lrComboMenu.style.display!=='none'){const r=lrComboInput.getBoundingClientRect();lrComboMenu.style.left=(r.left+window.scrollX)+'px';lrComboMenu.style.top=(r.bottom+window.scrollY+2)+'px';}}
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.getAttribute&&t.getAttribute('data-combo')!=null)lrComboShow(t);});
+document.addEventListener('click',e=>{const t=e.target;if(t&&t.getAttribute&&t.getAttribute('data-combo')!=null)lrComboShow(t);});
+document.addEventListener('input',e=>{const t=e.target;if(t&&t.getAttribute&&t.getAttribute('data-combo')!=null)lrComboShow(t);});
+document.addEventListener('focusout',e=>{const t=e.target;if(t&&t.getAttribute&&t.getAttribute('data-combo')!=null)setTimeout(lrComboHide,180);});
+// 메뉴 밖 클릭 시 닫기 (입력칸·메뉴 클릭은 유지)
+document.addEventListener('mousedown',e=>{if(!lrComboInput)return;const t=e.target;if(t===lrComboInput||(t.getAttribute&&t.getAttribute('data-combo')!=null))return;if(lrComboMenu&&lrComboMenu.contains(t))return;lrComboHide();});
+// 스크롤 시 숨기지 말고 위치만 따라가게 (포커스 시 자동 스크롤로 사라지던 문제 방지)
+window.addEventListener('scroll',lrComboReposition,true);
 
 (function lrInit(){
   const dEl=document.getElementById('lrDate');
