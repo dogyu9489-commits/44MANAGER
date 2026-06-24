@@ -1029,6 +1029,19 @@
           </div>
         </div>
 
+        <!-- 참고자료 옵션 관리 -->
+        <div class="lr-section">
+          <div class="lr-section-title" id="lrRefOptToggle" style="cursor:pointer">▸ 참고자료 옵션 관리 (색상·원산지·회사·가죽종류)</div>
+          <div id="lrRefOptWrap" style="display:none;margin-top:10px">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">여기서 추가/수정/삭제하면, 아래 참고자료 표에서 직접 입력하거나 드롭다운으로 고를 수 있어요. (자동 저장)</div>
+            <div id="lrRefOptBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;align-items:start"></div>
+          </div>
+        </div>
+        <datalist id="lr-dl-color"></datalist>
+        <datalist id="lr-dl-origin"></datalist>
+        <datalist id="lr-dl-company"></datalist>
+        <datalist id="lr-dl-ltype"></datalist>
+
         <!-- 변경 항목들 -->
         <div id="lrItemsWrap"></div>
 
@@ -5579,10 +5592,10 @@ function lrAddRefRow(itemN,type){
       <option value="before"${selType==='before'?' selected':''}>변경 전</option>
       <option value="after"${selType==='after'?' selected':''}>변경 후</option>
     </select></td>
-    <td><input type="text" class="lr-r-color" placeholder="Grey"></td>
-    <td><input type="text" class="lr-r-origin" placeholder="일본"></td>
-    <td><input type="text" class="lr-r-company" placeholder="KODERA"></td>
-    <td><input type="text" class="lr-r-ltype" placeholder="스티어"></td>
+    <td><input type="text" class="lr-r-color" list="lr-dl-color" placeholder="Grey"></td>
+    <td><input type="text" class="lr-r-origin" list="lr-dl-origin" placeholder="일본"></td>
+    <td><input type="text" class="lr-r-company" list="lr-dl-company" placeholder="KODERA"></td>
+    <td><input type="text" class="lr-r-ltype" list="lr-dl-ltype" placeholder="스티어"></td>
     <td><div class="lr-grades" id="${rid}">
       <button type="button" class="lr-grade-add" onclick="lrAddGrade(this.parentNode)">+ 등급</button>
     </div></td>
@@ -5769,12 +5782,44 @@ function lrFastPrint(){
   setTimeout(function(){w.print();},700);
 }
 // 초기화: 오늘 날짜 + 기본 1개 항목
+/* ── 참고자료 옵션(색상·원산지·회사·가죽종류) 관리 + datalist ── */
+const LR_OPT_KEY='lr_ref_opts_v1';
+const LR_OPT_DEF={color:['Grey','Black','Tan','Blonde','White'],origin:['일본','미국','베트남'],company:['KODERA','RISE'],ltype:['스티어','킵','하이드']};
+const LR_OPT_FIELDS=[{k:'color',label:'색상',dl:'lr-dl-color'},{k:'origin',label:'원산지',dl:'lr-dl-origin'},{k:'company',label:'회사',dl:'lr-dl-company'},{k:'ltype',label:'가죽 종류',dl:'lr-dl-ltype'}];
+function lrEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+let lrRefOpts=lrLoadRefOpts();
+function lrLoadRefOpts(){try{const r=localStorage.getItem(LR_OPT_KEY);if(r){const o=JSON.parse(r);LR_OPT_FIELDS.forEach(f=>{if(!Array.isArray(o[f.k]))o[f.k]=[];});return o;}}catch(e){}return JSON.parse(JSON.stringify(LR_OPT_DEF));}
+function lrSaveRefOpts(){try{localStorage.setItem(LR_OPT_KEY,JSON.stringify(lrRefOpts));}catch(e){}}
+function lrRenderDatalists(){LR_OPT_FIELDS.forEach(f=>{const dl=document.getElementById(f.dl);if(dl)dl.innerHTML=(lrRefOpts[f.k]||[]).filter(v=>v&&v.trim()).map(v=>'<option value="'+lrEsc(v)+'">').join('');});}
+function lrRenderRefOptMgr(){const box=document.getElementById('lrRefOptBody');if(!box)return;
+  box.innerHTML=LR_OPT_FIELDS.map(f=>{
+    let h='<div style="min-width:0;background:var(--bg,#f7f7f5);border:1px solid var(--border,#e4e4e0);border-radius:8px;padding:12px"><div style="font-size:12px;font-weight:700;color:var(--text2,#6b6b68);margin-bottom:8px">'+f.label+'</div>';
+    (lrRefOpts[f.k]||[]).forEach((v,i)=>{h+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><input data-optk="'+f.k+'" data-i="'+i+'" value="'+lrEsc(v)+'" style="flex:1;min-width:0;box-sizing:border-box;padding:6px 9px;border:1px solid var(--border,#ccc);border-radius:6px;font-size:13px;background:#fff"><button type="button" data-delopt="'+f.k+'" data-i="'+i+'" title="삭제" style="flex:none;width:26px;height:30px;border:1px solid var(--border,#e4e4e0);background:#fff;color:#999;border-radius:6px;cursor:pointer;font-size:12px;line-height:1">✕</button></div>';});
+    h+='<button type="button" data-addopt="'+f.k+'" style="width:100%;border:1px dashed var(--border2,#bbb);background:transparent;border-radius:6px;cursor:pointer;padding:6px 10px;font-size:12px;color:var(--text2,#666);margin-top:2px">+ 추가</button></div>';
+    return h;
+  }).join('');
+}
+function lrRenderRefOpts(){lrRenderRefOptMgr();lrRenderDatalists();}
+(function lrWireRefOpts(){
+  const tog=document.getElementById('lrRefOptToggle');
+  if(tog)tog.addEventListener('click',()=>{const w=document.getElementById('lrRefOptWrap');const open=w.style.display==='none';w.style.display=open?'block':'none';tog.textContent=(open?'▾':'▸')+' 참고자료 옵션 관리 (색상·원산지·회사·가죽종류)';});
+  const body=document.getElementById('lrRefOptBody');
+  if(body){
+    body.addEventListener('input',e=>{const k=e.target.dataset.optk;if(k==null)return;lrRefOpts[k][+e.target.dataset.i]=e.target.value;lrSaveRefOpts();lrRenderDatalists();});
+    body.addEventListener('click',e=>{const a=e.target;
+      if(a.dataset.addopt!=null){lrRefOpts[a.dataset.addopt].push('');lrSaveRefOpts();lrRenderRefOpts();return;}
+      if(a.dataset.delopt!=null){lrRefOpts[a.dataset.delopt].splice(+a.dataset.i,1);lrSaveRefOpts();lrRenderRefOpts();return;}
+    });
+  }
+})();
+
 (function lrInit(){
   const dEl=document.getElementById('lrDate');
   if(dEl&&!dEl.value){
     const t=new Date();
     dEl.value=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
   }
+  lrRenderRefOpts();
   if(document.getElementById('lrItemsWrap')&&document.getElementById('lrItemsWrap').children.length===0){
     lrAddItem();
   }
