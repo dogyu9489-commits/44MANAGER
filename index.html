@@ -1513,6 +1513,65 @@
         <div style="display:flex;gap:8px">
           <button class="pr-btn-add" onclick="prAddRow()">+ 행 추가</button>
           <button class="pr-btn-add" onclick="prAddDiscountRow()" style="color:#ef4444;border-color:#fca5a5">− 할인 행 추가</button>
+          <button class="pr-btn-add" onclick="prLibOpen()" style="color:#2563eb;border-color:#93c5fd">📦 저장된 물품 불러오기</button>
+        </div>
+      </div>
+
+      <!-- 물품 라이브러리 (사진·스펙 저장/불러오기) -->
+      <style>
+        #prLibForm input,#prLibForm textarea,#prLibForm select{padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit;color:#1a1a2e;outline:none;box-sizing:border-box;width:100%;background:#fff}
+        .pr-lib-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+        .pr-lib-card .thumb{width:100%;height:120px;background:#f1f5f9 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:26px}
+        .pr-lib-card .body{padding:9px 11px;display:flex;flex-direction:column;gap:2px;flex:1}
+        .pr-lib-card .nm{font-weight:700;font-size:13px;color:#1a1a2e;word-break:break-word}
+        .pr-lib-card .sp{font-size:11px;color:#6b7280;word-break:break-word}
+        .pr-lib-card .pc{font-size:12px;color:#2563eb;font-weight:600}
+        .pr-lib-card .acts{display:flex;border-top:1px solid #f1f5f9}
+        .pr-lib-card .acts button{flex:1;border:none;background:#fff;padding:7px 0;font-size:12px;cursor:pointer;color:#374151;font-family:inherit}
+        .pr-lib-card .acts button:hover{background:#f8fafc}
+        .pr-lib-card .acts button+button{border-left:1px solid #f1f5f9}
+        .pr-lib-card .acts .ld{color:#2563eb;font-weight:600}
+        .pr-lib-card .acts .dl{color:#ef4444}
+      </style>
+      <div class="pr-section" id="prLibSection">
+        <div class="pr-section-title" id="prLibToggle" style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+          <span>📦 물품 라이브러리 <span style="font-weight:400;font-size:11px;color:#6b7280;text-transform:none;letter-spacing:0">— 사진·스펙 저장해두고 불러오기</span></span>
+          <span id="prLibChevron" style="font-size:13px;color:#6b7280">▸ 펼치기</span>
+        </div>
+        <div id="prLibWrap" style="display:none">
+          <div class="pr-hint">💡 자주 쓰는 물품의 사진·스펙·단가를 저장해두고, 견적서에 바로 불러올 수 있어요. (이 브라우저에 저장됩니다)</div>
+          <div id="prLibForm" style="display:grid;grid-template-columns:130px 1fr;gap:12px;align-items:start;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:14px">
+            <div>
+              <div class="pr-photo-area" id="prLibPhotoArea" onclick="prLibPickPhoto()" style="width:130px;height:130px;position:relative">
+                <span class="pr-photo-plus" id="prLibPhotoPlus">＋</span>
+                <img id="prLibPhotoImg" src="" style="display:none;width:100%;height:100%;object-fit:cover" alt="">
+                <button type="button" class="pr-photo-clear" id="prLibPhotoClear" onclick="prLibClearPhoto();event.stopPropagation()" style="display:none">✕</button>
+              </div>
+              <input type="file" accept="image/*" id="prLibPhotoInput" style="display:none" onchange="prLibHandleFile()">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <input type="text" id="prLibName" placeholder="물품명 (예: 유압 실린더 SC-40) *필수">
+              <input type="text" id="prLibSpec" placeholder="상세 스펙 (예: 40mm · 스테인리스 · 200psi)">
+              <div style="display:flex;gap:8px">
+                <select id="prLibCurrency" title="통화" style="flex:0 0 auto;width:104px">
+                  <option value="PHP">₱ PHP</option>
+                  <option value="USD">$ USD</option>
+                  <option value="KRW">₩ KRW</option>
+                  <option value="CNY">¥ CNY</option>
+                  <option value="JPY">¥ JPY</option>
+                </select>
+                <input type="number" id="prLibPrice" min="0" step="0.01" placeholder="기본 단가 (선택)" style="flex:1">
+                <input type="text" id="prLibNote" placeholder="비고 (선택)" style="flex:2">
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button type="button" class="pr-btn-add" id="prLibSaveBtn" onclick="prLibSave()">💾 물품 저장</button>
+                <button type="button" class="pr-btn-add" onclick="prLibResetForm()" style="color:#6b7280">초기화</button>
+                <span id="prLibEditNote" style="font-size:11px;color:#2563eb"></span>
+              </div>
+            </div>
+          </div>
+          <div id="prLibEmpty" class="pr-hint" style="display:none">아직 저장된 물품이 없습니다. 위에서 물품을 등록하세요.</div>
+          <div id="prLibGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px"></div>
         </div>
       </div>
 
@@ -5266,6 +5325,121 @@ function prClearPhoto(n){
   document.getElementById('prPhotoClear'+n).style.display='none';
   document.getElementById('prPhotoInput'+n).value='';
 }
+
+/* ── 물품 라이브러리 (사진·스펙 저장/불러오기) ── */
+const PR_LIB_KEY='pr_products_v1';
+function prEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+// 사진은 우리가 canvas로 만든 data:image base64만 허용 (CSS url()/img.src 주입 방지)
+function prSafeImg(s){return (typeof s==='string'&&/^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s]*$/i.test(s))?s:'';}
+let prProducts=[];       // 메모리 캐시 (IndexedDB/localStorage에서 로드)
+let prLibPhotoData='';   // 등록 폼에 올린 사진(dataURL, 다운스케일됨)
+let prLibEditId=null;    // 수정 중인 물품 id
+// ── 저장소: IndexedDB(대용량) 우선, 실패 시 localStorage로 폴백 ──
+const PR_DB='ksm_pr_lib', PR_STORE='products';
+let _prDb=null, prUseLS=false;
+function prIdb(){if(_prDb)return Promise.resolve(_prDb);return new Promise((res,rej)=>{let r;try{r=indexedDB.open(PR_DB,1);}catch(e){return rej(e);}r.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(PR_STORE))db.createObjectStore(PR_STORE,{keyPath:'id'});};r.onsuccess=e=>{_prDb=e.target.result;res(_prDb);};r.onerror=e=>rej(r.error||e);});}
+function prIdbAll(){return prIdb().then(db=>new Promise((res,rej)=>{const rq=db.transaction(PR_STORE,'readonly').objectStore(PR_STORE).getAll();rq.onsuccess=()=>res(rq.result||[]);rq.onerror=()=>rej(rq.error);}));}
+function prIdbPut(p){return prIdb().then(db=>new Promise((res,rej)=>{const tx=db.transaction(PR_STORE,'readwrite');tx.objectStore(PR_STORE).put(p);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('abort'));}));}
+function prIdbDel(id){return prIdb().then(db=>new Promise((res,rej)=>{const tx=db.transaction(PR_STORE,'readwrite');tx.objectStore(PR_STORE).delete(id);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);}));}
+function prLibLS(){try{const r=localStorage.getItem(PR_LIB_KEY);if(r){const a=JSON.parse(r);if(Array.isArray(a))return a;}}catch(e){}return [];}
+function prStorePut(p){ // 한 물품 저장
+  if(prUseLS){const i=prProducts.findIndex(x=>x.id===p.id);const c=prProducts.slice();if(i>=0)c[i]=p;else c.push(p);try{localStorage.setItem(PR_LIB_KEY,JSON.stringify(c));return Promise.resolve(true);}catch(e){return Promise.reject(e);}}
+  return prIdbPut(p);
+}
+function prStoreDel(id){
+  if(prUseLS){const c=prProducts.filter(x=>x.id!==id);try{localStorage.setItem(PR_LIB_KEY,JSON.stringify(c));return Promise.resolve(true);}catch(e){return Promise.reject(e);}}
+  return prIdbDel(id);
+}
+function prLibInitStore(){ // 로드 + 구버전 localStorage 자동 이전
+  return prIdbAll().then(list=>{
+    if((!list||!list.length)){const old=prLibLS();if(old.length)return Promise.all(old.map(p=>prIdbPut(p))).then(()=>{try{localStorage.removeItem(PR_LIB_KEY);}catch(e){}return prIdbAll();});}
+    return list;
+  }).catch(()=>{prUseLS=true;return prLibLS();})
+   .then(list=>{prProducts=Array.isArray(list)?list:[];prRenderLib();});
+}
+function prNewId(){return 'p'+Date.now().toString(36)+Math.floor(Math.random()*1000);}
+// 이미지 다운스케일(최대 변 1600px, JPEG) — 화질 유지 + 용량 절약
+function prDownscale(dataURL,maxDim,cb){
+  const img=new Image();
+  img.onload=function(){
+    let w=img.width,h=img.height;const m=maxDim||1600;
+    if(w>m||h>m){if(w>=h){h=Math.round(h*m/w);w=m;}else{w=Math.round(w*m/h);h=m;}}
+    try{const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);cb(cv.toDataURL('image/jpeg',0.88));}
+    catch(e){cb(dataURL);}
+  };
+  img.onerror=function(){cb(dataURL);};
+  img.src=dataURL;
+}
+function prLibOpen(){const w=document.getElementById('prLibWrap');if(w&&w.style.display==='none')prLibToggleWrap();const s=document.getElementById('prLibSection');if(s)s.scrollIntoView({behavior:'smooth',block:'start'});}
+function prLibToggleWrap(){const w=document.getElementById('prLibWrap');const ch=document.getElementById('prLibChevron');const open=w.style.display==='none';w.style.display=open?'block':'none';if(ch)ch.textContent=open?'▾ 접기':'▸ 펼치기';if(open)prRenderLib();}
+function prLibPickPhoto(){const i=document.getElementById('prLibPhotoInput');if(i)i.click();}
+function prLibHandleFile(){
+  const input=document.getElementById('prLibPhotoInput');const file=input.files&&input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){prDownscale(e.target.result,1600,function(d){prLibPhotoData=d;const img=document.getElementById('prLibPhotoImg');img.src=d;img.style.display='block';document.getElementById('prLibPhotoPlus').style.display='none';document.getElementById('prLibPhotoClear').style.display='flex';});};
+  reader.readAsDataURL(file);
+  input.value='';
+}
+function prLibClearPhoto(){prLibPhotoData='';const img=document.getElementById('prLibPhotoImg');img.src='';img.style.display='none';document.getElementById('prLibPhotoPlus').style.display='inline';document.getElementById('prLibPhotoClear').style.display='none';}
+function prLibResetForm(){prLibEditId=null;prLibClearPhoto();['prLibName','prLibSpec','prLibPrice','prLibNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const cs=document.getElementById('prLibCurrency');if(cs){const q=document.getElementById('prCurrency');cs.value=(q&&q.value)||'PHP';}document.getElementById('prLibSaveBtn').textContent='💾 물품 저장';document.getElementById('prLibEditNote').textContent='';}
+function prLibSave(){
+  const name=document.getElementById('prLibName').value.trim();
+  if(!name){alert('물품명을 입력하세요.');document.getElementById('prLibName').focus();return;}
+  const priceRaw=document.getElementById('prLibPrice').value;const priceNum=parseFloat(priceRaw);
+  const csEl=document.getElementById('prLibCurrency');const cur=(csEl&&PR_CURRENCIES[csEl.value])?csEl.value:'PHP';
+  const p={id:(prLibEditId||prNewId()),name:name,spec:document.getElementById('prLibSpec').value.trim(),price:(isFinite(priceNum)&&priceRaw!==''?String(priceNum):''),currency:cur,note:document.getElementById('prLibNote').value.trim(),photo:prSafeImg(prLibPhotoData)};
+  prStorePut(p).then(()=>{ // 저장 성공 시에만 캐시 반영
+    const i=prProducts.findIndex(x=>x.id===p.id);if(i>=0)prProducts[i]=p;else prProducts.push(p);
+    prLibResetForm();prRenderLib();
+  }).catch(e=>{alert('저장에 실패했습니다. 저장 공간이 부족하거나 브라우저 제한일 수 있어요.'+(e&&e.name?' ('+e.name+')':''));});
+}
+function prLibEdit(id){const p=prProducts.find(x=>x.id===id);if(!p)return;prLibEditId=id;document.getElementById('prLibName').value=p.name||'';document.getElementById('prLibSpec').value=p.spec||'';document.getElementById('prLibPrice').value=p.price||'';document.getElementById('prLibNote').value=p.note||'';const cs=document.getElementById('prLibCurrency');if(cs)cs.value=(p.currency&&PR_CURRENCIES[p.currency])?p.currency:'PHP';prLibPhotoData=prSafeImg(p.photo);const img=document.getElementById('prLibPhotoImg');if(prLibPhotoData){img.src=prLibPhotoData;img.style.display='block';document.getElementById('prLibPhotoPlus').style.display='none';document.getElementById('prLibPhotoClear').style.display='flex';}else prLibClearPhoto();document.getElementById('prLibSaveBtn').textContent='✔ 수정 저장';document.getElementById('prLibEditNote').textContent='수정 중… (초기화로 취소)';const s=document.getElementById('prLibForm');if(s)s.scrollIntoView({behavior:'smooth',block:'center'});}
+function prLibDelete(id){const p=prProducts.find(x=>x.id===id);if(!p)return;if(!confirm('"'+p.name+'" 물품을 라이브러리에서 삭제할까요?'))return;prStoreDel(id).then(()=>{prProducts=prProducts.filter(x=>x.id!==id);if(prLibEditId===id)prLibResetForm();prRenderLib();}).catch(e=>{alert('삭제에 실패했습니다.');});}
+// 저장된 물품을 견적서에 삽입 (품목 행 + 사진)
+function prLibInsert(id,btn){
+  const p=prProducts.find(x=>x.id===id);if(!p)return;
+  // 통화 자동 적용 (물품에 지정된 통화로 견적서 통화 설정)
+  const curSel=document.getElementById('prCurrency');if(curSel&&p.currency&&PR_CURRENCIES[p.currency])curSel.value=p.currency;
+  prAddRow();
+  const rows=document.querySelectorAll('#prItemsBody tr');const tr=rows[rows.length-1];
+  if(tr){const nm=tr.querySelector('.pr-name');if(nm)nm.value=p.name+(p.spec?' / '+p.spec:'');const un=tr.querySelector('.pr-unit');if(un&&p.price)un.value=p.price;const rm=tr.querySelector('.pr-rem');if(rm&&p.note)rm.value=p.note;}
+  const safePhoto=prSafeImg(p.photo);
+  if(safePhoto&&document.getElementById('prPhotoGrid')){
+    prAddPhoto();const pid=prPhotoUid;
+    const slot=document.querySelector('#prPhotoGrid .pr-photo[data-photo-id="'+pid+'"]');
+    if(slot){const te=slot.querySelector('.pr-photo-title-edit');if(te)te.value='📷 '+p.name;} // 이름은 value 속성으로만 설정(HTML 주입 방지)
+    const img=document.getElementById('prPhotoImg'+pid);if(img){img.src=safePhoto;img.style.display='block';const plus=document.getElementById('prPhotoPlus'+pid);if(plus)plus.style.display='none';const clr=document.getElementById('prPhotoClear'+pid);if(clr)clr.style.display='flex';}
+    const desc=document.getElementById('prPhotoDesc'+pid);if(desc&&p.spec)desc.value=p.spec;
+  }
+  prRecalc();
+  if(btn){const old=btn.textContent;btn.textContent='✔ 추가됨';setTimeout(()=>{btn.textContent=old;},1200);}
+}
+function prRenderLib(){
+  const grid=document.getElementById('prLibGrid');if(!grid)return;
+  const empty=document.getElementById('prLibEmpty');if(empty)empty.style.display=prProducts.length?'none':'block';
+  grid.innerHTML=prProducts.map(p=>{
+    const ph=prSafeImg(p.photo);
+    const thumb=ph?('<div class="thumb" style="background-image:url('+"'"+ph+"'"+')"></div>'):('<div class="thumb">📦</div>');
+    const cur=(p.currency&&PR_CURRENCIES[p.currency])?PR_CURRENCIES[p.currency]:PR_CURRENCIES.PHP;
+    const priceHtml=p.price?('<div class="pc">단가 '+prEsc(cur.symbol+' '+p.price)+' <span style="color:#9ca3af;font-weight:400">'+prEsc(cur.label)+'</span></div>'):'';
+    return '<div class="pr-lib-card" data-id="'+prEsc(p.id)+'">'+thumb
+      +'<div class="body"><div class="nm">'+prEsc(p.name)+'</div>'
+      +(p.spec?'<div class="sp">'+prEsc(p.spec)+'</div>':'')
+      +(p.note?'<div class="sp">비고: '+prEsc(p.note)+'</div>':'')
+      +priceHtml+'</div>'
+      +'<div class="acts"><button type="button" class="ld" data-act="ins">＋ 견적서에</button>'
+      +'<button type="button" data-act="edit">수정</button>'
+      +'<button type="button" class="dl" data-act="del">삭제</button></div></div>';
+  }).join('');
+}
+(function prLibInit(){
+  const t=document.getElementById('prLibToggle');if(t)t.addEventListener('click',prLibToggleWrap);
+  const grid=document.getElementById('prLibGrid');
+  if(grid)grid.addEventListener('click',e=>{const b=e.target.closest('button[data-act]');if(!b)return;const card=b.closest('[data-id]');if(!card)return;const id=card.getAttribute('data-id');const a=b.getAttribute('data-act');if(a==='ins')prLibInsert(id,b);else if(a==='edit')prLibEdit(id);else if(a==='del')prLibDelete(id);});
+  prLibResetForm();  // 통화 기본값 = 현재 견적서 통화
+  prLibInitStore();  // IndexedDB(+구버전 이전) 비동기 로드 후 렌더
+})();
+
 function prFmtDate(d){
   if(!d)return'____년 __월 __일';
   const dt=new Date(d);
@@ -5537,6 +5711,15 @@ window.prAddPhoto=prAddPhoto;
 window.prRemovePhoto=prRemovePhoto;
 window.prPhotoAreaClick=prPhotoAreaClick;
 window.prFastPrint=prFastPrint;
+window.prLibOpen=prLibOpen;
+window.prLibPickPhoto=prLibPickPhoto;
+window.prLibHandleFile=prLibHandleFile;
+window.prLibClearPhoto=prLibClearPhoto;
+window.prLibSave=prLibSave;
+window.prLibResetForm=prLibResetForm;
+window.prLibEdit=prLibEdit;
+window.prLibDelete=prLibDelete;
+window.prLibInsert=prLibInsert;
 
 /* ── Leather Change Report ── */
 let lrUid=0;
@@ -5561,7 +5744,7 @@ function lrAddItem(){
     <div class="lr-photo-row">
       <div class="lr-photo">
         <div class="lr-photo-title">📷 변경 전 (Before)</div>
-        <div class="lr-photo-area" id="lrPhotoArea${n}a" onclick="if(event.target.id!=='lrPhotoClear${n}a')document.getElementById('lrPhotoInput${n}a').click()">
+        <div class="lr-photo-area" id="lrPhotoArea${n}a" onclick="if(event.target.id!=='lrPhotoClear${n}a')document.getElementById('lrPhotoInput${n}a').click()" ondragover="lrDragOver(event,this)" ondragleave="lrDragLeave(this)" ondrop="lrHandleDrop(event,${n},'a',this)">
           <span class="lr-photo-plus" id="lrPhotoPlus${n}a">＋</span>
           <img id="lrPhotoImg${n}a" src="" style="display:none" alt="">
           <button type="button" class="lr-photo-clear" id="lrPhotoClear${n}a" onclick="lrClearPhoto(${n},'a');event.stopPropagation()">✕</button>
@@ -5571,7 +5754,7 @@ function lrAddItem(){
       <div class="lr-arrow">→</div>
       <div class="lr-photo">
         <div class="lr-photo-title">📷 변경 후 (After)</div>
-        <div class="lr-photo-area" id="lrPhotoArea${n}b" onclick="if(event.target.id!=='lrPhotoClear${n}b')document.getElementById('lrPhotoInput${n}b').click()">
+        <div class="lr-photo-area" id="lrPhotoArea${n}b" onclick="if(event.target.id!=='lrPhotoClear${n}b')document.getElementById('lrPhotoInput${n}b').click()" ondragover="lrDragOver(event,this)" ondragleave="lrDragLeave(this)" ondrop="lrHandleDrop(event,${n},'b',this)">
           <span class="lr-photo-plus" id="lrPhotoPlus${n}b">＋</span>
           <img id="lrPhotoImg${n}b" src="" style="display:none" alt="">
           <button type="button" class="lr-photo-clear" id="lrPhotoClear${n}b" onclick="lrClearPhoto(${n},'b');event.stopPropagation()">✕</button>
@@ -5652,9 +5835,8 @@ function lrAddGrade(container){
 function lrRemoveRefRow(btn){
   const tr=btn.closest('tr');if(tr)tr.remove();
 }
-function lrHandlePhoto(n,ab){
-  const input=document.getElementById('lrPhotoInput'+n+ab);
-  const file=input.files[0];if(!file)return;
+function lrShowPhotoFile(file,n,ab){
+  if(!file||!/^image\//.test(file.type||''))return;
   const reader=new FileReader();
   reader.onload=function(e){
     const img=document.getElementById('lrPhotoImg'+n+ab);
@@ -5664,6 +5846,14 @@ function lrHandlePhoto(n,ab){
   };
   reader.readAsDataURL(file);
 }
+function lrHandlePhoto(n,ab){
+  const input=document.getElementById('lrPhotoInput'+n+ab);
+  lrShowPhotoFile(input.files[0],n,ab);
+}
+// 드래그 앤 드롭 업로드
+function lrDragOver(e,el){e.preventDefault();e.dataTransfer&&(e.dataTransfer.dropEffect='copy');if(el){el.style.borderColor='var(--lr)';el.style.background='#eef4fb';}}
+function lrDragLeave(el){if(el){el.style.borderColor='';el.style.background='';}}
+function lrHandleDrop(e,n,ab,el){e.preventDefault();if(el){el.style.borderColor='';el.style.background='';}const dt=e.dataTransfer;const file=dt&&dt.files&&dt.files[0];if(file)lrShowPhotoFile(file,n,ab);}
 function lrClearPhoto(n,ab){
   const img=document.getElementById('lrPhotoImg'+n+ab);
   img.src='';img.style.display='none';
@@ -5893,6 +6083,9 @@ window.lrAddRefRow=lrAddRefRow;
 window.lrAddGrade=lrAddGrade;
 window.lrRemoveRefRow=lrRemoveRefRow;
 window.lrHandlePhoto=lrHandlePhoto;
+window.lrDragOver=lrDragOver;
+window.lrDragLeave=lrDragLeave;
+window.lrHandleDrop=lrHandleDrop;
 window.lrClearPhoto=lrClearPhoto;
 window.lrFastPrint=lrFastPrint;
 
