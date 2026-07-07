@@ -5279,7 +5279,7 @@ function prAddPhoto(initialTitle){
   div.innerHTML = `
     <button type="button" class="pr-photo-remove" onclick="prRemovePhoto(${id})" title="이 사진 슬롯 삭제">✕ 삭제</button>
     <input type="text" class="pr-photo-title-edit" value="${defaultTitle}" placeholder="사진 제목 (예: 📷 참고 사진 1)">
-    <div class="pr-photo-area" id="prPhotoArea${id}" onclick="prPhotoAreaClick(event, ${id})">
+    <div class="pr-photo-area" id="prPhotoArea${id}" onclick="prPhotoAreaClick(event, ${id})" ondragover="prDragOver(event,this)" ondragleave="prDragLeave(this)" ondrop="prHandleDrop(event,${id},this)">
       <span class="pr-photo-plus" id="prPhotoPlus${id}">＋</span>
       <img id="prPhotoImg${id}" src="" style="display:none" alt="">
       <button type="button" class="pr-photo-clear" id="prPhotoClear${id}" onclick="prClearPhoto(${id});event.stopPropagation()">✕</button>
@@ -5306,9 +5306,8 @@ function prRemovePhoto(id){
   }
   slot.remove();
 }
-function prHandlePhoto(n){
-  const input=document.getElementById('prPhotoInput'+n);
-  const file=input.files[0];if(!file)return;
+function prShowPhotoFile(file,n){
+  if(!file||!/^image\//.test(file.type||''))return;
   const reader=new FileReader();
   reader.onload=function(e){
     const img=document.getElementById('prPhotoImg'+n);
@@ -5318,6 +5317,14 @@ function prHandlePhoto(n){
   };
   reader.readAsDataURL(file);
 }
+function prHandlePhoto(n){
+  const input=document.getElementById('prPhotoInput'+n);
+  prShowPhotoFile(input.files[0],n);
+}
+// 드래그 앤 드롭 업로드
+function prDragOver(e,el){e.preventDefault();e.dataTransfer&&(e.dataTransfer.dropEffect='copy');if(el){el.style.borderColor='#2563eb';el.style.background='#eff6ff';}}
+function prDragLeave(el){if(el){el.style.borderColor='';el.style.background='';}}
+function prHandleDrop(e,n,el){e.preventDefault();if(el){el.style.borderColor='';el.style.background='';}const dt=e.dataTransfer;const file=dt&&dt.files&&dt.files[0];if(file)prShowPhotoFile(file,n);}
 function prClearPhoto(n){
   const img=document.getElementById('prPhotoImg'+n);
   img.src='';img.style.display='none';
@@ -5710,6 +5717,9 @@ window.prClearPhoto=prClearPhoto;
 window.prAddPhoto=prAddPhoto;
 window.prRemovePhoto=prRemovePhoto;
 window.prPhotoAreaClick=prPhotoAreaClick;
+window.prDragOver=prDragOver;
+window.prDragLeave=prDragLeave;
+window.prHandleDrop=prHandleDrop;
 window.prFastPrint=prFastPrint;
 window.prLibOpen=prLibOpen;
 window.prLibPickPhoto=prLibPickPhoto;
