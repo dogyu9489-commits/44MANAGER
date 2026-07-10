@@ -1633,6 +1633,7 @@ tbody tr:hover { background: #f7f9fc; }
           </div>
           <div id="prLibEmpty" class="pr-hint" style="display:none">등록된 물품이 없습니다. 「거래처·단가」 페이지의 물품 라이브러리에서 등록하세요.</div>
           <div id="prLibGrid" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div id="prLibPager" style="display:none;gap:10px;align-items:center;justify-content:center;margin-top:12px;font-size:12px;color:#6b7280"></div>
         </div>
       </div>
 
@@ -1728,6 +1729,11 @@ tbody tr:hover { background: #f7f9fc; }
   #page-purchase-master .pm-grid thead th.req{color:#b3261e}
   #page-purchase-master .pm-grid thead th.c,#page-purchase-master .pm-grid td.c{text-align:center}
   #page-purchase-master .pm-grid td input,#page-purchase-master .pm-grid td select{width:100%;border:none;background:transparent;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;min-width:0}
+  #page-purchase-master .pm-grid input[type=checkbox]{width:18px;height:18px;padding:0;accent-color:var(--accent);cursor:pointer;vertical-align:middle;display:inline-block}
+  #page-purchase-master .pm-pager{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+  #page-purchase-master .pm-pager button{border:1px solid var(--border);background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text)}
+  #page-purchase-master .pm-pager button:disabled{opacity:.4;cursor:default}
+  #page-purchase-master .pm-pager button:hover:not(:disabled){background:var(--bg)}
   #page-purchase-master .pm-grid td input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
   #page-purchase-master .pm-grid tbody tr.dirty{background:#fff8e1}
   #page-purchase-master .pm-grid tbody tr:hover{background:#f7f9fc}
@@ -1798,6 +1804,7 @@ tbody tr:hover { background: #f7f9fc; }
         <span style="font-size:11px;color:#6b7280">사진은 📷 버튼으로 등록 (행 저장 후) · 이 목록이 구매 요청서의 물품 라이브러리에 그대로 나타납니다</span>
       </div>
       <div class="pm-gridwrap"><table class="pm-grid" id="pmGridI"></table></div>
+      <div class="pm-pager" id="pmPagerI" style="display:none"></div>
     </div>
   </div>
 
@@ -5604,15 +5611,31 @@ function prLibInsert(id,btn){
   prRecalc();
   if(btn){const old=btn.textContent;btn.textContent='✔ 추가됨';setTimeout(()=>{btn.textContent=old;},1200);}
 }
+let prLibPage=1;
+const PR_LIB_PAGE_SIZE=20;
 function prRenderLib(){
   const grid=document.getElementById('prLibGrid');if(!grid)return;
   const all=prLibRows();
   const qEl=document.getElementById('prLibSearch');const q=(qEl?qEl.value:'').trim().toLowerCase();
   let rows=all.filter(p=>String(p.name||'').trim());
   if(q)rows=rows.filter(p=>[p.name,p.itemCode,p.spec,p.note].some(v=>String(v||'').toLowerCase().indexOf(q)>=0));
-  rows=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  rows=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko',{numeric:true,sensitivity:'base'})); // 자연(숫자) 정렬
   const empty=document.getElementById('prLibEmpty');
   if(empty){empty.style.display=rows.length?'none':'block';empty.textContent=all.length?(q?'검색 결과가 없습니다.':'등록된 물품이 없습니다.'):'등록된 물품이 없습니다. 「거래처·단가」 페이지의 물품 라이브러리에서 등록하세요.';}
+  // 20개씩 페이지네이션
+  const totalRows=rows.length;const totalPages=Math.max(1,Math.ceil(totalRows/PR_LIB_PAGE_SIZE));
+  if(prLibPage>totalPages)prLibPage=totalPages;if(prLibPage<1)prLibPage=1;
+  rows=rows.slice((prLibPage-1)*PR_LIB_PAGE_SIZE,prLibPage*PR_LIB_PAGE_SIZE);
+  const pager=document.getElementById('prLibPager');
+  if(pager){
+    if(totalRows<=PR_LIB_PAGE_SIZE)pager.style.display='none';
+    else{
+      pager.style.display='flex';
+      pager.innerHTML='<button type="button" data-prpage="prev"'+(prLibPage<=1?' disabled':'')+' style="border:1px solid #e5e7eb;background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit'+(prLibPage<=1?';opacity:.4':'')+'">◀ 이전</button>'
+        +'<span><b style="color:#1a1a2e">'+prLibPage+'</b> / '+totalPages+' 페이지 <span style="color:#9ca3af">(총 '+totalRows+'건)</span></span>'
+        +'<button type="button" data-prpage="next"'+(prLibPage>=totalPages?' disabled':'')+' style="border:1px solid #e5e7eb;background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit'+(prLibPage>=totalPages?';opacity:.4':'')+'">다음 ▶</button>';
+    }
+  }
   grid.innerHTML=rows.map(p=>{
     const thumb=p.hasPhoto?'<div class="thumb" title="사진 보기">🖼</div>':'<div class="thumb">📦</div>';
     const cur=(p.currency&&PR_CURRENCIES[p.currency])?PR_CURRENCIES[p.currency]:PR_CURRENCIES.PHP;
@@ -5652,7 +5675,9 @@ function prLibPopClose(){document.getElementById('prLibPop').style.display='none
   const popIns=document.getElementById('prLibPopInsBtn');
   if(popIns)popIns.addEventListener('click',function(){if(prLibPopId){prLibInsert(prLibPopId,this);setTimeout(prLibPopClose,500);}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&prLibPopId)prLibPopClose();});
-  const se=document.getElementById('prLibSearch');if(se)se.addEventListener('input',prRenderLib);
+  const se=document.getElementById('prLibSearch');if(se)se.addEventListener('input',()=>{prLibPage=1;prRenderLib();});
+  const pg=document.getElementById('prLibPager');
+  if(pg)pg.addEventListener('click',e=>{const b=e.target.closest('button[data-prpage]');if(!b||b.disabled)return;prLibPage+=(b.dataset.prpage==='next'?1:-1);prRenderLib();});
 })();
 
 /* ── 구매 진행 관리 (요청→발주→배송→수령 트래킹) — Supabase 팀 공유 ── */
@@ -5830,6 +5855,19 @@ const pmS={v:{rows:[],dirty:{},sel:{}},p:{rows:[],dirty:{},sel:{}},i:{rows:[],di
 let pmCloud=false;
 const _pmPend={};
 const _pmOrigName={}; // 거래처명 변경 전 원래 이름 (저장 시 단가 행에 전파)
+// 페이지네이션 (물품 그리드: 20개씩)
+const PM_PAGE_SIZE=20;
+const pmPage={i:1}; // 키가 있는 그리드만 페이지 적용
+function pmTotalPages(g){return Math.max(1,Math.ceil(pmFiltered(g).length/PM_PAGE_SIZE));}
+function pmVisibleRows(g){ // 현재 화면(페이지)에 실제 보이는 행
+  const all=pmFiltered(g);
+  if(pmPage[g]==null)return all;
+  const total=Math.max(1,Math.ceil(all.length/PM_PAGE_SIZE));
+  if(pmPage[g]>total)pmPage[g]=total;if(pmPage[g]<1)pmPage[g]=1;
+  return all.slice((pmPage[g]-1)*PM_PAGE_SIZE,pmPage[g]*PM_PAGE_SIZE);
+}
+// 자연(숫자) 정렬 — "#1, #2, … #10" 순서 (사전순 1,10,11,2 방지)
+function pmNatCmp(a,b){return String(a==null?'':a).localeCompare(String(b==null?'':b),'ko',{numeric:true,sensitivity:'base'});}
 function pmCols(g){return g==='v'?PM_VCOLS:(g==='p'?PM_PCOLS:PM_ICOLS);}
 function pmGridEl(g){return document.getElementById(g==='v'?'pmGridV':(g==='p'?'pmGridP':'pmGridI'));}
 function pmCountEl(g){return document.getElementById(g==='v'?'pmCountV':(g==='p'?'pmCountP':'pmCountI'));}
@@ -5847,11 +5885,11 @@ function pmFiltered(g){
   if(g==='v'){
     const code=pmVal('pmFvCode'),name=pmVal('pmFvName'),contact=pmVal('pmFvContact'),act=pmVal('pmFvActive')||'active';
     rows=rows.filter(r=>(!code||pmHas(r.code,code))&&(!name||pmHas(r.name,name))&&(!contact||pmHas(r.contact,contact))&&(act==='all'||r.active!==false));
-    rows.sort((a,b)=>String(a.code||a.name||'').localeCompare(String(b.code||b.name||''),'ko'));
+    rows.sort((a,b)=>pmNatCmp(a.code||a.name||'',b.code||b.name||''));
   }else if(g==='i'){
     const name=pmVal('pmFiName'),code=pmVal('pmFiCode'),cur=pmVal('pmFiCur');
     rows=rows.filter(r=>(!name||pmHas(r.name,name))&&(!code||pmHas(r.itemCode,code)||pmHas(r.spec,code))&&(!cur||r.currency===cur));
-    rows.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+    rows.sort((a,b)=>pmNatCmp(a.name||'',b.name||'')||pmNatCmp(a.itemCode||'',b.itemCode||''));
   }else{
     const from=pmVal('pmFpFrom'),to=pmVal('pmFpTo'),ven=pmVal('pmFpVendor'),item=pmVal('pmFpItem'),cur=pmVal('pmFpCur'),latest=pmVal('pmFpLatest');
     rows=rows.filter(r=>(!from||String(r.start||'')>=from)&&(!to||String(r.start||'')<=to)&&(!ven||pmHas(r.vendor,ven))&&(!item||pmHas(r.item,item)||pmHas(r.itemCode,item))&&(!cur||r.currency===cur));
@@ -5883,14 +5921,29 @@ function pmCount(g){
 }
 function pmRender(g){
   const table=pmGridEl(g);if(!table)return;
-  const st=pmS[g];const cols=pmCols(g);const rows=pmFiltered(g);
+  const st=pmS[g];const cols=pmCols(g);const rows=pmVisibleRows(g);
+  const base=(pmPage[g]!=null)?(pmPage[g]-1)*PM_PAGE_SIZE:0; // № = 전체 기준 번호
   let h='<thead><tr><th class="c" style="width:34px"><input type="checkbox" data-pmall="'+g+'"'+(rows.length&&rows.every(r=>st.sel[r.id])?' checked':'')+'></th><th class="c" style="width:40px">№</th>'
     +cols.map(c=>'<th'+(c.req?' class="req"':'')+' style="min-width:'+c.w+'px">'+c.label+'</th>').join('')+'</tr></thead><tbody>';
   if(!rows.length)h+='<tr class="pm-empty"><td colspan="'+(cols.length+2)+'">'+(g==='v'?'등록된 거래처가 없습니다. 「＋ 행 추가」로 등록하세요.':(g==='i'?'등록된 물품이 없습니다. 「＋ 행 추가」로 등록하세요.':'등록된 단가가 없습니다. 「＋ 행 추가」로 등록하세요.'))+'</td></tr>';
   else rows.forEach((r,i)=>{
-    h+='<tr'+(st.dirty[r.id]?' class="dirty"':'')+'><td class="c"><input type="checkbox" data-pmsel="'+g+'" data-id="'+prEsc(r.id)+'"'+(st.sel[r.id]?' checked':'')+'></td><td class="num">'+(i+1)+'</td>'+cols.map(c=>pmCellHtml(g,r,c)).join('')+'</tr>';
+    h+='<tr'+(st.dirty[r.id]?' class="dirty"':'')+'><td class="c"><input type="checkbox" data-pmsel="'+g+'" data-id="'+prEsc(r.id)+'"'+(st.sel[r.id]?' checked':'')+'></td><td class="num">'+(base+i+1)+'</td>'+cols.map(c=>pmCellHtml(g,r,c)).join('')+'</tr>';
   });
   table.innerHTML=h+'</tbody>';
+  // 페이저 (페이지 적용 그리드만)
+  if(pmPage[g]!=null){
+    const pager=document.getElementById('pmPager'+g.toUpperCase());
+    if(pager){
+      const totalRows=pmFiltered(g).length;const total=Math.max(1,Math.ceil(totalRows/PM_PAGE_SIZE));const p=pmPage[g];
+      if(totalRows<=PM_PAGE_SIZE){pager.style.display='none';}
+      else{
+        pager.style.display='flex';
+        pager.innerHTML='<button type="button" data-pmpage="prev" data-g="'+g+'"'+(p<=1?' disabled':'')+'>◀ 이전</button>'
+          +'<span><b style="color:var(--text)">'+p+'</b> / '+total+' 페이지 <span style="color:var(--text3)">(총 '+totalRows+'건)</span></span>'
+          +'<button type="button" data-pmpage="next" data-g="'+g+'"'+(p>=total?' disabled':'')+'>다음 ▶</button>';
+      }
+    }
+  }
   pmCount(g);
 }
 // products는 사진 컬럼 제외(경량) — 사진은 필요할 때 개별 조회
@@ -5952,7 +6005,7 @@ async function pmSave(g){
 }
 async function pmDelete(g){
   const st=pmS[g];
-  const vis={};pmFiltered(g).forEach(r=>{vis[r.id]=1;});
+  const vis={};pmVisibleRows(g).forEach(r=>{vis[r.id]=1;}); // 현재 페이지에 보이는 행만
   const ids=Object.keys(st.sel).filter(id=>st.sel[id]&&vis[id]); // 화면에 보이는 선택 행만 삭제 (숨은 행 오삭제 방지)
   if(!ids.length){alert('삭제할 행을 왼쪽 체크박스로 선택하세요.');return;}
   const msg=pmCloud?(ids.length+'개 행을 삭제할까요?\n(팀 전체에서 삭제됩니다)'):(ids.length+'개 행을 삭제할까요?\n(오프라인 — 이 화면에서만 제거됩니다)');
@@ -6015,7 +6068,7 @@ function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.
   const page=document.getElementById('page-purchase-master');if(!page)return;
   function onEdit(e){
     const t=e.target;
-    if(t.dataset.pmfilter){const fg=t.dataset.pmfilter;pmS[fg].sel={};pmRender(fg);return;} // 필터 바뀌면 선택 초기화 (숨은 선택 방지)
+    if(t.dataset.pmfilter){const fg=t.dataset.pmfilter;pmS[fg].sel={};if(pmPage[fg]!=null)pmPage[fg]=1;pmRender(fg);return;} // 필터 바뀌면 선택 초기화 + 1페이지로
     const g=t.dataset.g,id=t.dataset.id,k=t.dataset.k;
     if(!g||!id||!k)return;
     const st=pmS[g];const r=st.rows.find(x=>x.id===id);if(!r)return;
@@ -6028,18 +6081,23 @@ function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.
   page.addEventListener('change',onEdit);
   page.addEventListener('click',e=>{
     const all=e.target.closest('input[data-pmall]');
-    if(all){const g=all.dataset.pmall;const st=pmS[g];const rows=pmFiltered(g);rows.forEach(r=>{st.sel[r.id]=all.checked;});pmRender(g);return;}
+    if(all){const g=all.dataset.pmall;const st=pmS[g];const rows=pmVisibleRows(g);rows.forEach(r=>{st.sel[r.id]=all.checked;});pmRender(g);return;}
     const sel=e.target.closest('input[data-pmsel]');
     if(sel){const sg=sel.dataset.pmsel;pmS[sg].sel[sel.dataset.id]=sel.checked;
-      const rows=pmFiltered(sg);const hdr=document.querySelector('input[data-pmall="'+sg+'"]');
+      const rows=pmVisibleRows(sg);const hdr=document.querySelector('input[data-pmall="'+sg+'"]');
       if(hdr){const n=rows.filter(r=>pmS[sg].sel[r.id]).length;hdr.checked=rows.length>0&&n===rows.length;hdr.indeterminate=n>0&&n<rows.length;}
       return;}
+    const pg=e.target.closest('button[data-pmpage]');
+    if(pg&&!pg.disabled){const g=pg.dataset.g;const total=pmTotalPages(g);
+      pmPage[g]=Math.min(total,Math.max(1,(pmPage[g]||1)+(pg.dataset.pmpage==='next'?1:-1)));
+      pmS[g].sel={}; // 페이지 이동 시 선택 초기화 (안 보이는 선택 방지)
+      pmRender(g);return;}
     const pb=e.target.closest('[data-pmphoto]');
     if(pb){pmPhotoOpen(pb.dataset.pmphoto);return;}
     const b=e.target.closest('[data-pmact]');
     if(!b)return;
     const g=b.dataset.g,a=b.dataset.pmact;
-    if(a==='add'){const st=pmS[g];const r=pmBlank(g);st.rows.unshift(r);st.dirty[r.id]=1;pmRender(g);
+    if(a==='add'){const st=pmS[g];const r=pmBlank(g);st.rows.unshift(r);st.dirty[r.id]=1;if(pmPage[g]!=null)pmPage[g]=1;pmRender(g); // 새 행은 1페이지 맨 위
       const tbl=pmGridEl(g);
       const first=tbl&&tbl.querySelector('[data-id="'+r.id+'"]:not([type=checkbox])'); // 새 행의 첫 편집 셀에 정확히 포커스
       if(first)first.focus();return;}
