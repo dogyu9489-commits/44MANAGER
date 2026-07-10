@@ -5894,7 +5894,17 @@ function pmRender(g){
   pmCount(g);
 }
 // products는 사진 컬럼 제외(경량) — 사진은 필요할 때 개별 조회
-async function pmFetch(g){const c=ptSupa();if(!c)throw new Error('클라이언트 없음');const sel=(g==='i')?'id,data':'*';const{data,error}=await c.from(PM_TABLES[g]).select(sel);if(error)throw error;return (data||[]).map(x=>x.data).filter(Boolean);}
+// hasPhoto는 서버 생성 컬럼 has_photo(photo IS NOT NULL)가 진실원 — data 안의 플래그 desync 방지
+async function pmFetch(g){
+  const c=ptSupa();if(!c)throw new Error('클라이언트 없음');
+  if(g==='i'){
+    let res=await c.from(PM_TABLES.i).select('id,data,has_photo');
+    if(res.error)res=await c.from(PM_TABLES.i).select('id,data'); // has_photo 컬럼 없는 구스키마 폴백
+    if(res.error)throw res.error;
+    return (res.data||[]).map(x=>{const r=x.data;if(r&&typeof x.has_photo==='boolean')r.hasPhoto=x.has_photo;return r;}).filter(Boolean);
+  }
+  const{data,error}=await c.from(PM_TABLES[g]).select('*');if(error)throw error;return (data||[]).map(x=>x.data).filter(Boolean);
+}
 // 실시간/조회 반영 — 그리드 편집 중이면 보류, 미저장 행은 보존
 function pmApply(g,rows){
   const act=document.activeElement;
@@ -5903,7 +5913,7 @@ function pmApply(g,rows){
   Object.keys(st.dirty).forEach(id=>{const r=st.rows.find(x=>x.id===id);if(r)byId[id]=r;});
   st.rows=Object.keys(byId).map(k=>byId[k]);
   pmRender(g);if(g==='v')pmRender('p'); // 거래처명이 단가 셀렉트에 반영
-  if(g==='i'){piPhotoCache={};prRenderLib();} // 물품 변경 → 사진 캐시 무효화 + 구매요청서 목록 갱신
+  if(g==='i')prRenderLib(); // 물품 변경 → 구매요청서 목록 갱신 (사진 캐시는 변경 행만 개별 무효화)
 }
 async function pmSave(g){
   const st=pmS[g];const ids=Object.keys(st.dirty);
@@ -5970,16 +5980,19 @@ function pmPhotoOpen(id){
   document.getElementById('pmPhotoPop').style.display='flex';
 }
 function pmPhotoClose(){const p=document.getElementById('pmPhotoPop');if(p)p.style.display='none';pmPhotoId=null;}
-function pmPhotoSet(dataURL){
-  const id=pmPhotoId;const r=pmS.i.rows.find(x=>x.id===id);if(!r||!id)return;
+function pmPhotoSet(id,dataURL){ // id = 파일 선택 시점에 캡처된 대상 (모달 전환/닫힘 레이스 방지)
+  const r=pmS.i.rows.find(x=>x.id===id);if(!r||!id)return;
   const ph=prSafeImg(dataURL);if(!ph){alert('이미지 파일만 등록할 수 있어요.');return;}
-  const stEl=document.getElementById('pmPhotoStatus');stEl.textContent='저장 중…';
+  const stEl=document.getElementById('pmPhotoStatus');
+  if(pmPhotoId===id&&stEl)stEl.textContent='저장 중…';
   const c=ptSupa();const nd=Object.assign({},r,{hasPhoto:true});
   c.from(PM_TABLES.i).update({photo:ph,data:nd,updated_at:new Date().toISOString()}).eq('id',id).then(res=>{
-    if(res.error){stEl.textContent='';alert('사진 저장 실패: '+(res.error.message||res.error));return;}
+    if(res.error){if(pmPhotoId===id&&stEl)stEl.textContent='';alert('사진 저장 실패: '+(res.error.message||res.error));return;}
     r.hasPhoto=true;piPhotoCache[id]=ph;
-    const img=document.getElementById('pmPhotoImg'),none=document.getElementById('pmPhotoNone');
-    img.src=ph;img.style.display='block';none.style.display='none';stEl.textContent='✔ 저장됨';
+    if(pmPhotoId===id){ // 모달이 여전히 이 물품을 보고 있을 때만 화면 갱신
+      const img=document.getElementById('pmPhotoImg'),none=document.getElementById('pmPhotoNone');
+      img.src=ph;img.style.display='block';none.style.display='none';if(stEl)stEl.textContent='✔ 저장됨';
+    }
     pmRender('i');prRenderLib();
   });
 }
@@ -5997,7 +6010,7 @@ function pmPhotoDel(){
     pmRender('i');prRenderLib();
   });
 }
-function pmPhotoFilePick(f){if(!f||!/^image\//.test(f.type||''))return;const rd=new FileReader();rd.onload=e=>{prDownscale(e.target.result,1600,d=>pmPhotoSet(d));};rd.readAsDataURL(f);}
+function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.test(f.type||''))return;const rd=new FileReader();rd.onload=e=>{prDownscale(e.target.result,1600,d=>pmPhotoSet(id,d));};rd.readAsDataURL(f);}
 (function pmInit(){
   const page=document.getElementById('page-purchase-master');if(!page)return;
   function onEdit(e){
@@ -6081,7 +6094,7 @@ function pmPhotoFilePick(f){if(!f||!/^image\//.test(f.type||''))return;const rd=
     c.channel('rt-purchase-master')
       .on('postgres_changes',{event:'*',schema:'public',table:PM_TABLES.v},()=>{pmFetch('v').then(r=>pmApply('v',r)).catch(()=>{});})
       .on('postgres_changes',{event:'*',schema:'public',table:PM_TABLES.p},()=>{pmFetch('p').then(r=>pmApply('p',r)).catch(()=>{});})
-      .on('postgres_changes',{event:'*',schema:'public',table:PM_TABLES.i},()=>{pmFetch('i').then(r=>pmApply('i',r)).catch(()=>{});})
+      .on('postgres_changes',{event:'*',schema:'public',table:PM_TABLES.i},(payload)=>{try{const rec=(payload&&(payload.new||payload.old))||{};if(rec&&rec.id)delete piPhotoCache[rec.id];}catch(e2){}pmFetch('i').then(r=>pmApply('i',r)).catch(()=>{});})
       .subscribe();
   }).catch(e=>{console.error('[pm] 공유 연결 실패',e);badge(false,'⚠ 공유 테이블 없음 — purchase-master.sql 실행 필요');});
 })();
