@@ -1729,11 +1729,18 @@ tbody tr:hover { background: #f7f9fc; }
   #page-purchase-master .pm-grid thead th.req{color:#b3261e}
   #page-purchase-master .pm-grid thead th.c,#page-purchase-master .pm-grid td.c{text-align:center}
   #page-purchase-master .pm-grid td input,#page-purchase-master .pm-grid td select{width:100%;border:none;background:transparent;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;min-width:0}
+  #page-purchase-master .pm-grid td select{padding:7px 2px 7px 6px} /* 셀렉트는 화살표 공간 확보 (통화 등 텍스트 잘림 방지) */
   #page-purchase-master .pm-grid input[type=checkbox]{width:18px;height:18px;padding:0;accent-color:var(--accent);cursor:pointer;vertical-align:middle;display:inline-block}
   #page-purchase-master .pm-pager{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
   #page-purchase-master .pm-pager button{border:1px solid var(--border);background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text)}
   #page-purchase-master .pm-pager button:disabled{opacity:.4;cursor:default}
   #page-purchase-master .pm-pager button:hover:not(:disabled){background:var(--bg)}
+  /* 사진 팝업 버튼 */
+  #page-purchase-master .pm-pop-btn{flex:1;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;border:none}
+  #page-purchase-master .pm-pop-del{background:#fff;border:1.5px solid #fca5a5;color:#dc2626}
+  #page-purchase-master .pm-pop-del:hover{background:#fef2f2;border-color:#ef4444}
+  #page-purchase-master .pm-pop-close{background:linear-gradient(180deg,#24486f,#1c3a5e);color:#fff;box-shadow:0 2px 6px rgba(16,29,48,.25)}
+  #page-purchase-master .pm-pop-close:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(16,29,48,.3)}
   #page-purchase-master .pm-grid td input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
   #page-purchase-master .pm-grid tbody tr.dirty{background:#fff8e1}
   #page-purchase-master .pm-grid tbody tr:hover{background:#f7f9fc}
@@ -1817,10 +1824,12 @@ tbody tr:hover { background: #f7f9fc; }
         <div id="pmPhotoNone" style="color:#94a3b8;font-size:13px;text-align:center;padding:30px">＋ 클릭 또는 사진을 드래그해서 등록<br><span style="font-size:24px">📷</span></div>
       </div>
       <input type="file" accept="image/*" id="pmPhotoFile" style="display:none">
-      <div style="display:flex;gap:8px;padding:14px 18px">
-        <button type="button" class="pr-btn-add" id="pmPhotoDelBtn" style="color:#ef4444;border-color:#fecaca">🗑 사진 삭제</button>
-        <span id="pmPhotoStatus" style="font-size:11px;color:#6b7280;align-self:center"></span>
-        <button type="button" class="pr-btn-add" id="pmPhotoCloseBtn" style="margin-left:auto;color:#6b7280">닫기</button>
+      <div style="padding:0 18px 16px">
+        <div id="pmPhotoStatus" style="font-size:12px;color:#16a34a;font-weight:600;text-align:center;min-height:18px;margin:10px 0 4px"></div>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="pm-pop-btn pm-pop-del" id="pmPhotoDelBtn">🗑 사진 삭제</button>
+          <button type="button" class="pm-pop-btn pm-pop-close" id="pmPhotoCloseBtn">닫기</button>
+        </div>
       </div>
     </div>
   </div>
@@ -5825,7 +5834,7 @@ const PM_VCOLS=[
   {k:'addr',label:'주소',w:170},
   {k:'taxid',label:'Tax ID',w:90},
   {k:'bank',label:'계좌',w:120},
-  {k:'currency',label:'기본통화',w:72,type:'cur'},
+  {k:'currency',label:'기본통화',w:92,type:'cur'},
   {k:'active',label:'사용',w:42,type:'chk'},
   {k:'notes',label:'비고',w:130}
 ];
@@ -5836,7 +5845,7 @@ const PM_PCOLS=[
   {k:'spec',label:'스펙',w:110},
   {k:'unit',label:'단위',w:54},
   {k:'origin',label:'원산지',w:70},
-  {k:'currency',label:'통화',w:64,type:'cur'},
+  {k:'currency',label:'통화',w:88,type:'cur'},
   {k:'price',label:'단가',w:94,type:'num',req:1},
   {k:'minQty',label:'최소수량',w:74,type:'num'},
   {k:'start',label:'시작일',w:112,type:'date'},
@@ -5847,7 +5856,7 @@ const PM_ICOLS=[
   {k:'name',label:'품명',w:160,req:1},
   {k:'itemCode',label:'품목코드',w:90},
   {k:'spec',label:'스펙',w:160},
-  {k:'currency',label:'통화',w:64,type:'cur'},
+  {k:'currency',label:'통화',w:88,type:'cur'},
   {k:'price',label:'기본단가',w:94,type:'num'},
   {k:'note',label:'비고',w:160}
 ];
