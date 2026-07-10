@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KSM SPORTS 44</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   /* PASSWORD SCREEN */
   .pw-screen { position: fixed; inset: 0; background: #1c3a5e; display: flex; align-items: center; justify-content: center; z-index: 9999; }
@@ -61,19 +62,24 @@
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f7f7f5;
+    --bg: #f3f5f9;
     --surface: #ffffff;
-    --border: #e4e4e0;
-    --border2: #d0d0cc;
-    --text: #1a1a18;
-    --text2: #6b6b68;
-    --text3: #a0a09c;
+    --border: #e4e8ef;
+    --border2: #c9d1dc;
+    --order-border: #e8ebf1;
+    --text: #1b2430;
+    --text2: #5d6675;
+    --text3: #98a1af;
     --accent: #1c3a5e;
+    --accent-hover: #26496f;
     --accent-light: #e8f0fb;
-    --radius: 10px;
-    --radius-sm: 6px;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow-sm: 0 1px 2px rgba(23,32,50,.05), 0 1px 5px rgba(23,32,50,.04);
+    --shadow-md: 0 6px 22px rgba(23,32,50,.09), 0 2px 6px rgba(23,32,50,.05);
+    --shadow-lg: 0 22px 60px rgba(15,23,42,.22);
   }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  body { font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   /* 네이티브 폼 컨트롤(datalist·날짜·셀렉트 등)을 항상 라이트모드로 — OS 다크모드에서 흰글씨/흰배경 가독성 문제 방지 */
   :root, input, select, textarea { color-scheme: light; }
 
@@ -394,7 +400,7 @@
   }
   .page-content { display: none; }
   .page-content.active { display: block; }
-  #order-page { font-family: 'Barlow', sans-serif; }
+  #order-page { font-family: 'Barlow', 'Pretendard Variable', Pretendard, sans-serif; }
 
   @media (max-width: 600px) {
     .container { padding: 16px 12px; }
@@ -535,7 +541,7 @@
   }
 
 /* ── Purchase Request Form ── */
-#purchase-page{font-family:'Barlow',sans-serif;color:#1a1a2e}
+#purchase-page{font-family:'Barlow','Pretendard Variable',Pretendard,sans-serif;color:#1a1a2e}
 #purchase-page .app{padding:1.5rem;max-width:900px;margin:0 auto}
 #purchase-page h1{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:#1a1a2e}
 #purchase-page .pr-subtitle{font-size:13px;color:#6b7280;margin-bottom:1.25rem}
@@ -592,7 +598,7 @@
 }
 
 /* ── Leather Change Report ── */
-#leather-report-page{font-family:'Barlow',sans-serif;color:#1a1a2e;--lr:#1c3a5e;--lr-light:#f0f4fa;--lr-border:#a8bcd6}
+#leather-report-page{font-family:'Barlow','Pretendard Variable',Pretendard,sans-serif;color:#1a1a2e;--lr:#1c3a5e;--lr-light:#f0f4fa;--lr-border:#a8bcd6}
 #leather-report-page .app{padding:1.5rem;max-width:900px;margin:0 auto}
 #leather-report-page h1{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:#1a1a2e}
 #leather-report-page .lr-subtitle{font-size:13px;color:#6b7280;margin-bottom:1.25rem}
@@ -829,6 +835,67 @@
 .pa-bar-cell .pa-v { position: relative; }
 .pa-fail-box { margin-top: 12px; padding: 10px 14px; border: 1px solid #cc0000; border-radius: 8px; font-size: 12px; color: var(--text); }
 
+/* ═══════════ DESIGN REFRESH — 전역 폴리시 레이어 (컴포넌트 오버라이드) ═══════════ */
+::selection { background: rgba(28,58,94,.16); }
+html { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c6cdd8; border-radius: 6px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #aeb7c5; }
+
+/* 입력 포커스 — 은은한 링 */
+input:not([type=checkbox]):not([type=radio]):not([type=color]):focus, select:focus, textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(28,58,94,.10);
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+/* 로그인 화면 */
+.pw-screen { background: radial-gradient(1100px 700px at 75% -10%, #2c527d 0%, #1c3a5e 48%, #13293f 100%); }
+.pw-box { border-radius: 20px; box-shadow: 0 28px 90px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.2); }
+.pw-btn { border-radius: 10px; background: linear-gradient(180deg, #24486f, #1c3a5e); box-shadow: 0 2px 6px rgba(16,29,48,.3); transition: transform .15s ease, box-shadow .15s ease; }
+.pw-btn:hover { opacity: 1; transform: translateY(-1px); box-shadow: 0 5px 14px rgba(16,29,48,.35); }
+
+/* 톱바 — 네이비 그라데이션 + 깊이감 */
+.topbar { background: linear-gradient(180deg, #22456c 0%, #1a3757 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 2px 12px rgba(16,29,48,.22); }
+.topbar-title { font-weight: 700; letter-spacing: -.2px; }
+
+/* 페이지 탭 — 상단 고정 + 둥근 인디케이터 */
+.page-nav { position: sticky; top: 56px; z-index: 95; }
+.page-tab { position: relative; font-weight: 600; border-radius: 8px 8px 0 0; }
+.page-tab:hover:not(.active) { background: #f6f8fb; }
+.page-tab.active { border-bottom-color: transparent; }
+.page-tab::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: transparent; transition: background .18s ease; }
+.page-tab.active::after { background: var(--accent); }
+
+/* 카드·테이블 — 얕은 그림자 층 */
+.stat, .table-wrap, .pa-table, .hist-board-card { box-shadow: var(--shadow-sm); }
+.stat { transition: box-shadow .18s ease, transform .18s ease; }
+.stat:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat-value { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+thead th { background: #f3f5f9; }
+tbody tr:hover { background: #f7f9fc; }
+#page-order-mrp .mrp-card, #page-order-mrp .mrp-res, #page-order-mrp .ord-card, #page-order-mrp .metric, #page-order-mrp .dash-card { box-shadow: var(--shadow-sm); }
+#purchase-page .pr-section, #leather-report-page .lr-section { box-shadow: var(--shadow-sm); }
+
+/* 버튼 — 일관된 전환/입체감 */
+.btn, .pa-btn, .chip { transition: all .15s ease; }
+.pa-btn:hover:not(:disabled) { background: var(--bg); border-color: var(--border2); }
+.btn-primary, .pa-btn-primary, .btn-add-color { background: linear-gradient(180deg, #24486f, #1c3a5e); border-color: #1c3a5e; box-shadow: 0 1px 3px rgba(16,29,48,.25); }
+.btn-primary:hover, .pa-btn-primary:hover:not(:disabled), .btn-add-color:hover { opacity: 1; background: linear-gradient(180deg, #2a5079, #204264); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(16,29,48,.28); }
+.btn-primary:active, .pa-btn-primary:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(16,29,48,.25); }
+
+/* 모달 — 블러 배경 + 부드러운 그림자 */
+.overlay { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.modal { border-radius: 16px; box-shadow: var(--shadow-lg); }
+.lightbox { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+
+/* 채팅 */
+.chat-fab { box-shadow: 0 8px 24px rgba(28,58,94,.38); }
+.chat-fab:hover { transform: scale(1.08) translateY(-1px); }
+.chat-panel { border-radius: 18px; border: 1px solid var(--border); box-shadow: 0 16px 48px rgba(15,23,42,.22); }
+.chat-header { background: linear-gradient(180deg, #22456c, #1a3757); }
+
 </style>
 
 </head>
@@ -869,6 +936,8 @@
   <button class="page-tab" data-page="leather-report">변경 보고</button>
   <button class="page-tab" data-page="order">오더 시트</button>
   <button class="page-tab" data-page="purchase">구매 요청서</button>
+  <button class="page-tab" data-page="purchase-track">구매 진행</button>
+  <button class="page-tab" data-page="purchase-master">거래처·단가</button>
   <button class="page-tab" data-page="pdf-analyzer">추가비용 분석</button>
   <button class="page-tab" data-page="order-classify">오더유형 분류</button>
   <button class="page-tab" data-page="outbound">출고 자동화</button>
@@ -1520,19 +1589,38 @@
       <!-- 물품 라이브러리 (사진·스펙 저장/불러오기) -->
       <style>
         #prLibForm input,#prLibForm textarea,#prLibForm select{padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit;color:#1a1a2e;outline:none;box-sizing:border-box;width:100%;background:#fff}
-        .pr-lib-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
-        .pr-lib-card .thumb{width:100%;height:120px;background:#f1f5f9 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:26px}
-        .pr-lib-card .body{padding:9px 11px;display:flex;flex-direction:column;gap:2px;flex:1}
-        .pr-lib-card .nm{font-weight:700;font-size:13px;color:#1a1a2e;word-break:break-word}
-        .pr-lib-card .sp{font-size:11px;color:#6b7280;word-break:break-word}
-        .pr-lib-card .pc{font-size:12px;color:#2563eb;font-weight:600}
-        .pr-lib-card .acts{display:flex;border-top:1px solid #f1f5f9}
-        .pr-lib-card .acts button{flex:1;border:none;background:#fff;padding:7px 0;font-size:12px;cursor:pointer;color:#374151;font-family:inherit}
-        .pr-lib-card .acts button:hover{background:#f8fafc}
-        .pr-lib-card .acts button+button{border-left:1px solid #f1f5f9}
-        .pr-lib-card .acts .ld{color:#2563eb;font-weight:600}
-        .pr-lib-card .acts .dl{color:#ef4444}
+        .pr-lib-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+        .pr-lib-row:hover{border-color:#a8bcd6;box-shadow:0 2px 10px rgba(28,58,94,.08)}
+        .pr-lib-row .thumb{width:44px;height:44px;flex:none;border-radius:8px;background:#f1f5f9 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:20px;border:1px solid #eef2f7}
+        .pr-lib-row .info{flex:1;min-width:0}
+        .pr-lib-row .nm{font-weight:700;font-size:13px;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .pr-lib-row .sp{font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .pr-lib-row .pc{flex:none;font-size:12px;color:#2563eb;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;min-width:90px}
+        .pr-lib-row .pc small{display:block;color:#9ca3af;font-weight:400}
+        .pr-lib-row .acts{flex:none;display:flex;gap:5px}
+        .pr-lib-row .acts button{border:1px solid #e5e7eb;background:#fff;padding:5px 10px;font-size:12px;cursor:pointer;color:#374151;font-family:inherit;border-radius:7px;transition:all .12s}
+        .pr-lib-row .acts button:hover{background:#f8fafc;border-color:#c9d1dc}
+        .pr-lib-row .acts .ld{color:#2563eb;font-weight:600;border-color:#bfdbfe}
+        .pr-lib-row .acts .dl{color:#ef4444;border-color:#fecaca}
       </style>
+      <!-- 물품 사진 팝업 -->
+      <div id="prLibPop" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)prLibPopClose()">
+        <div style="background:#fff;border-radius:16px;max-width:440px;width:100%;overflow:hidden;box-shadow:0 24px 70px rgba(15,23,42,.3)">
+          <div id="prLibPopImgWrap" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;max-height:340px;overflow:hidden">
+            <img id="prLibPopImg" src="" alt="" style="max-width:100%;max-height:340px;object-fit:contain;display:none">
+            <div id="prLibPopNoImg" style="padding:60px 0;color:#cbd5e1;font-size:44px">📦</div>
+          </div>
+          <div style="padding:14px 18px">
+            <div id="prLibPopName" style="font-weight:700;font-size:15px;color:#1a1a2e;margin-bottom:3px"></div>
+            <div id="prLibPopSpec" style="font-size:12px;color:#6b7280"></div>
+            <div id="prLibPopPrice" style="font-size:13px;color:#2563eb;font-weight:700;margin-top:6px"></div>
+          </div>
+          <div style="display:flex;gap:8px;padding:0 18px 16px">
+            <button type="button" class="pr-btn-add" id="prLibPopInsBtn" style="flex:1;color:#2563eb;border-color:#93c5fd">＋ 견적서에 추가</button>
+            <button type="button" class="pr-btn-add" onclick="prLibPopClose()" style="color:#6b7280">닫기</button>
+          </div>
+        </div>
+      </div>
       <div class="pr-section" id="prLibSection">
         <div class="pr-section-title" id="prLibToggle" style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
           <span>📦 물품 라이브러리 <span style="font-weight:400;font-size:11px;color:#6b7280;text-transform:none;letter-spacing:0">— 사진·스펙 저장해두고 불러오기</span></span>
@@ -1571,7 +1659,7 @@
             </div>
           </div>
           <div id="prLibEmpty" class="pr-hint" style="display:none">아직 저장된 물품이 없습니다. 위에서 물품을 등록하세요.</div>
-          <div id="prLibGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px"></div>
+          <div id="prLibGrid" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
       </div>
 
@@ -1601,12 +1689,126 @@
       </div>
 
       <button class="pr-btn pr-btn-print" onclick="prFastPrint()">🖨️ 인쇄 / PDF 저장</button>
+      <button class="pr-btn" onclick="prSubmitRequest()" style="background:linear-gradient(135deg,#16a34a,#22c55e);margin-top:8px">📨 구매요청 진행 — 진행상황 관리에 등록</button>
     </div>
     <div style="text-align:center;padding:1.2rem;font-size:12px;color:var(--text2);letter-spacing:.5px;font-family:'Barlow',sans-serif;border-top:1px solid var(--border);margin-top:1rem;background:#fff;">
       © Copyright Dogyu Jang (KSM SPORTS). All rights reserved.
     </div>
   </div>
 </div><!-- /page-purchase -->
+
+<!-- PAGE: 구매 진행 (진행상황 관리) -->
+<style>
+  #page-purchase-track .pt-wrap{max-width:1000px;margin:0 auto;padding:24px 20px}
+  #page-purchase-track .pt-sum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  #page-purchase-track .pt-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--text2);box-shadow:var(--shadow-sm)}
+  #page-purchase-track .pt-chip b{color:var(--text);font-variant-numeric:tabular-nums}
+  #page-purchase-track .pt-card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:12px;box-shadow:var(--shadow-sm)}
+  #page-purchase-track .pt-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer}
+  #page-purchase-track .pt-title{font-weight:700;font-size:14px;color:var(--text);flex:1;min-width:160px}
+  #page-purchase-track .pt-pill{font-size:11px;font-weight:700;border-radius:12px;padding:3px 10px;white-space:nowrap}
+  #page-purchase-track .pt-total{font-size:13px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+  #page-purchase-track .pt-meta{font-size:11px;color:var(--text3);white-space:nowrap}
+  #page-purchase-track .pt-body{margin-top:12px;border-top:1px dashed var(--border);padding-top:12px}
+  #page-purchase-track .pt-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px}
+  #page-purchase-track .pt-stage{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  #page-purchase-track .pt-stage.done{background:#f0fdf4;border-color:#bbf7d0}
+  #page-purchase-track .pt-stage label{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px}
+  #page-purchase-track .pt-stage input[type=date]{width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit;background:#fff;box-sizing:border-box}
+  #page-purchase-track .pt-items{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  #page-purchase-track .pt-items th{background:var(--bg);font-size:11px;color:var(--text2);padding:6px 10px;text-align:left}
+  #page-purchase-track .pt-items td{padding:6px 10px;border-top:1px solid var(--border)}
+  #page-purchase-track .pt-items td:nth-child(2),#page-purchase-track .pt-items td:nth-child(3){text-align:right;font-variant-numeric:tabular-nums}
+  #page-purchase-track textarea.pt-memo{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;box-sizing:border-box;resize:vertical;min-height:44px}
+  #page-purchase-track .pt-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+</style>
+<div id="page-purchase-track" class="page-content">
+  <div class="pt-wrap">
+    <div style="margin-bottom:14px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">구매 진행 관리 <span id="ptCloudBadge" style="font-size:11px;font-weight:600;margin-left:8px"></span></div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">구매 요청서에서 <b>「📨 구매요청 진행」</b>을 누르면 여기에 등록됩니다. 요청 → 발주 → 배송 → 수령까지 <b>날짜를 기록</b>하며 진행상황을 관리하세요. 기록은 <b>팀원 모두에게 공유</b>되고 실시간으로 동기화됩니다.</div>
+    </div>
+    <div class="pt-sum" id="ptSummary"></div>
+    <div id="ptEmpty" class="mrp-muted" style="display:none;padding:36px;text-align:center;background:var(--surface);border:1px dashed var(--border2);border-radius:12px;color:var(--text3)">아직 등록된 구매요청이 없습니다. 구매 요청서 페이지에서 「📨 구매요청 진행」 버튼으로 등록하세요.</div>
+    <div id="ptList"></div>
+  </div>
+</div><!-- /page-purchase-track -->
+
+<!-- PAGE: 거래처·단가 관리 (구매 기준정보, ERP 그리드) -->
+<style>
+  #page-purchase-master .pm-wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+  #page-purchase-master .pm-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:26px;box-shadow:var(--shadow-sm);overflow:hidden}
+  #page-purchase-master .pm-title{display:inline-block;background:var(--accent);color:#fff;font-size:13px;font-weight:700;padding:10px 22px;border-radius:12px 12px 0 0;margin:14px 0 0 14px}
+  #page-purchase-master .pm-toolbar{background:#2b3340;display:flex;align-items:center;gap:8px;padding:10px 14px;flex-wrap:wrap}
+  #page-purchase-master .pm-btn{background:#3a4354;color:#e5e9f0;border:1px solid #4a5568;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap}
+  #page-purchase-master .pm-btn:hover{background:#475066}
+  #page-purchase-master .pm-btn-save{background:#2563eb;border-color:#2563eb;color:#fff}
+  #page-purchase-master .pm-btn-save:hover{background:#1d4ed8}
+  #page-purchase-master .pm-count{margin-left:auto;color:#9aa4b2;font-size:12px;white-space:nowrap}
+  #page-purchase-master .pm-filters{display:flex;flex-wrap:wrap;gap:8px 18px;background:#eef1f6;padding:10px 14px;border-bottom:1px solid var(--border);align-items:center}
+  #page-purchase-master .pm-filters label{display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;font-weight:600;white-space:nowrap}
+  #page-purchase-master .pm-filters input,#page-purchase-master .pm-filters select{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:#fff;font-family:inherit;min-width:100px}
+  #page-purchase-master .pm-gridwrap{overflow-x:auto}
+  #page-purchase-master .pm-grid{width:100%;border-collapse:collapse;font-size:12px}
+  #page-purchase-master .pm-grid th,#page-purchase-master .pm-grid td{border:1px solid #e2e8f0}
+  #page-purchase-master .pm-grid thead th{background:#dde5f5;color:#1e3a8a;font-size:12px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:left}
+  #page-purchase-master .pm-grid thead th.req{color:#b3261e}
+  #page-purchase-master .pm-grid thead th.c,#page-purchase-master .pm-grid td.c{text-align:center}
+  #page-purchase-master .pm-grid td input,#page-purchase-master .pm-grid td select{width:100%;border:none;background:transparent;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;min-width:0}
+  #page-purchase-master .pm-grid td input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
+  #page-purchase-master .pm-grid tbody tr.dirty{background:#fff8e1}
+  #page-purchase-master .pm-grid tbody tr:hover{background:#f7f9fc}
+  #page-purchase-master .pm-grid tbody tr.dirty:hover{background:#fff3c9}
+  #page-purchase-master .pm-grid td.num{color:var(--text3);text-align:center;font-size:11px;padding:0 6px;font-variant-numeric:tabular-nums}
+  #page-purchase-master .pm-empty td{text-align:center;color:#9ca3af;padding:18px;font-size:12px}
+</style>
+<div id="page-purchase-master" class="page-content">
+  <div class="pm-wrap">
+    <div style="margin-bottom:14px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">거래처·단가 관리 <span id="pmCloudBadge" style="font-size:11px;font-weight:600;margin-left:8px"></span></div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">거래처 기준정보와 품목별 구매 단가를 등록·관리합니다. 셀을 직접 수정하고 <b>💾 저장</b>을 누르면 반영되며, 기록은 <b>팀원 모두에게 공유</b>됩니다. 노란 행 = 저장 안 된 변경.</div>
+    </div>
+
+    <!-- 거래처 마스터 -->
+    <div class="pm-panel">
+      <div class="pm-title">거래처 관리 (Vendor Master)</div>
+      <div class="pm-toolbar">
+        <button class="pm-btn" data-pmact="query" data-g="v">🔍 조회</button>
+        <button class="pm-btn pm-btn-save" data-pmact="save" data-g="v">💾 저장</button>
+        <button class="pm-btn" data-pmact="del" data-g="v">🗑 행 삭제</button>
+        <button class="pm-btn" data-pmact="add" data-g="v">＋ 행 추가</button>
+        <span class="pm-count" id="pmCountV">0건</span>
+      </div>
+      <div class="pm-filters">
+        <label>코드 <input id="pmFvCode" data-pmfilter="v"></label>
+        <label>거래처명 <input id="pmFvName" data-pmfilter="v"></label>
+        <label>담당자 <input id="pmFvContact" data-pmfilter="v"></label>
+        <label>사용 <select id="pmFvActive" data-pmfilter="v"><option value="active">사용만</option><option value="all">전체</option></select></label>
+      </div>
+      <div class="pm-gridwrap"><table class="pm-grid" id="pmGridV"></table></div>
+    </div>
+
+    <!-- 구매 단가 등록 -->
+    <div class="pm-panel">
+      <div class="pm-title">구매 단가 등록 (Purchase Unit Price)</div>
+      <div class="pm-toolbar">
+        <button class="pm-btn" data-pmact="query" data-g="p">🔍 조회</button>
+        <button class="pm-btn pm-btn-save" data-pmact="save" data-g="p">💾 저장</button>
+        <button class="pm-btn" data-pmact="del" data-g="p">🗑 행 삭제</button>
+        <button class="pm-btn" data-pmact="add" data-g="p">＋ 행 추가</button>
+        <span class="pm-count" id="pmCountP">0건</span>
+      </div>
+      <div class="pm-filters">
+        <label>시작일 <input type="date" id="pmFpFrom" data-pmfilter="p"> ~ <input type="date" id="pmFpTo" data-pmfilter="p"></label>
+        <label>거래처 <input id="pmFpVendor" data-pmfilter="p"></label>
+        <label>품명 <input id="pmFpItem" data-pmfilter="p"></label>
+        <label>통화 <select id="pmFpCur" data-pmfilter="p"><option value="">전체</option><option>PHP</option><option>USD</option><option>KRW</option><option>CNY</option><option>JPY</option></select></label>
+        <label><input type="checkbox" id="pmFpLatest" data-pmfilter="p" checked style="min-width:0"> 최신 단가만</label>
+      </div>
+      <div class="pm-gridwrap"><table class="pm-grid" id="pmGridP"></table></div>
+    </div>
+  </div>
+</div><!-- /page-purchase-master -->
 
 <!-- Supabase JS (loaded early so tracker can use it for image uploads) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -5427,25 +5629,375 @@ function prRenderLib(){
   const empty=document.getElementById('prLibEmpty');if(empty)empty.style.display=prProducts.length?'none':'block';
   grid.innerHTML=prProducts.map(p=>{
     const ph=prSafeImg(p.photo);
-    const thumb=ph?('<div class="thumb" style="background-image:url('+"'"+ph+"'"+')"></div>'):('<div class="thumb">📦</div>');
+    const thumb=ph?('<div class="thumb" style="background-image:url('+"'"+ph+"'"+')" title="사진 보기"></div>'):('<div class="thumb">📦</div>');
     const cur=(p.currency&&PR_CURRENCIES[p.currency])?PR_CURRENCIES[p.currency]:PR_CURRENCIES.PHP;
-    const priceHtml=p.price?('<div class="pc">단가 '+prEsc(cur.symbol+' '+p.price)+' <span style="color:#9ca3af;font-weight:400">'+prEsc(cur.label)+'</span></div>'):'';
-    return '<div class="pr-lib-card" data-id="'+prEsc(p.id)+'">'+thumb
-      +'<div class="body"><div class="nm">'+prEsc(p.name)+'</div>'
-      +(p.spec?'<div class="sp">'+prEsc(p.spec)+'</div>':'')
-      +(p.note?'<div class="sp">비고: '+prEsc(p.note)+'</div>':'')
-      +priceHtml+'</div>'
+    const priceHtml=p.price?('<div class="pc">'+prEsc(cur.symbol+' '+Number(p.price).toLocaleString())+'<small>'+prEsc(cur.label)+'</small></div>'):'<div class="pc" style="color:#cbd5e1;font-weight:400">-</div>';
+    return '<div class="pr-lib-row" data-id="'+prEsc(p.id)+'" title="클릭하면 사진·상세 보기">'+thumb
+      +'<div class="info"><div class="nm">'+prEsc(p.name)+'</div>'
+      +'<div class="sp">'+prEsc([p.spec,p.note?('비고: '+p.note):''].filter(Boolean).join(' · ')||' ')+'</div></div>'
+      +priceHtml
       +'<div class="acts"><button type="button" class="ld" data-act="ins">＋ 견적서에</button>'
       +'<button type="button" data-act="edit">수정</button>'
       +'<button type="button" class="dl" data-act="del">삭제</button></div></div>';
   }).join('');
 }
+/* 물품 사진 팝업 (작은 창) */
+let prLibPopId=null;
+function prLibPopOpen(id){
+  const p=prProducts.find(x=>x.id===id);if(!p)return;
+  prLibPopId=id;
+  const ph=prSafeImg(p.photo);
+  const img=document.getElementById('prLibPopImg');const no=document.getElementById('prLibPopNoImg');
+  if(ph){img.src=ph;img.style.display='block';no.style.display='none';}
+  else{img.src='';img.style.display='none';no.style.display='block';}
+  document.getElementById('prLibPopName').textContent=p.name||'';
+  document.getElementById('prLibPopSpec').textContent=[p.spec,p.note?('비고: '+p.note):''].filter(Boolean).join(' · ');
+  const cur=(p.currency&&PR_CURRENCIES[p.currency])?PR_CURRENCIES[p.currency]:PR_CURRENCIES.PHP;
+  document.getElementById('prLibPopPrice').textContent=p.price?('단가 '+cur.symbol+' '+Number(p.price).toLocaleString()+' '+cur.label):'';
+  document.getElementById('prLibPop').style.display='flex';
+}
+function prLibPopClose(){document.getElementById('prLibPop').style.display='none';prLibPopId=null;}
 (function prLibInit(){
   const t=document.getElementById('prLibToggle');if(t)t.addEventListener('click',prLibToggleWrap);
   const grid=document.getElementById('prLibGrid');
-  if(grid)grid.addEventListener('click',e=>{const b=e.target.closest('button[data-act]');if(!b)return;const card=b.closest('[data-id]');if(!card)return;const id=card.getAttribute('data-id');const a=b.getAttribute('data-act');if(a==='ins')prLibInsert(id,b);else if(a==='edit')prLibEdit(id);else if(a==='del')prLibDelete(id);});
+  if(grid)grid.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-act]');
+    const card=e.target.closest('[data-id]');if(!card)return;
+    const id=card.getAttribute('data-id');
+    if(b){const a=b.getAttribute('data-act');if(a==='ins')prLibInsert(id,b);else if(a==='edit')prLibEdit(id);else if(a==='del')prLibDelete(id);return;}
+    prLibPopOpen(id); // 행 클릭 → 사진 작은 창
+  });
+  const popIns=document.getElementById('prLibPopInsBtn');
+  if(popIns)popIns.addEventListener('click',function(){if(prLibPopId){prLibInsert(prLibPopId,this);setTimeout(prLibPopClose,500);}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&prLibPopId)prLibPopClose();});
   prLibResetForm();  // 통화 기본값 = 현재 견적서 통화
   prLibInitStore();  // IndexedDB(+구버전 이전) 비동기 로드 후 렌더
+})();
+
+/* ── 구매 진행 관리 (요청→발주→배송→수령 트래킹) — Supabase 팀 공유 ── */
+const PT_KEY='pr_track_v1';        // 오프라인 폴백 + 구버전 이전용
+const PT_TABLE='purchase_track';
+const PT_SUPA_URL='https://xfywgdywaawjouxwjmlu.supabase.co';
+const PT_SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmeXdnZHl3YWF3am91eHdqbWx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMTM0NTAsImV4cCI6MjA5MjU4OTQ1MH0.20x1NrwsVMNIj7cNU1S1kOny4wgJNHRvzuO3Vm0X6MM';
+let ptRecords=[];
+let ptCloud=false;                 // 공유 저장 연결 여부
+let ptOpenIds={};                  // 펼침 상태 — 개인(공유 안 함)
+let _ptSupa=null;
+function ptSupa(){if(_ptSupa)return _ptSupa;if(typeof window.supabase==='undefined'||!window.supabase.createClient)return null;try{_ptSupa=window.supabase.createClient(PT_SUPA_URL,PT_SUPA_KEY);}catch(e){return null;}return _ptSupa;}
+function ptLoadLocal(){try{const r=localStorage.getItem(PT_KEY);if(r){const a=JSON.parse(r);if(Array.isArray(a))return a;}}catch(e){}return [];}
+function ptSaveLocal(){try{localStorage.setItem(PT_KEY,JSON.stringify(ptRecords));}catch(e){}}
+function ptStripUI(r){const c=Object.assign({},r);delete c.open;return c;}
+async function ptFetch(){const c=ptSupa();if(!c)throw new Error('클라이언트 없음');const{data,error}=await c.from(PT_TABLE).select('*');if(error)throw error;return (data||[]).map(x=>x.data).filter(Boolean).sort((a,b)=>(b.createdTs||0)-(a.createdTs||0));}
+// 단건 저장 — 공유 우선, 미연결 시 로컬
+function ptPersist(rec){
+  if(ptCloud){const c=ptSupa();if(!c)return;c.from(PT_TABLE).upsert({id:rec.id,data:ptStripUI(rec),updated_at:new Date().toISOString()}).then(({error})=>{if(error){console.error('[pt] 저장 실패',error);alert('공유 저장에 실패했습니다. 네트워크를 확인하세요.');}});}
+  else ptSaveLocal();
+}
+function ptRemove(id){
+  if(ptCloud){const c=ptSupa();if(!c)return;c.from(PT_TABLE).delete().eq('id',id).then(({error})=>{if(error)alert('삭제 실패 — 네트워크를 확인하세요.');});}
+  else ptSaveLocal();
+}
+// 메모 타이핑 저장 디바운스 (id별)
+const _ptMemoTimers={};
+function ptPersistDebounced(rec){clearTimeout(_ptMemoTimers[rec.id]);_ptMemoTimers[rec.id]=setTimeout(()=>ptPersist(rec),600);}
+function ptFlushMemo(id){if(_ptMemoTimers[id]){clearTimeout(_ptMemoTimers[id]);delete _ptMemoTimers[id];const r=ptRecords.find(x=>x.id===id);if(r)ptPersist(r);}}
+// 실시간 수신 — 메모 입력 중이면 렌더 보류(포커스 잃을 때 반영)
+let _ptDeferRender=false;
+function ptApplyCloud(rows){ptRecords=rows;const a=document.activeElement;if(a&&a.dataset&&a.dataset.ptmemo!=null){_ptDeferRender=true;return;}ptRender();}
+function ptBadge(ok){const el=document.getElementById('ptCloudBadge');if(!el)return;el.textContent=ok?'☁ 팀 공유 중':'⚠ 오프라인 (이 브라우저에만 저장)';el.style.color=ok?'#15803d':'#b45309';}
+function ptSave(){ptSaveLocal();} // (구버전 호환용 — 새 코드는 ptPersist 사용)
+const PT_STAGES=[['requested','📨 요청일'],['ordered','🛒 발주일'],['shipping','🚚 배송 시작'],['received','📦 수령일']];
+function ptStatus(r){if(r.cancelled)return{label:'취소',bg:'#fee2e2',fg:'#b91c1c'};const d=r.dates||{};if(d.received)return{label:'수령완료',bg:'#dcfce7',fg:'#15803d'};if(d.shipping)return{label:'배송중',bg:'#fef3c7',fg:'#b45309'};if(d.ordered)return{label:'발주완료',bg:'#dbeafe',fg:'#1d4ed8'};return{label:'요청됨',bg:'#f1f5f9',fg:'#475569'};}
+function ptToday(){const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+function ptFmtMoney(n,code){const c=PR_CURRENCIES[code]||PR_CURRENCIES.PHP;return c.symbol+' '+Number(n||0).toLocaleString(c.locale,{maximumFractionDigits:c.decimals});}
+// 구매 요청서 → 진행 기록 등록
+function prSubmitRequest(){
+  const items=[];
+  document.querySelectorAll('#prItemsBody tr').forEach(tr=>{
+    const isDisc=tr.dataset.discount==='1';
+    const name=((tr.querySelector('.pr-name')||{}).value||'').trim();
+    if(isDisc){const amt=parseFloat((tr.querySelector('.pr-disc-amt')||{}).value)||0;if(amt>0)items.push({name:name||'할인',qty:'',total:-amt});return;}
+    const qty=parseFloat((tr.querySelector('.pr-qty')||{}).value)||0;
+    const unit=parseFloat((tr.querySelector('.pr-unit')||{}).value)||0;
+    if(!name&&!qty)return;
+    items.push({name:name||'(품명 미입력)',qty:qty,total:qty*unit});
+  });
+  if(!items.length){alert('구매 요청 내역에 품목을 먼저 입력하세요.');return;}
+  const cur=prGetCurrency();
+  const total=items.reduce((a,x)=>a+(x.total||0),0);
+  const rec={
+    id:'t'+Date.now().toString(36)+Math.floor(Math.random()*1000),
+    title:((document.getElementById('prPurpose')||{}).value||'').trim()||(items[0].name+(items.length>1?' 외 '+(items.length-1)+'건':'')),
+    requestor:((document.getElementById('prRequestor')||{}).value||'').trim(),
+    vendor:((document.getElementById('prVendor')||{}).value||'').trim(),
+    currency:cur.label,items:items,total:total,
+    dates:{requested:(document.getElementById('prDate')||{}).value||ptToday()},
+    cancelled:false,memo:'',createdTs:Date.now()
+  };
+  ptOpenIds[rec.id]=true;
+  ptRecords.unshift(rec);ptPersist(rec);ptRender();
+  alert('구매요청이 등록되었습니다.\n「구매 진행」 탭에서 진행상황을 관리하세요.');
+  const tab=document.querySelector('.page-tab[data-page="purchase-track"]');if(tab)tab.click();
+}
+function ptRender(){
+  const list=document.getElementById('ptList');if(!list)return;
+  const empty=document.getElementById('ptEmpty');const sum=document.getElementById('ptSummary');
+  let ing=0,done=0,canc=0;
+  ptRecords.forEach(r=>{if(r.cancelled)canc++;else if((r.dates||{}).received)done++;else ing++;});
+  if(sum)sum.innerHTML='<span class="pt-chip">전체 <b>'+ptRecords.length+'</b></span>'
+    +'<span class="pt-chip">진행중 <b style="color:#b45309">'+ing+'</b></span>'
+    +'<span class="pt-chip">수령완료 <b style="color:#15803d">'+done+'</b></span>'
+    +'<span class="pt-chip">취소 <b style="color:#b91c1c">'+canc+'</b></span>';
+  if(empty)empty.style.display=ptRecords.length?'none':'block';
+  list.innerHTML=ptRecords.map(r=>{
+    const st=ptStatus(r);const d=r.dates||{};
+    const isOpen=!!ptOpenIds[r.id];
+    const stages=PT_STAGES.map(s=>'<div class="pt-stage'+(d[s[0]]?' done':'')+'"><label>'+s[1]+'</label><input type="date" data-pt="'+prEsc(r.id)+'" data-stage="'+s[0]+'" value="'+prEsc(d[s[0]]||'')+'"></div>').join('');
+    const itemRows=(r.items||[]).map(x=>'<tr><td>'+prEsc(x.name)+'</td><td>'+prEsc(x.qty===''?'':x.qty)+'</td><td>'+ptFmtMoney(x.total,r.currency)+'</td></tr>').join('');
+    const body=isOpen?('<div class="pt-body">'
+      +'<div class="pt-stages">'+stages+'</div>'
+      +'<table class="pt-items"><thead><tr><th>품명</th><th style="width:70px;text-align:right">수량</th><th style="width:130px;text-align:right">금액</th></tr></thead><tbody>'+itemRows+'</tbody></table>'
+      +(r.vendor?'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">거래처: '+prEsc(r.vendor)+'</div>':'')
+      +'<textarea class="pt-memo" data-ptmemo="'+prEsc(r.id)+'" placeholder="메모 (업체 연락, 지연 사유 등 — 자동 저장)">'+prEsc(r.memo||'')+'</textarea>'
+      +'<div class="pt-actions">'
+      +'<button type="button" class="pr-btn-add" data-ptcancel="'+prEsc(r.id)+'" style="color:'+(r.cancelled?'#16a34a':'#b45309')+'">'+(r.cancelled?'↩ 취소 해제':'⚠ 요청 취소')+'</button>'
+      +'<button type="button" class="pr-btn-add" data-ptdel="'+prEsc(r.id)+'" style="color:#ef4444;border-color:#fecaca">🗑 삭제</button>'
+      +'</div></div>'):'';
+    return '<div class="pt-card"><div class="pt-head" data-pthead="'+prEsc(r.id)+'">'
+      +'<span style="color:var(--accent);font-weight:700">'+(isOpen?'▾':'▸')+'</span>'
+      +'<div class="pt-title">'+prEsc(r.title)+(r.requestor?' <span style="font-weight:400;color:var(--text3);font-size:11px">· '+prEsc(r.requestor)+'</span>':'')+'</div>'
+      +'<span class="pt-pill" style="background:'+st.bg+';color:'+st.fg+'">'+st.label+'</span>'
+      +'<span class="pt-total">'+ptFmtMoney(r.total,r.currency)+'</span>'
+      +'<span class="pt-meta">요청 '+prEsc(d.requested||'-')+(d.received?' → 수령 '+prEsc(d.received):'')+'</span>'
+      +'</div>'+body+'</div>';
+  }).join('');
+}
+(function ptInit(){
+  const list=document.getElementById('ptList');if(!list)return;
+  list.addEventListener('click',e=>{
+    const del=e.target.closest('[data-ptdel]');
+    if(del){const id=del.dataset.ptdel;const r=ptRecords.find(x=>x.id===id);if(r&&confirm('"'+r.title+'" 기록을 삭제할까요?\n(팀 전체에서 삭제됩니다)')){ptRecords=ptRecords.filter(x=>x.id!==id);ptRemove(id);ptRender();}return;}
+    const cc=e.target.closest('[data-ptcancel]');
+    if(cc){const r=ptRecords.find(x=>x.id===cc.dataset.ptcancel);if(r){r.cancelled=!r.cancelled;ptPersist(r);ptRender();}return;}
+    if(e.target.closest('input,textarea,button'))return;
+    const hd=e.target.closest('[data-pthead]');
+    if(hd){const id=hd.dataset.pthead;ptOpenIds[id]=!ptOpenIds[id];ptRender();} // 펼침은 개인 상태 — 공유 안 함
+  });
+  list.addEventListener('change',e=>{const t=e.target;if(t.dataset.pt&&t.dataset.stage){const r=ptRecords.find(x=>x.id===t.dataset.pt);if(r){r.dates=r.dates||{};if(t.value)r.dates[t.dataset.stage]=t.value;else delete r.dates[t.dataset.stage];ptPersist(r);ptRender();}}});
+  list.addEventListener('input',e=>{const t=e.target;if(t.dataset.ptmemo!=null){const r=ptRecords.find(x=>x.id===t.dataset.ptmemo);if(r){r.memo=t.value;ptPersistDebounced(r);}}});
+  list.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&t.dataset.ptmemo!=null){ptFlushMemo(t.dataset.ptmemo);if(_ptDeferRender){_ptDeferRender=false;ptRender();}}});
+  // 1) 로컬 즉시 표시 → 2) 클라우드 로드(+구버전 이전) → 3) 실시간 구독
+  ptRecords=ptLoadLocal();ptRender();ptBadge(false);
+  const c=ptSupa();if(!c)return;
+  ptFetch().then(async rows=>{
+    ptCloud=true;
+    const local=ptLoadLocal();
+    const ids={};rows.forEach(r=>{ids[r.id]=1;});
+    const toPush=local.filter(r=>!ids[r.id]);
+    if(toPush.length){
+      try{
+        const{error}=await c.from(PT_TABLE).upsert(toPush.map(r=>({id:r.id,data:ptStripUI(r),updated_at:new Date().toISOString()})));
+        if(!error)rows=await ptFetch();
+      }catch(e){console.error('[pt] 이전 실패',e);}
+    }
+    try{localStorage.removeItem(PT_KEY);}catch(e){}
+    ptApplyCloud(rows);ptBadge(true);
+    c.channel('rt-'+PT_TABLE).on('postgres_changes',{event:'*',schema:'public',table:PT_TABLE},()=>{ptFetch().then(ptApplyCloud).catch(()=>{});}).subscribe();
+  }).catch(e=>{console.error('[pt] 공유 저장 연결 실패 — 로컬 모드로 동작',e);ptCloud=false;ptBadge(false);});
+})();
+window.prSubmitRequest=prSubmitRequest;
+
+/* ── 거래처·단가 관리 (ERP 그리드, Supabase 팀 공유) ── */
+const PM_TABLES={v:'vendors',p:'purchase_prices'};
+const PM_CURS=['PHP','USD','KRW','CNY','JPY'];
+const PM_VCOLS=[
+  {k:'code',label:'코드',w:64},
+  {k:'name',label:'거래처명',w:140,req:1},
+  {k:'contact',label:'담당자',w:84},
+  {k:'phone',label:'전화',w:104},
+  {k:'email',label:'이메일',w:140},
+  {k:'addr',label:'주소',w:170},
+  {k:'taxid',label:'Tax ID',w:90},
+  {k:'bank',label:'계좌',w:120},
+  {k:'currency',label:'기본통화',w:72,type:'cur'},
+  {k:'active',label:'사용',w:42,type:'chk'},
+  {k:'notes',label:'비고',w:130}
+];
+const PM_PCOLS=[
+  {k:'vendor',label:'거래처',w:130,type:'vendor',req:1},
+  {k:'item',label:'품명',w:140,req:1},
+  {k:'itemCode',label:'품목코드',w:84},
+  {k:'spec',label:'스펙',w:110},
+  {k:'unit',label:'단위',w:54},
+  {k:'origin',label:'원산지',w:70},
+  {k:'currency',label:'통화',w:64,type:'cur'},
+  {k:'price',label:'단가',w:94,type:'num',req:1},
+  {k:'minQty',label:'최소수량',w:74,type:'num'},
+  {k:'start',label:'시작일',w:112,type:'date'},
+  {k:'end',label:'종료일',w:112,type:'date'}
+];
+const pmS={v:{rows:[],dirty:{},sel:{}},p:{rows:[],dirty:{},sel:{}}};
+let pmCloud=false;
+const _pmPend={};
+const _pmOrigName={}; // 거래처명 변경 전 원래 이름 (저장 시 단가 행에 전파)
+function pmCols(g){return g==='v'?PM_VCOLS:PM_PCOLS;}
+function pmNewId(){return 'm'+Date.now().toString(36)+Math.floor(Math.random()*10000);}
+function pmBlank(g){
+  if(g==='v')return{id:pmNewId(),code:'',name:'',contact:'',phone:'',email:'',addr:'',taxid:'',bank:'',currency:'PHP',active:true,notes:'',createdTs:Date.now()};
+  return{id:pmNewId(),vendor:'',item:'',itemCode:'',spec:'',unit:'',origin:'',currency:'PHP',price:'',minQty:'',start:ptToday(),end:'',createdTs:Date.now()};
+}
+function pmVal(id){const el=document.getElementById(id);return el?(el.type==='checkbox'?el.checked:el.value):'';}
+function pmHas(hay,needle){return String(hay==null?'':hay).toLowerCase().indexOf(String(needle).toLowerCase())>=0;}
+// 필터 적용된 표시 행 (미저장 행은 항상 표시)
+function pmFiltered(g){
+  const st=pmS[g];let rows=st.rows.slice();
+  if(g==='v'){
+    const code=pmVal('pmFvCode'),name=pmVal('pmFvName'),contact=pmVal('pmFvContact'),act=pmVal('pmFvActive')||'active';
+    rows=rows.filter(r=>(!code||pmHas(r.code,code))&&(!name||pmHas(r.name,name))&&(!contact||pmHas(r.contact,contact))&&(act==='all'||r.active!==false));
+    rows.sort((a,b)=>String(a.code||a.name||'').localeCompare(String(b.code||b.name||''),'ko'));
+  }else{
+    const from=pmVal('pmFpFrom'),to=pmVal('pmFpTo'),ven=pmVal('pmFpVendor'),item=pmVal('pmFpItem'),cur=pmVal('pmFpCur'),latest=pmVal('pmFpLatest');
+    rows=rows.filter(r=>(!from||String(r.start||'')>=from)&&(!to||String(r.start||'')<=to)&&(!ven||pmHas(r.vendor,ven))&&(!item||pmHas(r.item,item)||pmHas(r.itemCode,item))&&(!cur||r.currency===cur));
+    if(latest){const best={};rows.forEach(r=>{const k=[r.vendor,r.item,r.itemCode,r.spec].map(x=>String(x||'').trim().toUpperCase()).join('|');const b=best[k];if(!b||String(r.start||'')>String(b.start||'')||(String(r.start||'')===String(b.start||'')&&(r.createdTs||0)>(b.createdTs||0)))best[k]=r;});rows=Object.values(best);}
+    rows.sort((a,b)=>String(b.start||'').localeCompare(String(a.start||''))||(b.createdTs||0)-(a.createdTs||0));
+  }
+  const shown={};rows.forEach(r=>{shown[r.id]=1;});
+  Object.keys(st.dirty).forEach(id=>{if(!shown[id]){const r=st.rows.find(x=>x.id===id);if(r)rows.unshift(r);}});
+  return rows;
+}
+function pmCellHtml(g,r,c){
+  const v=r[c.k];const base='data-g="'+g+'" data-id="'+prEsc(r.id)+'" data-k="'+c.k+'"';
+  if(c.type==='chk')return '<td class="c"><input type="checkbox" '+base+(v!==false?' checked':'')+'></td>';
+  if(c.type==='cur')return '<td><select '+base+'>'+PM_CURS.map(x=>'<option'+(x===(v||'PHP')?' selected':'')+'>'+x+'</option>').join('')+'</select></td>';
+  if(c.type==='vendor'){
+    const names=pmS.v.rows.filter(x=>x.active!==false&&String(x.name||'').trim()).map(x=>x.name);
+    const curV=v||'';const all=(curV&&names.indexOf(curV)<0?[curV]:[]).concat(names);
+    return '<td><select '+base+'><option value=""></option>'+all.map(n=>'<option'+(n===curV?' selected':'')+'>'+prEsc(n)+'</option>').join('')+'</select></td>';
+  }
+  if(c.type==='num')return '<td><input type="number" step="any" '+base+' value="'+prEsc(v==null?'':v)+'"></td>';
+  if(c.type==='date')return '<td><input type="date" '+base+' value="'+prEsc(v||'')+'"></td>';
+  return '<td><input type="text" '+base+' value="'+prEsc(v==null?'':v)+'"></td>';
+}
+function pmCount(g){
+  const el=document.getElementById(g==='v'?'pmCountV':'pmCountP');if(!el)return;
+  const st=pmS[g];const dn=Object.keys(st.dirty).length;
+  el.textContent='표시 '+pmFiltered(g).length+' / 전체 '+st.rows.length+'건'+(dn?' · 미저장 '+dn:'');
+}
+function pmRender(g){
+  const table=document.getElementById(g==='v'?'pmGridV':'pmGridP');if(!table)return;
+  const st=pmS[g];const cols=pmCols(g);const rows=pmFiltered(g);
+  let h='<thead><tr><th class="c" style="width:34px"><input type="checkbox" data-pmall="'+g+'"'+(rows.length&&rows.every(r=>st.sel[r.id])?' checked':'')+'></th><th class="c" style="width:40px">№</th>'
+    +cols.map(c=>'<th'+(c.req?' class="req"':'')+' style="min-width:'+c.w+'px">'+c.label+'</th>').join('')+'</tr></thead><tbody>';
+  if(!rows.length)h+='<tr class="pm-empty"><td colspan="'+(cols.length+2)+'">'+(g==='v'?'등록된 거래처가 없습니다. 「＋ 행 추가」로 등록하세요.':'등록된 단가가 없습니다. 「＋ 행 추가」로 등록하세요.')+'</td></tr>';
+  else rows.forEach((r,i)=>{
+    h+='<tr'+(st.dirty[r.id]?' class="dirty"':'')+'><td class="c"><input type="checkbox" data-pmsel="'+g+'" data-id="'+prEsc(r.id)+'"'+(st.sel[r.id]?' checked':'')+'></td><td class="num">'+(i+1)+'</td>'+cols.map(c=>pmCellHtml(g,r,c)).join('')+'</tr>';
+  });
+  table.innerHTML=h+'</tbody>';
+  pmCount(g);
+}
+async function pmFetch(g){const c=ptSupa();if(!c)throw new Error('클라이언트 없음');const{data,error}=await c.from(PM_TABLES[g]).select('*');if(error)throw error;return (data||[]).map(x=>x.data).filter(Boolean);}
+// 실시간/조회 반영 — 그리드 편집 중이면 보류, 미저장 행은 보존
+function pmApply(g,rows){
+  const act=document.activeElement;
+  if(act&&act.closest&&act.closest('#page-purchase-master .pm-grid')){_pmPend[g]=rows;return;}
+  const st=pmS[g];const byId={};rows.forEach(r=>{byId[r.id]=r;});
+  Object.keys(st.dirty).forEach(id=>{const r=st.rows.find(x=>x.id===id);if(r)byId[id]=r;});
+  st.rows=Object.keys(byId).map(k=>byId[k]);
+  pmRender(g);if(g==='v')pmRender('p'); // 거래처명이 단가 셀렉트에 반영
+}
+async function pmSave(g){
+  const st=pmS[g];const ids=Object.keys(st.dirty);
+  if(!ids.length){alert('변경된 내용이 없습니다.');return;}
+  const cols=pmCols(g);
+  for(const id of ids){
+    const r=st.rows.find(x=>x.id===id);if(!r)continue;
+    for(const c of cols){if(c.req&&!String(r[c.k]==null?'':r[c.k]).trim()){alert((g==='v'?'거래처':'단가')+' 행에 「'+c.label+'」이(가) 비어 있습니다.');return;}}
+    if(g==='p'){const n=parseFloat(r.price);if(!isFinite(n)){alert('단가는 숫자여야 합니다.');return;}r.price=String(n);}
+  }
+  if(!pmCloud){alert('공유 저장에 연결되지 않았습니다.\npurchase-master.sql 실행 여부와 네트워크를 확인하세요.');return;}
+  const c=ptSupa();
+  const payload=ids.map(id=>{const r=st.rows.find(x=>x.id===id);return r?{id:id,data:r,updated_at:new Date().toISOString()}:null;}).filter(Boolean);
+  const{error}=await c.from(PM_TABLES[g]).upsert(payload);
+  if(error){alert('저장 실패: '+(error.message||error));return;}
+  ids.forEach(id=>{delete st.dirty[id];}); // 저장된 행만 해제 (전송 중 편집한 다른 행 보존)
+  delete _pmPend[g];                       // 저장 전 상태의 보류 스냅샷 폐기 (되돌림 방지)
+  // 거래처명이 바뀌었으면 단가 행의 거래처명도 자동 동기화
+  if(g==='v'){
+    const renames=[];
+    ids.forEach(id=>{const from=_pmOrigName[id];delete _pmOrigName[id];if(from===undefined)return;const r=st.rows.find(x=>x.id===id);const to=r?String(r.name||''):'';if(from&&to&&from!==to)renames.push({from:from,to:to});});
+    if(renames.length){
+      const touched=[];
+      pmS.p.rows.forEach(pr=>{renames.forEach(rn=>{if(String(pr.vendor||'')===rn.from){pr.vendor=rn.to;touched.push(pr);}});});
+      if(touched.length){
+        try{await c.from(PM_TABLES.p).upsert(touched.map(r2=>({id:r2.id,data:r2,updated_at:new Date().toISOString()})));}
+        catch(e2){console.error('[pm] 단가 거래처명 동기화 실패',e2);}
+      }
+    }
+  }
+  pmRender(g);if(g==='v')pmRender('p');
+  const btn=document.querySelector('#page-purchase-master [data-pmact="save"][data-g="'+g+'"]');
+  if(btn){const old=btn.textContent;btn.textContent='✔ 저장됨';setTimeout(()=>{btn.textContent=old;},1200);}
+}
+async function pmDelete(g){
+  const st=pmS[g];
+  const vis={};pmFiltered(g).forEach(r=>{vis[r.id]=1;});
+  const ids=Object.keys(st.sel).filter(id=>st.sel[id]&&vis[id]); // 화면에 보이는 선택 행만 삭제 (숨은 행 오삭제 방지)
+  if(!ids.length){alert('삭제할 행을 왼쪽 체크박스로 선택하세요.');return;}
+  const msg=pmCloud?(ids.length+'개 행을 삭제할까요?\n(팀 전체에서 삭제됩니다)'):(ids.length+'개 행을 삭제할까요?\n(오프라인 — 이 화면에서만 제거됩니다)');
+  if(!confirm(msg))return;
+  if(pmCloud){const c=ptSupa();const{error}=await c.from(PM_TABLES[g]).delete().in('id',ids);if(error){alert('삭제 실패: '+(error.message||error));return;}}
+  st.rows=st.rows.filter(r=>ids.indexOf(r.id)<0);
+  ids.forEach(id=>{delete st.sel[id];delete st.dirty[id];});
+  pmRender(g);if(g==='v')pmRender('p');
+}
+(function pmInit(){
+  const page=document.getElementById('page-purchase-master');if(!page)return;
+  function onEdit(e){
+    const t=e.target;
+    if(t.dataset.pmfilter){const fg=t.dataset.pmfilter;pmS[fg].sel={};pmRender(fg);return;} // 필터 바뀌면 선택 초기화 (숨은 선택 방지)
+    const g=t.dataset.g,id=t.dataset.id,k=t.dataset.k;
+    if(!g||!id||!k)return;
+    const st=pmS[g];const r=st.rows.find(x=>x.id===id);if(!r)return;
+    if(g==='v'&&k==='name'&&!st.dirty[id]&&_pmOrigName[id]===undefined)_pmOrigName[id]=String(r.name||''); // 이름변경 추적(단가 연동용)
+    r[k]=(t.type==='checkbox')?t.checked:t.value;
+    if(!st.dirty[id]){st.dirty[id]=1;const tr=t.closest('tr');if(tr)tr.classList.add('dirty');}
+    pmCount(g);
+  }
+  page.addEventListener('input',onEdit);
+  page.addEventListener('change',onEdit);
+  page.addEventListener('click',e=>{
+    const all=e.target.closest('input[data-pmall]');
+    if(all){const g=all.dataset.pmall;const st=pmS[g];const rows=pmFiltered(g);rows.forEach(r=>{st.sel[r.id]=all.checked;});pmRender(g);return;}
+    const sel=e.target.closest('input[data-pmsel]');
+    if(sel){const sg=sel.dataset.pmsel;pmS[sg].sel[sel.dataset.id]=sel.checked;
+      const rows=pmFiltered(sg);const hdr=document.querySelector('input[data-pmall="'+sg+'"]');
+      if(hdr){const n=rows.filter(r=>pmS[sg].sel[r.id]).length;hdr.checked=rows.length>0&&n===rows.length;hdr.indeterminate=n>0&&n<rows.length;}
+      return;}
+    const b=e.target.closest('[data-pmact]');
+    if(!b)return;
+    const g=b.dataset.g,a=b.dataset.pmact;
+    if(a==='add'){const st=pmS[g];const r=pmBlank(g);st.rows.unshift(r);st.dirty[r.id]=1;pmRender(g);
+      const tbl=document.getElementById(g==='v'?'pmGridV':'pmGridP');
+      const first=tbl&&tbl.querySelector('[data-id="'+r.id+'"]:not([type=checkbox])'); // 새 행의 첫 편집 셀에 정확히 포커스
+      if(first)first.focus();return;}
+    if(a==='save'){pmSave(g);return;}
+    if(a==='del'){pmDelete(g);return;}
+    if(a==='query'){if(pmCloud){pmFetch(g).then(rows=>pmApply(g,rows)).catch(()=>pmRender(g));}else pmRender(g);return;}
+  });
+  // 편집 중 보류된 실시간 반영을 포커스 해제 시 적용
+  page.addEventListener('focusout',()=>{setTimeout(()=>{const act=document.activeElement;if(act&&act.closest&&act.closest('#page-purchase-master .pm-grid'))return;['v','p'].forEach(g=>{if(_pmPend[g]){const rows=_pmPend[g];delete _pmPend[g];pmApply(g,rows);}});},80);});
+  pmRender('v');pmRender('p');
+  function badge(ok,msg){const el=document.getElementById('pmCloudBadge');if(el){el.textContent=msg;el.style.color=ok?'#15803d':'#b45309';}}
+  const c=ptSupa();
+  if(!c){badge(false,'⚠ 오프라인 — 저장 불가');return;}
+  Promise.all([pmFetch('v'),pmFetch('p')]).then(res=>{
+    pmCloud=true;badge(true,'☁ 팀 공유 중');
+    pmApply('v',res[0]);pmApply('p',res[1]);
+    c.channel('rt-purchase-master')
+      .on('postgres_changes',{event:'*',schema:'public',table:PM_TABLES.v},()=>{pmFetch('v').then(r=>pmApply('v',r)).catch(()=>{});})
+      .on('postgres_changes',{event:'*',schema:'public',table:PM_TABLES.p},()=>{pmFetch('p').then(r=>pmApply('p',r)).catch(()=>{});})
+      .subscribe();
+  }).catch(e=>{console.error('[pm] 공유 연결 실패',e);badge(false,'⚠ 공유 테이블 없음 — purchase-master.sql 실행 필요');});
 })();
 
 function prFmtDate(d){
@@ -5727,6 +6279,8 @@ window.prLibPickPhoto=prLibPickPhoto;
 window.prLibHandleFile=prLibHandleFile;
 window.prLibClearPhoto=prLibClearPhoto;
 window.prLibDrop=prLibDrop;
+window.prLibPopOpen=prLibPopOpen;
+window.prLibPopClose=prLibPopClose;
 window.prLibSave=prLibSave;
 window.prLibResetForm=prLibResetForm;
 window.prLibEdit=prLibEdit;
