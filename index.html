@@ -553,7 +553,8 @@
 #purchase-page .pr-section-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #1c3a5e;letter-spacing:.5px}
 #purchase-page .pr-grid{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center}
 #purchase-page .pr-grid label{font-size:12px;color:#6b7280;font-weight:500;padding:0 4px}
-#purchase-page .pr-grid input[type=text],#purchase-page .pr-grid input[type=date],#purchase-page .pr-grid textarea{background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1a1a2e;width:100%;outline:none;transition:border .15s}
+#purchase-page .pr-grid input[type=text],#purchase-page .pr-grid input[type=date],#purchase-page .pr-grid select,#purchase-page .pr-grid textarea{background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1a1a2e;width:100%;outline:none;transition:border .15s;cursor:pointer}
+#purchase-page .pr-grid input[type=text],#purchase-page .pr-grid textarea{cursor:text}
 #purchase-page .pr-grid input:focus,#purchase-page .pr-grid textarea:focus{border-color:#1c3a5e}
 #purchase-page .pr-items{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px}
 #purchase-page .pr-items th{background:#f9fafb;font-weight:600;text-align:center;padding:8px 6px;border:1px solid #e5e7eb;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
@@ -1527,7 +1528,20 @@ tbody tr:hover { background: #f7f9fc; }
           <label>소속/현장</label>
           <input type="text" id="prSite" value="KSM Sports">
           <label>기안자</label>
-          <input type="text" id="prRequestor" placeholder="이름 및 직급">
+          <div style="display:flex;gap:8px">
+            <select id="prReqName" style="flex:1" onchange="prReqNameChange()">
+              <option value="">이름 선택</option>
+              <option>장도규</option>
+              <option>박교순</option>
+              <option>김민성</option>
+            </select>
+            <select id="prReqTitle" style="flex:1">
+              <option value="">직급 선택</option>
+              <option>공장장</option>
+              <option>해외영업팀장</option>
+              <option>해외영업사원</option>
+            </select>
+          </div>
           <label>요청 목적</label>
           <input type="text" id="prPurpose" placeholder="예: 노후 장비 교체, 글러브 생산용 부자재 확보, 공장 차량 수리 부품 구매">
         </div>
@@ -5412,6 +5426,10 @@ function prFormatMoney(n,cur){
   if(!isFinite(n)||n===0)return c.symbol+' 0';
   return c.symbol+' '+Number(n).toLocaleString(c.locale,{maximumFractionDigits:c.decimals,minimumFractionDigits:0});
 }
+/* 기안자 이름/직급 — 이름 선택 시 직급 자동 매칭 (수동 변경 가능) */
+const PR_REQ_TITLE_MAP={'장도규':'공장장','박교순':'해외영업팀장','김민성':'해외영업사원'};
+function prReqNameChange(){const n=(document.getElementById('prReqName')||{}).value||'';const t=PR_REQ_TITLE_MAP[n];const sel=document.getElementById('prReqTitle');if(t&&sel)sel.value=t;}
+function prGetRequestor(){const n=((document.getElementById('prReqName')||{}).value||'').trim();const t=((document.getElementById('prReqTitle')||{}).value||'').trim();return n?(t?n+' ('+t+')':n):t;}
 function prAddRow(){
   const tbody=document.getElementById('prItemsBody');if(!tbody)return;
   const idx=tbody.children.length+1;
@@ -5743,7 +5761,7 @@ function prSubmitRequest(){
   const rec={
     id:'t'+Date.now().toString(36)+Math.floor(Math.random()*1000),
     title:((document.getElementById('prPurpose')||{}).value||'').trim()||(items[0].name+(items.length>1?' 외 '+(items.length-1)+'건':'')),
-    requestor:((document.getElementById('prRequestor')||{}).value||'').trim(),
+    requestor:prGetRequestor(),
     vendor:((document.getElementById('prVendor')||{}).value||'').trim(),
     currency:cur.label,items:items,total:total,
     dates:{requested:(document.getElementById('prDate')||{}).value||ptToday()},
@@ -6186,7 +6204,7 @@ function prFastPrint(){
   const cur=prGetCurrency();
   const date=document.getElementById('prDate').value||'';
   const site=document.getElementById('prSite').value||'';
-  const requestor=document.getElementById('prRequestor').value||'';
+  const requestor=prGetRequestor();
   const purpose=document.getElementById('prPurpose').value||'';
   const dueDate=document.getElementById('prDueDate').value||'';
   const vendor=document.getElementById('prVendor').value||'';
@@ -6429,6 +6447,7 @@ function prFastPrint(){
   }
 })();
 window.prAddRow=prAddRow;
+window.prReqNameChange=prReqNameChange;
 window.prAddDiscountRow=prAddDiscountRow;
 window.prRemoveRow=prRemoveRow;
 window.prRecalc=prRecalc;
