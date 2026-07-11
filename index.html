@@ -884,6 +884,11 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):focus, select:foc
 .purchase-subnav button:hover{background:var(--bg);color:var(--text)}
 .purchase-subnav button.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
 .purchase-subnav .psub-home{margin-left:auto;color:var(--text3)}
+/* 보고 서브내비 (가죽변경 / 가죽변경보고 / 스펙변경보고 / 변경보고기록) */
+.report-subnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.report-subnav button{border:1px solid var(--border);background:var(--surface);color:var(--text2);border-radius:9px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .13s}
+.report-subnav button:hover{background:var(--bg);color:var(--text)}
+.report-subnav button.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
 
 /* 카드·테이블 — 얕은 그림자 층 */
 .stat, .table-wrap, .pa-table, .hist-board-card { box-shadow: var(--shadow-sm); }
@@ -949,10 +954,9 @@ tbody tr:hover { background: #f7f9fc; }
 
 <nav class="page-nav">
   <button class="page-tab active" data-page="posts">게시글</button>
-  <button class="page-tab" data-page="leather-mgmt">가죽 변경</button>
-  <button class="page-tab" data-page="leather-report">변경 보고</button>
+  <button class="page-tab" data-page="leather-mgmt">보고</button>
   <button class="page-tab" data-page="order">오더 시트</button>
-  <button class="page-tab" data-page="purchase-hub">🛒 구매</button>
+  <button class="page-tab" data-page="purchase-hub">구매</button>
   <button class="page-tab" data-page="pdf-analyzer">추가비용 분석</button>
   <button class="page-tab" data-page="order-classify">오더유형 분류</button>
   <button class="page-tab" data-page="outbound">출고 자동화</button>
@@ -981,6 +985,7 @@ tbody tr:hover { background: #f7f9fc; }
 <!-- PAGE: 가죽 변경 -->
 <div id="page-leather-mgmt" class="page-content">
   <div class="container">
+    <div class="report-subnav" data-cur="leather-mgmt"></div>
     <div class="lm-header">
       <div>
         <div class="lm-title">가죽 변경</div>
@@ -1119,15 +1124,11 @@ tbody tr:hover { background: #f7f9fc; }
 <div id="page-leather-report" class="page-content">
   <div id="leather-report-page">
     <div class="app">
+      <!-- 통합 보고 서브내비 (가죽변경 / 가죽변경보고 / 스펙변경보고 / 변경보고기록) -->
+      <div class="report-subnav" data-cur="leather"></div>
+
       <h1>변경 보고</h1>
       <p class="lr-subtitle">Change Report · 44 보고</p>
-
-      <!-- 서브탭 -->
-      <div class="lr-subtabs">
-        <button type="button" class="lr-subtab active" data-subtab="leather" onclick="lrSwitchSubtab('leather')">🎨 가죽 변경 보고</button>
-        <button type="button" class="lr-subtab" data-subtab="spec" onclick="lrSwitchSubtab('spec')">⚙️ 스펙 변경 보고</button>
-        <button type="button" class="lr-subtab" data-subtab="records" onclick="lrSwitchSubtab('records')">📋 변경 보고 기록 <span id="crCountBadge" style="font-size:11px;color:var(--text3)"></span></button>
-      </div>
 
       <!-- ───── 가죽 변경 보고 ───── -->
       <div id="lrSubtabLeather" class="lr-subtab-pane active">
@@ -3274,6 +3275,36 @@ function purchaseGo(name){
 document.addEventListener('click',e=>{const b=e.target.closest('.purchase-subnav button[data-go]');if(b)purchaseGo(b.dataset.go);});
 purchaseRenderSubnav('purchase');
 window.purchaseGo=purchaseGo;
+
+/* ── 보고 허브: 가죽변경 / 가죽변경보고 / 스펙변경보고 / 변경보고기록 통합 운영 ── */
+const REPORT_PAGES=[
+  {id:'leather-mgmt',label:'🗂 가죽 변경'},
+  {id:'leather',label:'🎨 가죽 변경 보고'},
+  {id:'spec',label:'⚙️ 스펙 변경 보고'},
+  {id:'records',label:'📋 변경 보고 기록'}
+];
+function reportRenderSubnav(cur){
+  document.querySelectorAll('.report-subnav').forEach(bar=>{
+    bar.innerHTML=REPORT_PAGES.map(p=>'<button type="button" data-rgo="'+p.id+'"'+(p.id===cur?' class="active"':'')+'>'+p.label+(p.id==='records'?' <span class="cr-count-badge" style="font-size:11px;opacity:.75"></span>':'')+'</button>').join('');
+  });
+  if(typeof crBadge==='function')crBadge(); // 기록 카운트 뱃지 다시 채움
+}
+function reportGo(name){
+  const isMgmt=(name==='leather-mgmt');
+  document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
+  document.getElementById(isMgmt?'page-leather-mgmt':'page-leather-report').classList.add('active');
+  // 상단 네비는 '보고' 탭만 활성 유지
+  document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+  const rtab=document.querySelector('.page-tab[data-page="leather-mgmt"]');if(rtab)rtab.classList.add('active');
+  if(!isMgmt&&typeof lrSwitchSubtab==='function')lrSwitchSubtab(name);
+  reportRenderSubnav(name);
+  window.scrollTo(0,0);
+}
+document.addEventListener('click',e=>{const b=e.target.closest('.report-subnav button[data-rgo]');if(b)reportGo(b.dataset.rgo);});
+// 상단 '보고' 탭(=가죽 변경 페이지)을 직접 누르면 기본 랜딩 상태로 서브내비 초기화
+(function(){const rtab=document.querySelector('.page-tab[data-page="leather-mgmt"]');if(rtab)rtab.addEventListener('click',()=>reportRenderSubnav('leather-mgmt'));})();
+reportRenderSubnav('leather-mgmt');
+window.reportGo=reportGo;
 
 // Safe modal click-outside handlers (some overlays may have been removed when
 // the tracker/schedule pages were deleted, so guard each lookup with a null check).
@@ -6983,7 +7014,8 @@ function crMergeCloud(cloudRecs){
   crRecords=Object.keys(map).map(k=>map[k]);crResort();
 }
 function crBadge(){
-  const cnt=document.getElementById('crCountBadge');if(cnt)cnt.textContent=crRecords.length?('('+crRecords.length+')'):'';
+  const txt=crRecords.length?('('+crRecords.length+')'):'';
+  document.querySelectorAll('.cr-count-badge').forEach(el=>{el.textContent=txt;});
   const b=document.getElementById('crCloudBadge');if(b){if(crCloud){b.textContent='☁ 팀 공유 중';b.style.color='#15803d';}else{b.textContent='⚠ 오프라인 (이 브라우저에만 저장)';b.style.color='#b45309';}}
 }
 // 보고 인쇄 시 호출 — 전체 문서 HTML을 그대로 저장해두면 언제든 재인쇄 가능
