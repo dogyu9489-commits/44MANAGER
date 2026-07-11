@@ -1710,7 +1710,7 @@ tbody tr:hover { background: #f7f9fc; }
 
 <!-- PAGE: 거래처·단가 관리 (구매 기준정보, ERP 그리드) -->
 <style>
-  #page-purchase-master .pm-wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+  #page-purchase-master .pm-wrap{max-width:1680px;margin:0 auto;padding:24px 20px}
   #page-purchase-master .pm-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:26px;box-shadow:var(--shadow-sm);overflow:hidden}
   #page-purchase-master .pm-title{display:inline-block;background:var(--accent);color:#fff;font-size:13px;font-weight:700;padding:10px 22px;border-radius:12px 12px 0 0;margin:14px 0 0 14px}
   #page-purchase-master .pm-toolbar{background:#2b3340;display:flex;align-items:center;gap:8px;padding:10px 14px;flex-wrap:wrap}
@@ -1728,7 +1728,7 @@ tbody tr:hover { background: #f7f9fc; }
   #page-purchase-master .pm-grid thead th{background:#dde5f5;color:#1e3a8a;font-size:12px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:left}
   #page-purchase-master .pm-grid thead th.req{color:#b3261e}
   #page-purchase-master .pm-grid thead th.c,#page-purchase-master .pm-grid td.c{text-align:center}
-  #page-purchase-master .pm-grid td input,#page-purchase-master .pm-grid td select{width:100%;border:none;background:transparent;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;min-width:0}
+  #page-purchase-master .pm-grid td input,#page-purchase-master .pm-grid td select{width:100%;border:none;background:transparent;padding:6px 7px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;min-width:0}
   #page-purchase-master .pm-grid td select{padding:7px 2px 7px 6px} /* 셀렉트는 화살표 공간 확보 (통화 등 텍스트 잘림 방지) */
   #page-purchase-master .pm-grid input[type=checkbox]{width:18px;height:18px;padding:0;accent-color:var(--accent);cursor:pointer;vertical-align:middle;display:inline-block}
   #page-purchase-master .pm-pager{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
@@ -5827,24 +5827,24 @@ const PM_TABLES={v:'vendors',p:'purchase_prices',i:'products'};
 const PM_CURS=['PHP','USD','KRW','CNY','JPY'];
 const PM_VCOLS=[
   {k:'code',label:'코드',w:64},
-  {k:'name',label:'거래처명',w:140,req:1},
-  {k:'contact',label:'담당자',w:84},
-  {k:'phone',label:'전화',w:104},
-  {k:'email',label:'이메일',w:140},
-  {k:'addr',label:'주소',w:170},
-  {k:'taxid',label:'Tax ID',w:90},
-  {k:'bank',label:'계좌',w:120},
+  {k:'name',label:'거래처명',w:190,req:1},
+  {k:'contact',label:'담당자',w:100},
+  {k:'phone',label:'전화',w:120},
+  {k:'email',label:'이메일',w:190},
+  {k:'addr',label:'주소',w:250},
+  {k:'taxid',label:'Tax ID',w:110},
+  {k:'bank',label:'계좌',w:170},
   {k:'currency',label:'기본통화',w:92,type:'cur'},
   {k:'active',label:'사용',w:42,type:'chk'},
-  {k:'notes',label:'비고',w:130}
+  {k:'notes',label:'비고',w:210}
 ];
 const PM_PCOLS=[
-  {k:'vendor',label:'거래처',w:130,type:'vendor',req:1},
-  {k:'item',label:'품명',w:140,req:1},
-  {k:'itemCode',label:'품목코드',w:84},
-  {k:'spec',label:'스펙',w:110},
-  {k:'unit',label:'단위',w:54},
-  {k:'origin',label:'원산지',w:70},
+  {k:'vendor',label:'거래처',w:170,type:'vendor',req:1},
+  {k:'item',label:'품명',w:200,req:1},
+  {k:'itemCode',label:'품목코드',w:100},
+  {k:'spec',label:'스펙',w:170},
+  {k:'unit',label:'단위',w:64},
+  {k:'origin',label:'원산지',w:90},
   {k:'currency',label:'통화',w:88,type:'cur'},
   {k:'price',label:'단가',w:94,type:'num',req:1},
   {k:'minQty',label:'최소수량',w:74,type:'num'},
@@ -5853,12 +5853,12 @@ const PM_PCOLS=[
 ];
 const PM_ICOLS=[
   {k:'photo',label:'사진',w:48,type:'photo'},
-  {k:'name',label:'품명',w:160,req:1},
-  {k:'itemCode',label:'품목코드',w:90},
-  {k:'spec',label:'스펙',w:160},
+  {k:'name',label:'품명',w:210,req:1},
+  {k:'itemCode',label:'품목코드',w:110},
+  {k:'spec',label:'스펙',w:230},
   {k:'currency',label:'통화',w:88,type:'cur'},
   {k:'price',label:'기본단가',w:94,type:'num'},
-  {k:'note',label:'비고',w:160}
+  {k:'note',label:'비고',w:230}
 ];
 const pmS={v:{rows:[],dirty:{},sel:{}},p:{rows:[],dirty:{},sel:{}},i:{rows:[],dirty:{},sel:{}}};
 let pmCloud=false;
@@ -5921,7 +5921,8 @@ function pmCellHtml(g,r,c){
   }
   if(c.type==='num')return '<td><input type="number" step="any" '+base+' value="'+prEsc(v==null?'':v)+'"></td>';
   if(c.type==='date')return '<td><input type="date" '+base+' value="'+prEsc(v||'')+'"></td>';
-  return '<td><input type="text" '+base+' value="'+prEsc(v==null?'':v)+'"></td>';
+  const tv=prEsc(v==null?'':v);
+  return '<td><input type="text" '+base+' value="'+tv+'"'+(tv?' title="'+tv+'"':'')+'></td>'; // 긴 내용은 마우스 오버로 전체 확인
 }
 function pmCount(g){
   const el=pmCountEl(g);if(!el)return;
