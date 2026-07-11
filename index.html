@@ -607,8 +607,8 @@
 #leather-report-page .lr-section-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--lr);letter-spacing:.5px}
 #leather-report-page .lr-grid{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}
 #leather-report-page .lr-grid label{font-size:12px;color:#6b7280;font-weight:500;padding:0 4px}
-#leather-report-page .lr-grid input[type=text],#leather-report-page .lr-grid input[type=date]{background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1a1a2e;width:100%;outline:none;transition:border .15s}
-#leather-report-page .lr-grid input:focus{border-color:var(--lr)}
+#leather-report-page .lr-grid input[type=text],#leather-report-page .lr-grid input[type=date],#leather-report-page .lr-grid select{background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1a1a2e;width:100%;outline:none;transition:border .15s}
+#leather-report-page .lr-grid input:focus,#leather-report-page .lr-grid select:focus{border-color:var(--lr)}
 #leather-report-page .lr-item{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px}
 #leather-report-page .lr-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 #leather-report-page .lr-item-num{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--lr)}
@@ -1179,7 +1179,20 @@ tbody tr:hover { background: #f7f9fc; }
             <label>보고일자</label>
             <input type="date" id="lrDate">
             <label>보고자</label>
-            <input type="text" id="lrReporter" placeholder="이름 입력">
+            <div style="display:flex;gap:8px">
+              <select id="lrReporterName" style="flex:1" onchange="lrReporterNameChange()">
+                <option value="">이름 선택</option>
+                <option>장도규</option>
+                <option>박교순</option>
+                <option>김민성</option>
+              </select>
+              <select id="lrReporterTitle" style="flex:1">
+                <option value="">직급 선택</option>
+                <option>공장장</option>
+                <option>해외영업팀장</option>
+                <option>해외영업사원</option>
+              </select>
+            </div>
             <label>보고 제목</label>
             <input type="text" id="lrTitle" placeholder="예: 회색 가죽 변경 보고">
           </div>
@@ -1246,6 +1259,7 @@ tbody tr:hover { background: #f7f9fc; }
         </div>
         <div id="crEmpty" class="lr-hint" style="display:none;padding:34px;text-align:center;color:var(--text3);background:var(--surface);border:1px dashed var(--border);border-radius:12px">아직 저장된 변경 보고가 없습니다. 위 탭에서 보고를 작성하고 🖨️ 인쇄하면 자동으로 기록됩니다.</div>
         <div id="crList" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div id="crPager" style="display:none;gap:10px;align-items:center;justify-content:center;margin-top:14px;font-size:12px;color:var(--text2)"></div>
       </div>
     </div>
     <div style="text-align:center;padding:1.2rem;font-size:12px;color:var(--text2);letter-spacing:.5px;font-family:'Barlow',sans-serif;border-top:1px solid var(--border);margin-top:1rem;background:#fff;">
@@ -6867,9 +6881,13 @@ function lrFmtDate(d){
   return dt.getFullYear()+'.'+(dt.getMonth()+1)+'.'+dt.getDate();
 }
 function lrEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
-function lrFastPrint(){
+/* 보고자 이름/직급 — 이름 선택 시 직급 자동 매칭(수동 변경 가능) */
+const LR_REPORTER_TITLE={'장도규':'공장장','박교순':'해외영업팀장','김민성':'해외영업사원'};
+function lrReporterNameChange(){const n=(document.getElementById('lrReporterName')||{}).value||'';const t=LR_REPORTER_TITLE[n];const sel=document.getElementById('lrReporterTitle');if(t&&sel)sel.value=t;}
+function lrGetReporter(){const n=((document.getElementById('lrReporterName')||{}).value||'').trim();const t=((document.getElementById('lrReporterTitle')||{}).value||'').trim();return n?(t?n+' ('+t+')':n):t;}
+function lrBuildLeatherDoc(){
   const date=document.getElementById('lrDate').value||'';
-  const reporter=document.getElementById('lrReporter').value||'';
+  const reporter=lrGetReporter();
   const title=document.getElementById('lrTitle').value||'가죽 변경 보고';
   const items=document.querySelectorAll('#lrItemsWrap .lr-item');
   let itemsHtml='';
@@ -6995,14 +7013,16 @@ function lrFastPrint(){
     </style>
   `;
   const docHtml='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>44 보고 - 가죽변경 보고</title>'+printStyles+'</head><body>'+content+'</body></html>';
-  const winName='lrPrintWin_'+Date.now();
-  const w=window.open('',winName,'width=820,height=920,scrollbars=yes');
-  w.document.open();
-  w.document.write(docHtml);
-  w.document.close();
-  w.focus();
+  return {docHtml:docHtml,date:date,reporter:reporter,title:title};
+}
+function lrFastPrint(){
+  const d=lrBuildLeatherDoc();
+  // 기록을 먼저 저장 (팝업이 차단돼도 기록은 남도록)
+  try{crRecordReport('leather',{date:d.date,reporter:d.reporter,title:d.title},d.docHtml);}catch(e){console.error('[cr] record error',e);}
+  const w=window.open('','lrPrintWin_'+Date.now(),'width=820,height=920,scrollbars=yes');
+  if(!w){alert('팝업이 차단되어 인쇄 창을 열지 못했습니다. 브라우저에서 팝업을 허용해주세요.\n(변경 보고 기록에는 이미 저장되었습니다.)');return;}
+  w.document.open();w.document.write(d.docHtml);w.document.close();w.focus();
   setTimeout(function(){w.print();},700);
-  try{crRecordReport('leather',{date:date,reporter:reporter,title:title},docHtml);}catch(e){console.error('[cr] record error',e);}
 }
 // 초기화: 오늘 날짜 + 기본 1개 항목
 /* ── 참고자료 옵션(색상·원산지·회사·가죽종류) 관리 + datalist ── */
@@ -7089,6 +7109,7 @@ window.lrDragLeave=lrDragLeave;
 window.lrHandleDrop=lrHandleDrop;
 window.lrClearPhoto=lrClearPhoto;
 window.lrFastPrint=lrFastPrint;
+window.lrReporterNameChange=lrReporterNameChange;
 
 /* ── Sub-tab switching (변경 보고: 가죽 / 스펙) ── */
 function lrSwitchSubtab(name){
@@ -7100,6 +7121,7 @@ function lrSwitchSubtab(name){
     document.getElementById('lrSubtabLeather').classList.add('active');
   }else if(name==='records'){
     document.getElementById('lrSubtabRecords').classList.add('active');
+    if(typeof crPage!=='undefined')crPage=1; // 탭 열 때 최신(1페이지)부터
     if(typeof crRender==='function')crRender();
   }else{
     document.getElementById('lrSubtabSpec').classList.add('active');
@@ -7135,7 +7157,10 @@ function crBadge(){
 }
 // 보고 인쇄 시 호출 — 전체 문서 HTML을 그대로 저장해두면 언제든 재인쇄 가능
 function crRecordReport(kind,meta,docHtml){
-  const rec={id:crNewId(),kind:kind,date:(meta&&meta.date)||'',reporter:(meta&&meta.reporter)||'',title:(meta&&meta.title)||(kind==='spec'?'스펙 변경 보고':'가죽 변경 보고'),doc:String(docHtml||''),createdTs:Date.now()};
+  const doc=String(docHtml||'');
+  // 중복 방지: 직전 기록과 종류+내용이 같고 15초 이내면 새로 만들지 않음 (반영 후 인쇄 등 이중 트리거)
+  if(crRecords[0]&&crRecords[0].kind===kind&&crRecords[0].doc===doc&&(Date.now()-(crRecords[0].createdTs||0))<15000)return;
+  const rec={id:crNewId(),kind:kind,date:(meta&&meta.date)||'',reporter:(meta&&meta.reporter)||'',title:(meta&&meta.title)||(kind==='spec'?'스펙 변경 보고':'가죽 변경 보고'),doc:doc,createdTs:Date.now()};
   crRecords.unshift(rec);
   crSaveLocal();               // 항상 로컬에 먼저 안전 저장 (클라우드 실패해도 보존)
   if(crCloud){
@@ -7147,6 +7172,8 @@ function crRecordReport(kind,meta,docHtml){
   }
   crBadge();crRender();
 }
+let crPage=1;
+const CR_PAGE_SIZE=10;
 function crRender(){
   const list=document.getElementById('crList');if(!list)return;
   const kind=(document.getElementById('crFilterKind')||{}).value||'';
@@ -7156,6 +7183,21 @@ function crRender(){
   if(q)rows=rows.filter(r=>[r.title,r.reporter,r.date].some(v=>String(v||'').toLowerCase().indexOf(q)>=0));
   rows.sort((a,b)=>(b.createdTs||0)-(a.createdTs||0));
   const empty=document.getElementById('crEmpty');if(empty)empty.style.display=rows.length?'none':'block';
+  // 10개씩 페이지네이션
+  const totalRows=rows.length;const totalPages=Math.max(1,Math.ceil(totalRows/CR_PAGE_SIZE));
+  if(crPage>totalPages)crPage=totalPages;if(crPage<1)crPage=1;
+  rows=rows.slice((crPage-1)*CR_PAGE_SIZE,crPage*CR_PAGE_SIZE);
+  const pager=document.getElementById('crPager');
+  if(pager){
+    if(totalRows<=CR_PAGE_SIZE)pager.style.display='none';
+    else{
+      pager.style.display='flex';
+      const btn='border:1px solid var(--border);background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text)';
+      pager.innerHTML='<button type="button" data-crpage="prev"'+(crPage<=1?' disabled':'')+' style="'+btn+(crPage<=1?';opacity:.4;cursor:default':'')+'">◀ 이전</button>'
+        +'<span><b style="color:var(--text)">'+crPage+'</b> / '+totalPages+' 페이지 <span style="color:var(--text3)">(총 '+totalRows+'건)</span></span>'
+        +'<button type="button" data-crpage="next"'+(crPage>=totalPages?' disabled':'')+' style="'+btn+(crPage>=totalPages?';opacity:.4;cursor:default':'')+'">다음 ▶</button>';
+    }
+  }
   list.innerHTML=rows.map(r=>{
     const badge=r.kind==='spec'?'<span style="background:#eef2ff;color:#4338ca;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">⚙️ 스펙</span>':'<span style="background:#ecfdf5;color:#047857;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">🎨 가죽</span>';
     const when=r.date?lrEsc(r.date):(r.createdTs?new Date(r.createdTs).toLocaleDateString('ko-KR'):'');
@@ -7202,7 +7244,9 @@ function crApplyRealtime(payload){
   crRecords=crLoadLocal();crResort();crBadge();
   const list=document.getElementById('crList');
   if(list)list.addEventListener('click',e=>{const b=e.target.closest('button[data-cract]');if(!b)return;const id=b.dataset.id;if(b.dataset.cract==='view')crView(id);else if(b.dataset.cract==='del')crDelete(id);});
-  ['crFilterKind','crSearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',crRender);});
+  ['crFilterKind','crSearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',()=>{crPage=1;crRender();});}); // 필터/검색 시 1페이지부터
+  const pager=document.getElementById('crPager');
+  if(pager)pager.addEventListener('click',e=>{const b=e.target.closest('button[data-crpage]');if(!b||b.disabled)return;crPage+=(b.dataset.crpage==='next'?1:-1);crRender();});
   const c=crSupaClient();if(!c){crBadge();return;}
   c.from(CR_TABLE).select('*').then(async res=>{
     if(res.error){console.warn('[cr] 공유 테이블 없음 — change-reports.sql 실행 필요',res.error.message||res.error);crCloud=false;crBadge();return;}
@@ -7262,7 +7306,7 @@ async function lrApplyToLeather(){
   }
   const plan=lrCollectLeatherPlan();
   if(!plan.length){alert('반영할 참고자료가 없습니다.\n변경 항목에 「변경 후」 색상/회사를 입력하세요.');return;}
-  const author=(document.getElementById('lrReporter')||{}).value.trim()||'변경보고';
+  const author=lrGetReporter()||'변경보고';
   const list=(typeof lmGetLeathers==='function'&&Array.isArray(lmGetLeathers()))?lmGetLeathers():[];
   const actions=plan.map(p=>{
     const af=p.after||{};const bf=p.before||af;
@@ -7307,7 +7351,9 @@ async function lrApplyToLeather(){
     }catch(e){console.error('[lr→lm] apply error',e);fail++;}
   }
   if(typeof lmRender==='function')try{lmRender();}catch(e){}
-  alert('가죽 변경 페이지 반영 완료: '+ok+'건'+(fail?(' · 실패 '+fail+'건'):'')+'\n「가죽 변경」 탭에서 확인하세요.');
+  // 반영에 성공하면 「변경 보고 기록」에도 자동 저장 (인쇄하지 않아도 기록이 남도록)
+  if(ok>0){try{const d=lrBuildLeatherDoc();crRecordReport('leather',{date:d.date,reporter:d.reporter,title:d.title},d.docHtml);}catch(e){console.error('[cr] record on apply',e);}}
+  alert('가죽 변경 페이지 반영 완료: '+ok+'건'+(fail?(' · 실패 '+fail+'건'):'')+'\n「가죽 변경」 탭에서 확인하고, 「변경 보고 기록」에 자동 저장되었습니다.');
 }
 window.lrApplyToLeather=lrApplyToLeather;
 
@@ -7539,14 +7585,12 @@ function srFastPrint(){
     </style>
   `;
   const docHtml='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>44 보고 - 스펙변경 보고</title>'+printStyles+'</head><body>'+content+'</body></html>';
-  const winName='srPrintWin_'+Date.now();
-  const w=window.open('',winName,'width=820,height=920,scrollbars=yes');
-  w.document.open();
-  w.document.write(docHtml);
-  w.document.close();
-  w.focus();
-  setTimeout(function(){w.print();},700);
+  // 기록을 먼저 저장 (팝업이 차단돼도 기록은 남도록)
   try{crRecordReport('spec',{date:date,reporter:reporter,title:title},docHtml);}catch(e){console.error('[cr] record error',e);}
+  const w=window.open('','srPrintWin_'+Date.now(),'width=820,height=920,scrollbars=yes');
+  if(!w){alert('팝업이 차단되어 인쇄 창을 열지 못했습니다. 브라우저에서 팝업을 허용해주세요.\n(변경 보고 기록에는 이미 저장되었습니다.)');return;}
+  w.document.open();w.document.write(docHtml);w.document.close();w.focus();
+  setTimeout(function(){w.print();},700);
 }
 
 // 초기화: 오늘 날짜 + 기본 1개 항목
