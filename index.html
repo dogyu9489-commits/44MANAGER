@@ -619,6 +619,15 @@
 #leather-report-page .lr-photo-title{font-size:11px;font-weight:600;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px}
 #leather-report-page .lr-photo-area{min-height:140px;border:2px dashed #d1d5db;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff;cursor:pointer;overflow:hidden;position:relative;transition:border-color .15s}
 #leather-report-page .lr-photo-area:hover{border-color:var(--lr)}
+#leather-report-page .lr-load-leather{margin-top:7px;width:100%;border:1px solid var(--lr,#2563eb);background:#fff;color:var(--lr,#2563eb);border-radius:7px;padding:6px 8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .13s}
+#leather-report-page .lr-load-leather:hover{background:#eff4fb}
+#lrLeatherPick .lp-card{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:#fff;cursor:pointer;text-align:left;padding:0;font-family:inherit;transition:box-shadow .13s,border-color .13s}
+#lrLeatherPick .lp-card:hover{border-color:var(--lr,#2563eb);box-shadow:0 6px 16px rgba(37,99,235,.15)}
+#lrLeatherPick .lp-thumb{width:100%;height:100px;object-fit:cover;background:#f1f5f9;display:block}
+#lrLeatherPick .lp-thumb.none{display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:26px}
+#lrLeatherPick .lp-meta{padding:8px 10px}
+#lrLeatherPick .lp-color{font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#lrLeatherPick .lp-co{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 #leather-report-page .lr-photo-area img{max-width:100%;max-height:180px;object-fit:contain}
 #leather-report-page .lr-photo-plus{color:#9ca3af;font-size:36px;font-weight:300;line-height:1}
 #leather-report-page .lr-photo-clear{position:absolute;top:4px;right:4px;background:rgba(255,255,255,.9);border:1px solid #e5e7eb;color:#ef4444;border-radius:50%;width:22px;height:22px;display:none;align-items:center;justify-content:center;cursor:pointer;font-size:12px;padding:0}
@@ -1244,6 +1253,18 @@ tbody tr:hover { background: #f7f9fc; }
     </div>
   </div>
 </div><!-- /page-leather-report -->
+
+<!-- 변경 전 사진: 등록된 가죽에서 불러오기 팝업 -->
+<div id="lrLeatherPick" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border-radius:16px;max-width:640px;width:100%;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(15,23,42,.3)">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <div style="font-weight:700;font-size:15px;color:var(--text)">🗂 등록된 가죽에서 「변경 전」 불러오기</div>
+      <button type="button" id="lrLeatherPickClose" style="margin-left:auto;border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2)">닫기</button>
+    </div>
+    <div style="padding:12px 18px 6px"><input type="text" id="lrLeatherPickSearch" placeholder="🔍 색상 · 회사 검색" autocomplete="off" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;color:var(--text);outline:none;background:#fff;box-sizing:border-box"></div>
+    <div id="lrLeatherPickGrid" style="padding:8px 18px 18px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px"></div>
+  </div>
+</div>
 
 <!-- PAGE: ORDER SHEET -->
 <div id="page-order" class="page-content">
@@ -6667,6 +6688,7 @@ function lrAddItem(){
           <button type="button" class="lr-photo-clear" id="lrPhotoClear${n}a" onclick="lrClearPhoto(${n},'a');event.stopPropagation()">✕</button>
         </div>
         <input type="file" accept="image/*" id="lrPhotoInput${n}a" style="display:none" onchange="lrHandlePhoto(${n},'a')">
+        <button type="button" class="lr-load-leather" onclick="lrPickLeather(${n})">🗂 등록 가죽에서 불러오기</button>
       </div>
       <div class="lr-arrow">→</div>
       <div class="lr-photo">
@@ -6752,6 +6774,62 @@ function lrAddGrade(container){
 function lrRemoveRefRow(btn){
   const tr=btn.closest('tr');if(tr)tr.remove();
 }
+/* ── 변경 전 사진: 「가죽 변경」에 등록된 이미지 불러오기 ── */
+let lrPickN=null;
+function lrSetPhotoSrc(n,ab,src){
+  const img=document.getElementById('lrPhotoImg'+n+ab);if(!img)return;
+  img.src=src;img.style.display='block';
+  const plus=document.getElementById('lrPhotoPlus'+n+ab);if(plus)plus.style.display='none';
+  const clr=document.getElementById('lrPhotoClear'+n+ab);if(clr)clr.style.display='flex';
+}
+function lrPickLeather(n){
+  lrPickN=n;
+  const s=document.getElementById('lrLeatherPickSearch');if(s)s.value='';
+  lrRenderLeatherPick('');
+  const m=document.getElementById('lrLeatherPick');if(m)m.style.display='flex';
+}
+function lrClosePick(){const m=document.getElementById('lrLeatherPick');if(m)m.style.display='none';lrPickN=null;}
+function lrRenderLeatherPick(q){
+  const grid=document.getElementById('lrLeatherPickGrid');if(!grid)return;
+  const all=(typeof lmGetLeathers==='function'&&Array.isArray(lmGetLeathers()))?lmGetLeathers():[];
+  q=(q||'').trim().toLowerCase();
+  let rows=all.slice();
+  if(q)rows=rows.filter(l=>[l.color,l.company_name].some(v=>String(v||'').toLowerCase().indexOf(q)>=0));
+  if(!rows.length){grid.innerHTML='<div style="grid-column:1/-1;color:var(--text2);font-size:13px;padding:24px;text-align:center">'+(all.length?'검색 결과가 없습니다.':'등록된 가죽이 없습니다. 「가죽 변경」에서 먼저 등록하세요.')+'</div>';return;}
+  grid.innerHTML=rows.map(l=>{
+    const ph=prSafeImg(l.image_url||'');
+    const thumb=ph?('<img class="lp-thumb" src="'+ph+'" alt="">'):('<div class="lp-thumb none">📦</div>');
+    return '<button type="button" class="lp-card" data-lid="'+lrEsc(l.id)+'">'+thumb
+      +'<div class="lp-meta"><div class="lp-color">'+lrEsc(l.color||'(색상 없음)')+'</div>'
+      +'<div class="lp-co">'+lrEsc(l.company_name||'')+'</div></div></button>';
+  }).join('');
+}
+function lrChooseLeather(id){
+  const n=lrPickN;if(n==null)return;
+  const all=(typeof lmGetLeathers==='function'&&Array.isArray(lmGetLeathers()))?lmGetLeathers():[];
+  const l=all.find(x=>x.id===id);if(!l)return;
+  const ph=prSafeImg(l.image_url||'');
+  if(ph)lrSetPhotoSrc(n,'a',ph);
+  // 변경 전 참고자료 행에 회사/색상 자동 채움(빈 칸만) — 반영 시 매칭 정확도 ↑
+  const tbody=document.getElementById('lrRefBody'+n);
+  if(tbody){
+    let target=null;
+    tbody.querySelectorAll('tr').forEach(tr=>{if(target)return;const t=tr.querySelector('.lr-r-type');if(t&&t.value==='before'){const co=tr.querySelector('.lr-r-company'),cl=tr.querySelector('.lr-r-color');if((!co||!co.value.trim())&&(!cl||!cl.value.trim()))target=tr;}});
+    if(!target){lrAddRefRow(n,'before');const trs=tbody.querySelectorAll('tr');target=trs[trs.length-1];}
+    if(target){const co=target.querySelector('.lr-r-company'),cl=target.querySelector('.lr-r-color');if(co&&!co.value.trim())co.value=l.company_name||'';if(cl&&!cl.value.trim())cl.value=l.color||'';}
+  }
+  if(!ph)alert('선택한 가죽에 등록된 사진이 없어 회사·색상만 채웠습니다.\n변경 전 사진은 직접 업로드할 수 있어요.');
+  lrClosePick();
+}
+(function lrPickInit(){
+  const grid=document.getElementById('lrLeatherPickGrid');
+  if(grid)grid.addEventListener('click',e=>{const b=e.target.closest('.lp-card[data-lid]');if(b)lrChooseLeather(b.dataset.lid);});
+  const cl=document.getElementById('lrLeatherPickClose');if(cl)cl.addEventListener('click',lrClosePick);
+  const m=document.getElementById('lrLeatherPick');if(m)m.addEventListener('click',e=>{if(e.target===m)lrClosePick();});
+  const s=document.getElementById('lrLeatherPickSearch');if(s)s.addEventListener('input',()=>lrRenderLeatherPick(s.value));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('lrLeatherPick')&&document.getElementById('lrLeatherPick').style.display==='flex')lrClosePick();});
+})();
+window.lrPickLeather=lrPickLeather;
 function lrShowPhotoFile(file,n,ab){
   if(!file||!/^image\//.test(file.type||''))return;
   const reader=new FileReader();
