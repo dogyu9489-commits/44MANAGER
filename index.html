@@ -889,6 +889,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):focus, select:foc
 .report-subnav button{border:1px solid var(--border);background:var(--surface);color:var(--text2);border-radius:9px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .13s}
 .report-subnav button:hover{background:var(--bg);color:var(--text)}
 .report-subnav button.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
+.report-subnav .psub-home{margin-left:auto;color:var(--text3)}
 
 /* 카드·테이블 — 얕은 그림자 층 */
 .stat, .table-wrap, .pa-table, .hist-board-card { box-shadow: var(--shadow-sm); }
@@ -954,8 +955,8 @@ tbody tr:hover { background: #f7f9fc; }
 
 <nav class="page-nav">
   <button class="page-tab active" data-page="posts">게시글</button>
-  <button class="page-tab" data-page="leather-mgmt">보고</button>
   <button class="page-tab" data-page="order">오더 시트</button>
+  <button class="page-tab" data-page="report-hub">보고</button>
   <button class="page-tab" data-page="purchase-hub">구매</button>
   <button class="page-tab" data-page="pdf-analyzer">추가비용 분석</button>
   <button class="page-tab" data-page="order-classify">오더유형 분류</button>
@@ -981,6 +982,36 @@ tbody tr:hover { background: #f7f9fc; }
   </div>
 </div>
 </div><!-- /page-posts -->
+
+<!-- PAGE: 보고 허브 -->
+<div id="page-report-hub" class="page-content">
+  <div class="phub-wrap">
+    <h1 class="phub-title">보고 업무</h1>
+    <p class="phub-sub">아래에서 진행할 업무를 선택하세요. 가죽·스펙 변경 보고와 이력 관리가 하나로 연결됩니다.</p>
+    <div class="phub-cards">
+      <button type="button" class="phub-card" onclick="reportGo('leather-mgmt')">
+        <div class="phub-ico">🗂</div>
+        <div class="phub-name">가죽 변경</div>
+        <div class="phub-desc">자재별 색상·업체 변경 이력을 등록·관리합니다.</div>
+      </button>
+      <button type="button" class="phub-card" onclick="reportGo('leather')">
+        <div class="phub-ico">🎨</div>
+        <div class="phub-name">가죽 변경 보고</div>
+        <div class="phub-desc">가죽 변경 전/후를 사진·참고자료와 함께 보고서로 작성·인쇄합니다.</div>
+      </button>
+      <button type="button" class="phub-card" onclick="reportGo('spec')">
+        <div class="phub-ico">⚙️</div>
+        <div class="phub-name">스펙 변경 보고</div>
+        <div class="phub-desc">글러브 등 스펙 변경 내용을 보고서로 작성·인쇄합니다.</div>
+      </button>
+      <button type="button" class="phub-card" onclick="reportGo('records')">
+        <div class="phub-ico">📋</div>
+        <div class="phub-name">변경 보고 기록</div>
+        <div class="phub-desc">인쇄한 가죽·스펙 변경 보고가 자동으로 쌓입니다. 언제든 보기·재인쇄.</div>
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- PAGE: 가죽 변경 -->
 <div id="page-leather-mgmt" class="page-content">
@@ -3285,24 +3316,30 @@ const REPORT_PAGES=[
 ];
 function reportRenderSubnav(cur){
   document.querySelectorAll('.report-subnav').forEach(bar=>{
-    bar.innerHTML=REPORT_PAGES.map(p=>'<button type="button" data-rgo="'+p.id+'"'+(p.id===cur?' class="active"':'')+'>'+p.label+(p.id==='records'?' <span class="cr-count-badge" style="font-size:11px;opacity:.75"></span>':'')+'</button>').join('');
+    bar.innerHTML=REPORT_PAGES.map(p=>'<button type="button" data-rgo="'+p.id+'"'+(p.id===cur?' class="active"':'')+'>'+p.label+(p.id==='records'?' <span class="cr-count-badge" style="font-size:11px;opacity:.75"></span>':'')+'</button>').join('')
+      +'<button type="button" class="psub-home" data-rgo="__hub">📋 보고 홈</button>';
   });
   if(typeof crBadge==='function')crBadge(); // 기록 카운트 뱃지 다시 채움
 }
 function reportGo(name){
+  if(name==='__hub'){ // 허브 카드 화면으로
+    document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
+    const hubTab=document.querySelector('.page-tab[data-page="report-hub"]');if(hubTab)hubTab.classList.add('active');
+    const hub=document.getElementById('page-report-hub');if(hub)hub.classList.add('active');
+    window.scrollTo(0,0);return;
+  }
   const isMgmt=(name==='leather-mgmt');
   document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
   document.getElementById(isMgmt?'page-leather-mgmt':'page-leather-report').classList.add('active');
   // 상단 네비는 '보고' 탭만 활성 유지
   document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
-  const rtab=document.querySelector('.page-tab[data-page="leather-mgmt"]');if(rtab)rtab.classList.add('active');
+  const rtab=document.querySelector('.page-tab[data-page="report-hub"]');if(rtab)rtab.classList.add('active');
   if(!isMgmt&&typeof lrSwitchSubtab==='function')lrSwitchSubtab(name);
   reportRenderSubnav(name);
   window.scrollTo(0,0);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('.report-subnav button[data-rgo]');if(b)reportGo(b.dataset.rgo);});
-// 상단 '보고' 탭(=가죽 변경 페이지)을 직접 누르면 기본 랜딩 상태로 서브내비 초기화
-(function(){const rtab=document.querySelector('.page-tab[data-page="leather-mgmt"]');if(rtab)rtab.addEventListener('click',()=>reportRenderSubnav('leather-mgmt'));})();
 reportRenderSubnav('leather-mgmt');
 window.reportGo=reportGo;
 
