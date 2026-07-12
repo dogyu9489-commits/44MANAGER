@@ -343,6 +343,61 @@
     color: #1c3a5e;
     border-bottom-color: #1c3a5e;
   }
+
+  /* ── KPI 페이지 (최종관리자 전용) ── */
+  #page-kpi .kpi-wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
+  #page-kpi .kpi-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  #page-kpi .kpi-title{font-size:22px;font-weight:800;color:var(--text)}
+  #page-kpi .kpi-src{font-size:12px;color:var(--text3)}
+  #page-kpi .kpi-note{font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin:10px 0 18px;display:inline-block}
+  #page-kpi .kpi-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:22px}
+  #page-kpi .kpi-tile{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:15px 17px;box-shadow:var(--shadow-sm)}
+  #page-kpi .kpi-tile .tl{font-size:11.5px;font-weight:600;color:var(--text2);letter-spacing:.2px;margin-bottom:6px}
+  #page-kpi .kpi-tile .tv{font-size:21px;font-weight:800;color:var(--text);line-height:1.15;white-space:nowrap}
+  #page-kpi .kpi-tile .ts{font-size:11.5px;color:var(--text3);margin-top:3px}
+  #page-kpi .kpi-tile .tv.neg{color:#d03b3b}
+  #page-kpi .kpi-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  #page-kpi .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow-sm)}
+  #page-kpi .kpi-card.wide{grid-column:1/-1}
+  #page-kpi .kc-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+  #page-kpi .kc-sub{font-size:11.5px;color:var(--text3);margin-bottom:12px}
+  #page-kpi .kc-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  #page-kpi .kc-legend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+  #page-kpi .kc-legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+  #page-kpi .kx{position:relative;height:230px;margin-top:6px}
+  #page-kpi .kx .grid,#page-kpi .kxd .grid{position:absolute;left:44px;right:0;border-top:1px solid #e1e0d9;height:0}
+  #page-kpi .gl{position:absolute;left:-44px;width:40px;text-align:right;font-size:10.5px;color:#898781;transform:translateY(-6px)}
+  #page-kpi .kx .cols{position:absolute;left:44px;right:0;top:0;bottom:22px;display:flex;align-items:flex-end}
+  #page-kpi .kx .col{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;position:relative;cursor:default;border-radius:6px}
+  #page-kpi .kx .col:hover{background:rgba(28,58,94,.05)}
+  #page-kpi .kx .bar{width:22px;border-radius:4px 4px 0 0;min-height:2px}
+  #page-kpi .kx .xlab,#page-kpi .kxd .xlab{position:absolute;left:44px;right:0;bottom:0;display:flex}
+  #page-kpi .kx .xlab span,#page-kpi .kxd .xlab span{flex:1;text-align:center;font-size:11px;color:#898781}
+  #page-kpi .kx .base{position:absolute;left:44px;right:0;bottom:22px;border-top:1px solid #c3c2b7}
+  #page-kpi .kxd{position:relative;height:210px;margin-top:6px}
+  #page-kpi .kxd .zero{position:absolute;left:44px;right:0;border-top:1px solid #c3c2b7;height:0}
+  #page-kpi .kxd .cols{position:absolute;left:44px;right:0;top:0;bottom:22px;display:flex}
+  #page-kpi .kxd .col{flex:1;position:relative;cursor:default;border-radius:6px}
+  #page-kpi .kxd .col:hover{background:rgba(28,58,94,.05)}
+  #page-kpi .kxd .bar{position:absolute;left:50%;transform:translateX(-50%);width:24px}
+  #page-kpi .kxd .bar.pos{border-radius:4px 4px 0 0}
+  #page-kpi .kxd .bar.neg{border-radius:0 0 4px 4px}
+  #page-kpi .kh-row{display:grid;grid-template-columns:170px 1fr 100px;gap:10px;align-items:center;margin-bottom:8px}
+  #page-kpi .kh-cat{font-size:12px;color:var(--text2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-kpi .kh-track{height:16px;display:flex;align-items:center}
+  #page-kpi .kh-bar{height:14px;border-radius:0 4px 4px 0;background:#2a78d6;min-width:2px}
+  #page-kpi .kh-val{font-size:11.5px;color:var(--text2);white-space:nowrap}
+  #page-kpi table.kt{width:100%;border-collapse:collapse;font-size:12px}
+  #page-kpi table.kt th{background:#f1f5f9;color:#334155;font-weight:700;padding:7px 9px;border:1px solid #e2e8f0;text-align:center;white-space:nowrap}
+  #page-kpi table.kt td{padding:6px 9px;border:1px solid #e2e8f0;color:var(--text);text-align:right;white-space:nowrap}
+  #page-kpi table.kt td:first-child{text-align:center;color:var(--text2)}
+  #page-kpi table.kt td.l{text-align:left}
+  #page-kpi table.kt tr:nth-child(even) td{background:#fafbfc}
+  #page-kpi .kt-wrap{overflow-x:auto}
+  #page-kpi .kpi-msel{border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);outline:none;cursor:pointer}
+  #kpiTip{position:fixed;z-index:900;display:none;background:#132033;color:#fff;border-radius:8px;padding:8px 11px;font-size:12px;line-height:1.5;pointer-events:none;box-shadow:0 8px 24px rgba(15,23,42,.35);max-width:260px}
+  #kpiTip b{color:#9ec5f4}
+
   #page-budget {
     padding: 0;
     height: calc(100vh - 56px - 49px);
@@ -974,6 +1029,7 @@ tbody tr:hover { background: #f7f9fc; }
   <button class="page-tab" data-page="order-mrp">기성 오더 분석</button>
   <button class="page-tab" data-page="pdf-edit">PDF 사진넣기</button>
   <button class="page-tab admin-only" data-page="budget" style="display:none">💰 예산 보고서 <span style="font-size:10px;opacity:0.7;margin-left:2px">🔒</span></button>
+  <button class="page-tab admin-only" data-page="kpi" style="display:none">📊 KPI <span style="font-size:10px;opacity:0.7;margin-left:2px">🔒</span></button>
 </nav>
 
 <!-- PAGE: 게시글 -->
@@ -4793,6 +4849,60 @@ window.schSelectColor = schSelectColor;
   <div class="loading-budget" id="budgetLoading"><div class="spin"></div>예산 보고서를 불러오는 중...</div>
   <iframe id="budgetFrame" style="display:none" title="예산 보고서"></iframe>
 </div>
+
+<!-- PAGE: KPI (최종관리자 전용) -->
+<div id="page-kpi" class="page-content">
+  <div class="kpi-wrap">
+    <div class="kpi-head">
+      <div class="kpi-title">📊 경영 KPI — 2026</div>
+      <div class="kpi-src">원본: EXPENSES - YR.2026.xlsx · 1~6월 · 기준일 2026-07-12 · 🔒 최종관리자 전용</div>
+    </div>
+    <div class="kpi-note" id="kpiDataNote" style="display:none"></div>
+    <div class="kpi-tiles" id="kpiTiles"></div>
+    <div class="kpi-cards">
+      <div class="kpi-card">
+        <div class="kc-title">월별 수입 vs 지출</div>
+        <div class="kc-sub">단위: ₱ 백만 (PHP)</div>
+        <div class="kc-legend"><span><i style="background:#1baf7a"></i>수입</span><span><i style="background:#2a78d6"></i>지출</span></div>
+        <div class="kx" id="kpiChartIE"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kc-title">월별 순이익 (수입 − 지출)</div>
+        <div class="kc-sub">단위: ₱ 백만 · 파랑 = 흑자, 빨강 = 적자</div>
+        <div class="kxd" id="kpiChartNet"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kc-title">본사 송금 (Head Office → 법인)</div>
+        <div class="kc-sub">단위: USD · 마우스를 올리면 페소 환산·건수 표시</div>
+        <div class="kx" id="kpiChartHQ"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kc-title">지출 구성 — 고정비 vs 변동비</div>
+        <div class="kc-sub">단위: ₱ 백만 · 한 달 지출을 고정/변동으로 분해</div>
+        <div class="kc-legend"><span><i style="background:#256abf"></i>고정비</span><span><i style="background:#86b6ef"></i>변동비</span></div>
+        <div class="kx" id="kpiChartFV"></div>
+      </div>
+      <div class="kpi-card wide">
+        <div class="kc-title">지출 카테고리 TOP — 1~6월 누적</div>
+        <div class="kc-sub">고정비+변동비 합산 · 단위: ₱</div>
+        <div id="kpiChartCat" style="margin-top:10px"></div>
+      </div>
+      <div class="kpi-card wide">
+        <div class="kc-title">월별 요약표</div>
+        <div class="kt-wrap"><table class="kt" id="kpiTable"></table></div>
+      </div>
+      <div class="kpi-card wide">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+          <div class="kc-title" style="margin:0">월 상세 내역</div>
+          <select class="kpi-msel" id="kpiMonthSel"></select>
+        </div>
+        <div id="kpiDetail"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="kpiTip"></div>
+
 
 <!-- PAGE: PDF 사진넣기 (내장 도구 — 탭 첫 클릭 시 로드) -->
 <div id="page-pdf-edit" class="page-content">
@@ -9631,6 +9741,150 @@ $('mrp-dl').addEventListener('click',()=>{
 
 renderAll();
 })();
+</script>
+
+
+<script>
+/* ── KPI 페이지 (최종관리자 전용) — 데이터: EXPENSES - YR.2026.xlsx 추출본.
+   갱신: 엑셀 갱신 후 KPI_DATA 상수를 다시 생성해 교체. ── */
+const KPI_DATA={"year": 2026, "updated": "2026-07-12", "months": [{"label": "1월", "sheet": "JAN-2026", "income": 30155817.99, "expenses": 12796658.61, "net": 17359159.38, "fixed": 10490022.3, "variable": 2306636.31, "hqUsd": 224500, "hqPhp": 13290750, "wires": [{"date": "01-08-2026", "usd": 54500, "php": 3220950}, {"date": "01-14-2026", "usd": 70000, "php": 4153800}, {"date": "01-19-2026", "usd": 50000, "php": 2965500}, {"date": "01-27-2026", "usd": 50000, "php": 2950500}], "fixedItems": [{"cat": "Salaries and Wages", "desc": "Employee Salaries - Agency", "amt": 6398641.42}, {"cat": "Salaries and Wages", "desc": "Employee Salaries - Direct", "amt": 1294917.93}, {"cat": "Employees Benefits", "desc": "4TH Quarter Bonus", "amt": 149000}, {"cat": "Employees Benefits", "desc": "Special Bonus", "amt": 20000}, {"cat": "Employees Benefits", "desc": "Employees Meals/Water", "amt": 540323.01}, {"cat": "Employees Benefits", "desc": "Shoes/Uniforms/Wifi", "amt": 88360}, {"cat": "Employees Benefits", "desc": "Maternity Benefits", "amt": 52500}, {"cat": "Employees Benefits", "desc": "Medicine/Office Supplies", "amt": 198960.7}, {"cat": "Labor Contract", "desc": "Security Guards", "amt": 249335}, {"cat": "Utilities", "desc": "Electricity and Water", "amt": 329142.83}, {"cat": "Utilities", "desc": "Internet Services", "amt": 5798.22}, {"cat": "Benefits/Insurance", "desc": "Government Contribution", "amt": 126570}, {"cat": "Rent/Mortgage", "desc": "Warehouse Rental", "amt": 833034.83}, {"cat": "Miscellaneous", "desc": "Common Dues", "amt": 33470}, {"cat": "Taxes & Licences", "desc": "BIR - Expanded Withholding Tax", "amt": 169968.36}], "varItems": [{"cat": "Office Supplies", "desc": "Stationery and Printing", "amt": 12934}, {"cat": "Professional Fees", "desc": "Legal Services/Doctor", "amt": 17200}, {"cat": "Professional Fees", "desc": "Acctg. Auditor/Engineer", "amt": 50562.57}, {"cat": "Repairs and Maintenance", "desc": "Annex Building", "amt": 99580}, {"cat": "Repairs and Maintenance", "desc": "Cars preventive maintenance", "amt": 20580}, {"cat": "Repairs and Maintenance", "desc": "Warehouse Maintenance", "amt": 117428.05}, {"cat": "Utilities", "desc": "Janitorial Expenses", "amt": 130340}, {"cat": "Travel Expenses", "desc": "Transportation", "amt": 129594.4}, {"cat": "Fuel and Oil", "desc": "Gas Expenses", "amt": 119129}, {"cat": "Freight In", "desc": "Broker", "amt": 1005909.51}, {"cat": "Furniture & Fixtures", "desc": "Office Printer/Refrigerator", "amt": 33190}, {"cat": "Bonds & Insurance", "desc": "Insurance of Cars", "amt": 71966.36}, {"cat": "Purchases", "desc": "Thread/Box/Others", "amt": 431732.02}, {"cat": "Advances to Officers", "desc": "for Liquidation/Funds", "amt": 54000}, {"cat": "Miscellaneous", "desc": "others", "amt": 12490.4}]}, {"label": "2월", "sheet": "FEB-2026", "income": 22765694.94, "expenses": 13507996.5, "net": 9257698.44, "fixed": 11094962.2, "variable": 2413034.3, "hqUsd": 220000, "hqPhp": 12769600, "wires": [{"date": "02-06-2026", "usd": 50000, "php": 2929000}, {"date": "02-11-2026", "usd": 70000, "php": 4086600}, {"date": "02-25-2026", "usd": 100000, "php": 5754000}], "fixedItems": [{"cat": "Salaries and Wages", "desc": "Employee Salaries - Agency", "amt": 7383862.42}, {"cat": "Salaries and Wages", "desc": "Employee Salaries - Direct", "amt": 1526505.19}, {"cat": "Employees Benefits", "desc": "Employees Meals/Water", "amt": 207382.27}, {"cat": "Employees Benefits", "desc": "Office Uniforms", "amt": 23284.8}, {"cat": "Employees Benefits", "desc": "Office Supplies", "amt": 82986.86}, {"cat": "Employees Benefits", "desc": "Vacation Leave", "amt": 63829}, {"cat": "Labor Contract", "desc": "Security Guards", "amt": 249335}, {"cat": "Utilities", "desc": "Light & Water Expenses", "amt": 349053.07}, {"cat": "Utilities", "desc": "Internet  & Telephone", "amt": 19122.41}, {"cat": "Benefits/Insurance", "desc": "Government Contribution", "amt": 129850}, {"cat": "Rent/Mortgage", "desc": "Warehouse Rental", "amt": 837534.83}, {"cat": "Miscellaneous", "desc": "Common Dues", "amt": 33470}, {"cat": "Taxes & Licences", "desc": "BIR - Expanded Withholding Tax", "amt": 188746.35}], "varItems": [{"cat": "Professional Fees", "desc": "Legal Services/Doctor", "amt": 9600}, {"cat": "Repairs and Maintenance", "desc": "Annex Building", "amt": 43505.55}, {"cat": "Repairs and Maintenance", "desc": "Cars preventive maintenance", "amt": 6350}, {"cat": "Repairs and Maintenance", "desc": "Warehouse Maintenance", "amt": 4529.1}, {"cat": "Medical Expenses", "desc": "Annual Physical Exam/Medicine", "amt": 79143.46}, {"cat": "Utilities", "desc": "Hauling of Garbage", "amt": 31360}, {"cat": "Travel Expenses", "desc": "Transportation", "amt": 79700.95}, {"cat": "Fuel and Oil", "desc": "Gas Expenses", "amt": 138542}, {"cat": "Freight In/Out", "desc": "Broker", "amt": 455432.98}, {"cat": "Furniture & Fixtures", "desc": "Office Printer & Ink", "amt": 19818}, {"cat": "Bonds & Insurance", "desc": "Car Insurance", "amt": 11616.81}, {"cat": "Purchases", "desc": "Thread/Box/Other Supplies", "amt": 982525.16}, {"cat": "Advances to Officers", "desc": "Cash Advance Employees", "amt": 30000}, {"cat": "Machineries", "desc": "Air Compressor", "amt": 334240}, {"cat": "Miscellaneous Expenses", "desc": "Misc. Purchases", "amt": 186670.29}]}, {"label": "3월", "sheet": "MARCH-2026", "income": 21134277.88, "expenses": 12489529.52, "net": 8644748.36, "fixed": 8675601.32, "variable": 3813928.2, "hqUsd": 260000, "hqPhp": 15452000, "wires": [{"date": "03-02-2026", "usd": 50000, "php": 2922500}, {"date": "03-09-2026", "usd": 70000, "php": 4113900}, {"date": "03-16-2026", "usd": 70000, "php": 4207000}, {"date": "03-18-2026", "usd": 30000, "php": 1803000}, {"date": "03-30-2026", "usd": 40000, "php": 2405600}], "fixedItems": [{"cat": "Salaries and Wages", "desc": "Employee Salaries - Agency", "amt": 5149944.94}, {"cat": "Salaries and Wages", "desc": "Employee Salaries - Direct", "amt": 1253734.03}, {"cat": "Employees Benefits", "desc": "Employees Meals/Water", "amt": 349369.35}, {"cat": "Employees Benefits", "desc": "Office Uniforms PATCHES", "amt": 5415.3}, {"cat": "Employees Benefits", "desc": "SSS Sickness Benefits", "amt": 11330}, {"cat": "Labor Contract", "desc": "Security Guards", "amt": 280654.78}, {"cat": "Utilities", "desc": "Light & Water Expenses", "amt": 387548.6}, {"cat": "Utilities", "desc": "Internet  & Telephone", "amt": 38950.03}, {"cat": "Benefits/Insurance", "desc": "Government Contribution", "amt": 138810}, {"cat": "Rent/Mortgage", "desc": "Warehouse Rental", "amt": 833034.83}, {"cat": "Miscellaneous", "desc": "Common Dues", "amt": 33470}, {"cat": "Taxes & Licences", "desc": "BIR - Expanded & Compensation", "amt": 193339.46}], "varItems": [{"cat": "Professional Fees", "desc": "Legal Services/Doctor/Notary/Auditor", "amt": 310300}, {"cat": "Medical Expenses", "desc": "Office Medicine Supply", "amt": 3033.5}, {"cat": "Utilities", "desc": "Hauling of Garbage & contaminated container", "amt": 41679.4}, {"cat": "Travel Expenses", "desc": "Transportation", "amt": 75140}, {"cat": "Fuel and Oil", "desc": "Gas Expenses", "amt": 165816.72}, {"cat": "Freight In/Out", "desc": "Broker", "amt": 1593204.17}, {"cat": "Furniture & Fixtures", "desc": "Office Printer/Cabinets/cctv", "amt": 31469.46}, {"cat": "Bonds & Insurance", "desc": "Car Insurance", "amt": 20505.07}, {"cat": "Office Supplies", "desc": "Misc. Supplies", "amt": 47739.77}, {"cat": "Office documentation", "desc": "Peza Documentation", "amt": 8170}, {"cat": "Purchases", "desc": "Production Supplies", "amt": 1383786.78}, {"cat": "Cash Advances", "desc": "Employees Benefits", "amt": 59500}, {"cat": "Miscellaneous Expenses", "desc": "Google/EAP/PT Cash reimbursements", "amt": 73583.33}]}, {"label": "4월", "sheet": "APRIL-2026", "income": 0, "expenses": 15089948.22, "net": -15089948.22, "fixed": 10624394.11, "variable": 4465554.11, "hqUsd": 200000, "hqPhp": 12053000, "wires": [{"date": "04/10/2026", "usd": 50000, "php": 2983500}, {"date": "04/14/2026", "usd": 50000, "php": 2990500}, {"date": "04/20/2026", "usd": 50000, "php": 2997500}, {"date": "04/30/2026", "usd": 50000, "php": 3081500}], "fixedItems": [{"cat": "Salaries and Wages", "desc": "Employee Salaries - Agency", "amt": 6310243.51}, {"cat": "Salaries and Wages", "desc": "Employee Salaries - Direct", "amt": 1437529.38}, {"cat": "Employees Benefits", "desc": "Employees Meals/Water", "amt": 363117.75}, {"cat": "Employees Benefits", "desc": "Company outing & Quarterly Bonus", "amt": 560780}, {"cat": "Security ^& Safety/Labor Contract", "desc": "Security Guards", "amt": 280654.78}, {"cat": "Utilities", "desc": "Light & Water Expenses", "amt": 421209.55}, {"cat": "Utilities", "desc": "Internet  & Telephone", "amt": 13776}, {"cat": "Benefits/Insurance", "desc": "Government Contribution", "amt": 132200}, {"cat": "Rent/Mortgage", "desc": "Warehouse Rental", "amt": 833034.83}, {"cat": "Miscellaneous", "desc": "Common Dues", "amt": 33470}, {"cat": "Taxes & Licences", "desc": "BIR - Expanded & Compensation", "amt": 238378.31}], "varItems": [{"cat": "Professional Fees", "desc": "Legal Services/Doctor/Notary/Auditor", "amt": 12800}, {"cat": "Medical Expenses", "desc": "Office Medicine Supply", "amt": 4426.5}, {"cat": "Travel Expenses", "desc": "Transportation", "amt": 175390}, {"cat": "Fuel and Oil", "desc": "Gas Expenses", "amt": 264590.53}, {"cat": "Freight In/Out", "desc": "Broker (Import/Export)", "amt": 1743546.55}, {"cat": "Furniture & Fixtures", "desc": "Desk Fan and electric Fan", "amt": 19336.75}, {"cat": "Repairs & Maintenance", "desc": "Cars repairs and preventive maintenance", "amt": 30917}, {"cat": "Repairs & Maintenance", "desc": "Office Improvements", "amt": 262277.3}, {"cat": "Office Supplies", "desc": "Misc. Supplies", "amt": 74699.85}, {"cat": "Office documentation", "desc": "Peza Documentation", "amt": 15585.8}, {"cat": "Purchases", "desc": "Production Supplies", "amt": 982836.94}, {"cat": "New Vehicles & Machineries", "desc": "New L300 & Air compressor", "amt": 791160}, {"cat": "Miscellaneous Expenses", "desc": "Google/EAP/PT Cash/Hauling", "amt": 87986.89}]}, {"label": "5월", "sheet": "MAY-2026", "income": 23939256.83, "expenses": 15170744.12, "net": 8768512.71, "fixed": 10957293.66, "variable": 4213450.46, "hqUsd": 260000, "hqPhp": 15852500, "wires": [{"date": "2026-05-05 00:00:00", "usd": 50000, "php": 3019000}, {"date": "2026-05-06 00:00:00", "usd": 50000, "php": 3019000}, {"date": "2026-05-08 00:00:00", "usd": 30000, "php": 1811400}, {"date": "2026-05-18 00:00:00", "usd": 50000, "php": 3081500}, {"date": "2026-05-26 00:00:00", "usd": 80000, "php": 4921600}], "fixedItems": [{"cat": "Salaries and Wages", "desc": "Employee Salaries - Agency", "amt": 6473665.91}, {"cat": "Salaries and Wages", "desc": "Employee Salaries - Direct", "amt": 1713778.01}, {"cat": "Employees Benefits", "desc": "Employees Meals/Water", "amt": 401434}, {"cat": "Employees Benefits", "desc": "Cash advances", "amt": 287500}, {"cat": "Security ^& Safety/Labor Contract", "desc": "Security Guards", "amt": 280654.78}, {"cat": "Utilities", "desc": "Internet, Light & Water Expenses", "amt": 545465.42}, {"cat": "Benefits/Insurance", "desc": "Government Contribution", "amt": 145995}, {"cat": "Rent/Mortgage", "desc": "Warehouse Rental", "amt": 853034.83}, {"cat": "Miscellaneous", "desc": "Common Dues", "amt": 33470}, {"cat": "Taxes & Licences", "desc": "BIR - Expanded & Compensation", "amt": 222295.71}], "varItems": [{"cat": "Professional Fees", "desc": "Legal Services/Doctor/Auditor/PEE/PECE/PME FEE", "amt": 771483}, {"cat": "Medical Expenses", "desc": "Office Supply/Medicine Supply", "amt": 130252}, {"cat": "Travel Expenses", "desc": "Transportation", "amt": 115720}, {"cat": "Fuel and Oil", "desc": "Gas Expenses", "amt": 220900}, {"cat": "Freight In/Out", "desc": "Broker (Import/Export)", "amt": 962121.43}, {"cat": "Furniture & Fixtures", "desc": "Office computers", "amt": 378387}, {"cat": "Repairs & Maintenance", "desc": "Cars repairs and preventive maintenance", "amt": 8400}, {"cat": "Repairs & Maintenance", "desc": "Office Improvements", "amt": 272373.94}, {"cat": "Employees Benefits", "desc": "Uniforms/safety shoes/id&lace", "amt": 189947.82}, {"cat": "Hauling", "desc": "Garbage hauling", "amt": 94080}, {"cat": "New Vehicles & Machineries", "desc": "VFD Machines/Sewing Machine parts", "amt": 71672}, {"cat": "Production Supply", "desc": "Production Materials/Supplies", "amt": 927982.41}, {"cat": "Safety Equipment", "desc": "Fire extinguisher", "amt": 22550}, {"cat": "Miscellaneous Expenses", "desc": "Google/PT Cash fund reimbursement", "amt": 47580.86}]}, {"label": "6월", "sheet": "JUNE-2026", "income": 0, "expenses": 17609472.19, "net": -17609472.19, "fixed": 11971551.93, "variable": 5637920.26, "hqUsd": 300000, "hqPhp": 18363800, "wires": [{"date": "2026-06-01 00:00:00", "usd": 50000, "php": 3070000}, {"date": "2026-06-08 00:00:00", "usd": 80000, "php": 4918400}, {"date": "2026-06-15 00:00:00", "usd": 50000, "php": 3011500}, {"date": "2026-06-22 00:00:00", "usd": 70000, "php": 4306400}, {"date": "2026-06-29 00:00:00", "usd": 50000, "php": 3057500}], "fixedItems": [{"cat": "Salaries and Wages", "desc": "Employee Salaries - Agency", "amt": 6974836.21}, {"cat": "Salaries and Wages", "desc": "Employee Salaries - Direct", "amt": 2374625.24}, {"cat": "Employees Benefits", "desc": "Employees Meals/Water", "amt": 285701.9}, {"cat": "Employees Benefits", "desc": "Cash advances", "amt": 98000}, {"cat": "Security ^& Safety/Labor Contract", "desc": "Security Guards", "amt": 280654.78}, {"cat": "Utilities", "desc": "Internet, Light & Water Expenses", "amt": 622804.76}, {"cat": "Benefits/Insurance", "desc": "Government Contribution", "amt": 205170}, {"cat": "Rent/Mortgage", "desc": "Warehouse Rental", "amt": 833034.83}, {"cat": "Miscellaneous", "desc": "Common Dues", "amt": 36766.04}, {"cat": "Taxes & Licences", "desc": "BIR - Expanded & Compensation", "amt": 259958.17}], "varItems": [{"cat": "Professional Fees", "desc": "Legal Services/Doctor/Auditor/Engineer", "amt": 21000}, {"cat": "Medical Expenses", "desc": "Office Supply/Medicine Supply", "amt": 11127.15}, {"cat": "Travel Expenses", "desc": "Transportation", "amt": 45000}, {"cat": "Fuel and Oil", "desc": "Gas Expenses", "amt": 271601.88}, {"cat": "Freight In/Out", "desc": "Broker (Import/Export)", "amt": 3654424.96}, {"cat": "Furniture & Fixtures", "desc": "Office computers/Office supplies", "amt": 59649}, {"cat": "Repairs & Maintenance", "desc": "Cars repairs and preventive maintenance", "amt": 24580}, {"cat": "Repairs & Maintenance", "desc": "Office Improvements", "amt": 273157.18}, {"cat": "Employees Benefits", "desc": "Uniforms/BGC group dates/Perfect attendance", "amt": 112271.72}, {"cat": "Hauling", "desc": "Garbage hauling", "amt": 51450}, {"cat": "Production Supply", "desc": "Production Materials/Supplies", "amt": 905407.19}, {"cat": "Representation", "desc": "Seminars & Meetings", "amt": 5000}, {"cat": "Documentation", "desc": "Process of permits", "amt": 22388.6}, {"cat": "Bank Opening", "desc": "Security Bank Accts opening", "amt": 50000}, {"cat": "Miscellaneous Expenses", "desc": "Google/PT Cash fund reimbursement/Misc.expenses", "amt": 130862.58}]}], "topCats": [{"cat": "Salaries and Wages", "amt": 48292284.19}, {"cat": "Freight In/Out", "amt": 8408730.09}, {"cat": "Rent/Mortgage", "amt": 5022708.98}, {"cat": "Employees Benefits", "amt": 4091494.48}, {"cat": "Purchases", "amt": 3780880.9}, {"cat": "Utilities", "amt": 2936250.29}, {"cat": "Production Supply", "amt": 1833389.6}, {"cat": "Taxes & Licences", "amt": 1272686.36}, {"cat": "Professional Fees", "amt": 1192945.57}, {"cat": "Fuel and Oil", "amt": 1180580.13}, {"cat": "기타 (Others)", "amt": 8652398.57}]};
+
+function kpiFmtP(v){return '₱'+Math.round(v).toLocaleString('en-US');}
+function kpiFmtM(v){return '₱'+(v/1e6).toFixed(1)+'M';}
+function kpiFmtUsd(v){return '$'+Math.round(v).toLocaleString('en-US');}
+function kpiTipEl(){return document.getElementById('kpiTip');}
+function kpiTipShow(e,html){const t=kpiTipEl();if(!t)return;t.innerHTML=html;t.style.display='block';kpiTipMove(e);}
+function kpiTipMove(e){const t=kpiTipEl();if(!t||t.style.display==='none')return;const pad=14;let x=e.clientX+pad,y=e.clientY+pad;const r=t.getBoundingClientRect();if(x+r.width>window.innerWidth-8)x=e.clientX-r.width-pad;if(y+r.height>window.innerHeight-8)y=e.clientY-r.height-pad;t.style.left=x+'px';t.style.top=y+'px';}
+function kpiTipHide(){const t=kpiTipEl();if(t)t.style.display='none';}
+function kpiHover(el,htmlFn){el.addEventListener('mouseenter',e=>kpiTipShow(e,htmlFn()));el.addEventListener('mousemove',kpiTipMove);el.addEventListener('mouseleave',kpiTipHide);}
+function kpiNiceMax(v,step){return Math.max(step,Math.ceil(v/step)*step);}
+function kpiEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function kpiRender(){
+  const M=KPI_DATA.months;
+  const empty=M.filter(m=>!m.income);
+  const note=document.getElementById('kpiDataNote');
+  if(note&&empty.length){note.style.display='inline-block';note.textContent='⚠ '+empty.map(m=>m.label).join(', ')+' 수입(Sales Income)은 원본 엑셀에 아직 입력되지 않아 0으로 표시됩니다. 해당 월 순이익은 지출만 반영된 값입니다.';}
+  const inc=M.reduce((s,m)=>s+m.income,0),exp=M.reduce((s,m)=>s+m.expenses,0),net=inc-exp;
+  const usd=M.reduce((s,m)=>s+m.hqUsd,0),php=M.reduce((s,m)=>s+m.hqPhp,0);
+  const fx=M.reduce((s,m)=>s+m.fixed,0);
+  const tiles=[
+    {l:'YTD 총수입',v:kpiFmtP(inc),s:'1~6월 누계 (PHP)'},
+    {l:'YTD 총지출',v:kpiFmtP(exp),s:'월평균 '+kpiFmtP(exp/M.length)},
+    {l:'YTD 순이익',v:kpiFmtP(net),s:'수입 − 지출',neg:net<0},
+    {l:'본사송금 YTD',v:kpiFmtUsd(usd),s:'≈ '+kpiFmtP(php)+' · '+M.reduce((s,m)=>s+m.wires.length,0)+'회'},
+    {l:'고정비 비중',v:(fx/exp*100).toFixed(1)+'%',s:'고정 '+kpiFmtM(fx)+' / 지출 '+kpiFmtM(exp)},
+    {l:'월평균 순이익',v:kpiFmtP(net/M.length),s:'수입 미입력 월 포함',neg:net<0}
+  ];
+  document.getElementById('kpiTiles').innerHTML=tiles.map(t=>'<div class="kpi-tile"><div class="tl">'+t.l+'</div><div class="tv'+(t.neg?' neg':'')+'">'+t.v+'</div><div class="ts">'+t.s+'</div></div>').join('');
+  (function(){ // A. 수입 vs 지출
+    const el=document.getElementById('kpiChartIE');if(!el)return;el.innerHTML='';
+    const maxV=kpiNiceMax(Math.max.apply(null,M.map(m=>Math.max(m.income,m.expenses))),10e6);
+    for(let g=10e6;g<=maxV;g+=10e6){const frac=g/maxV;el.insertAdjacentHTML('beforeend','<div class="grid" style="bottom:calc(22px + (100% - 22px) * '+frac+')"><span class="gl">'+(g/1e6).toFixed(0)+'M</span></div>');}
+    el.insertAdjacentHTML('beforeend','<div class="base"></div>');
+    const cols=document.createElement('div');cols.className='cols';
+    M.forEach(m=>{
+      const c=document.createElement('div');c.className='col';
+      c.innerHTML='<div class="bar" style="background:#1baf7a;height:'+(m.income/maxV*100)+'%'+(m.income?'':';min-height:0')+'"></div><div class="bar" style="background:#2a78d6;height:'+(m.expenses/maxV*100)+'%'+(m.expenses?'':';min-height:0')+'"></div>';
+      kpiHover(c,function(){return '<b>'+m.label+'</b><br>수입 '+kpiFmtP(m.income)+'<br>지출 '+kpiFmtP(m.expenses)+'<br>순이익 '+kpiFmtP(m.income-m.expenses);});
+      cols.appendChild(c);
+    });
+    el.appendChild(cols);
+    el.insertAdjacentHTML('beforeend','<div class="xlab">'+M.map(m=>'<span>'+m.label+'</span>').join('')+'</div>');
+  })();
+  (function(){ // B. 순이익 다이버징
+    const el=document.getElementById('kpiChartNet');if(!el)return;el.innerHTML='';
+    const maxA=kpiNiceMax(Math.max.apply(null,M.map(m=>Math.abs(m.net))),10e6);
+    el.insertAdjacentHTML('beforeend','<div class="grid" style="top:0"><span class="gl">+'+(maxA/1e6).toFixed(0)+'M</span></div>');
+    el.insertAdjacentHTML('beforeend','<div class="grid" style="top:calc(100% - 22px)"><span class="gl">−'+(maxA/1e6).toFixed(0)+'M</span></div>');
+    el.insertAdjacentHTML('beforeend','<div class="zero" style="top:calc((100% - 22px)/2)"><span class="gl">0</span></div>');
+    const cols=document.createElement('div');cols.className='cols';
+    M.forEach(m=>{
+      const c=document.createElement('div');c.className='col';
+      const hPct=Math.abs(m.net)/maxA*50;
+      const bar=document.createElement('div');
+      bar.className='bar '+(m.net>=0?'pos':'neg');
+      bar.style.background=m.net>=0?'#2a78d6':'#e34948';
+      bar.style.height=hPct+'%';
+      if(m.net>=0)bar.style.bottom='50%';else bar.style.top='50%';
+      c.appendChild(bar);
+      kpiHover(c,function(){return '<b>'+m.label+' 순이익</b><br>'+kpiFmtP(m.net)+(m.income?'':'<br><span style="color:#fbbf24">⚠ 수입 미입력 월</span>');});
+      cols.appendChild(c);
+    });
+    el.appendChild(cols);
+    el.insertAdjacentHTML('beforeend','<div class="xlab">'+M.map(m=>'<span>'+m.label+'</span>').join('')+'</div>');
+  })();
+  (function(){ // C. 본사 송금
+    const el=document.getElementById('kpiChartHQ');if(!el)return;el.innerHTML='';
+    const maxV=kpiNiceMax(Math.max.apply(null,M.map(m=>m.hqUsd)),100000);
+    for(let i=1;i<=3;i++){const frac=i/3;el.insertAdjacentHTML('beforeend','<div class="grid" style="bottom:calc(22px + (100% - 22px) * '+frac+')"><span class="gl">$'+(maxV*frac/1000).toFixed(0)+'K</span></div>');}
+    el.insertAdjacentHTML('beforeend','<div class="base"></div>');
+    const cols=document.createElement('div');cols.className='cols';
+    M.forEach(m=>{
+      const c=document.createElement('div');c.className='col';
+      c.innerHTML='<div class="bar" style="background:#1baf7a;height:'+(m.hqUsd/maxV*100)+'%"></div>';
+      kpiHover(c,function(){return '<b>'+m.label+' 본사송금</b><br>'+kpiFmtUsd(m.hqUsd)+' ≈ '+kpiFmtP(m.hqPhp)+'<br>'+m.wires.length+'회 송금';});
+      cols.appendChild(c);
+    });
+    el.appendChild(cols);
+    el.insertAdjacentHTML('beforeend','<div class="xlab">'+M.map(m=>'<span>'+m.label+'</span>').join('')+'</div>');
+  })();
+  (function(){ // D. 고정 vs 변동 스택
+    const el=document.getElementById('kpiChartFV');if(!el)return;el.innerHTML='';
+    const maxV=kpiNiceMax(Math.max.apply(null,M.map(m=>m.expenses)),10e6);
+    for(let g=10e6;g<=maxV;g+=10e6){const frac=g/maxV;el.insertAdjacentHTML('beforeend','<div class="grid" style="bottom:calc(22px + (100% - 22px) * '+frac+')"><span class="gl">'+(g/1e6).toFixed(0)+'M</span></div>');}
+    el.insertAdjacentHTML('beforeend','<div class="base"></div>');
+    const cols=document.createElement('div');cols.className='cols';
+    M.forEach(m=>{
+      const c=document.createElement('div');c.className='col';
+      const stack=document.createElement('div');
+      stack.style.cssText='width:22px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%';
+      stack.innerHTML='<div style="background:#86b6ef;border-radius:4px 4px 0 0;height:'+(m.variable/maxV*100)+'%;min-height:2px"></div>'
+        +'<div style="background:#256abf;height:'+(m.fixed/maxV*100)+'%;min-height:2px"></div>';
+      c.appendChild(stack);
+      kpiHover(c,function(){return '<b>'+m.label+' 지출</b><br>고정비 '+kpiFmtP(m.fixed)+' ('+(m.fixed/m.expenses*100).toFixed(0)+'%)<br>변동비 '+kpiFmtP(m.variable)+' ('+(m.variable/m.expenses*100).toFixed(0)+'%)<br>합계 '+kpiFmtP(m.expenses);});
+      cols.appendChild(c);
+    });
+    el.appendChild(cols);
+    el.insertAdjacentHTML('beforeend','<div class="xlab">'+M.map(m=>'<span>'+m.label+'</span>').join('')+'</div>');
+  })();
+  (function(){ // E. 카테고리 TOP
+    const el=document.getElementById('kpiChartCat');if(!el)return;
+    const cats=KPI_DATA.topCats;const maxV=Math.max.apply(null,cats.map(c=>c.amt));
+    el.innerHTML=cats.map(c=>'<div class="kh-row"><div class="kh-cat" title="'+kpiEsc(c.cat)+'">'+kpiEsc(c.cat)+'</div><div class="kh-track"><div class="kh-bar" style="width:'+(c.amt/maxV*100)+'%"></div></div><div class="kh-val">'+kpiFmtP(c.amt)+'</div></div>').join('');
+  })();
+  (function(){ // F. 월별 요약표
+    const t=document.getElementById('kpiTable');if(!t)return;
+    let h='<thead><tr><th>월</th><th>수입</th><th>지출</th><th>순이익</th><th>고정비</th><th>변동비</th><th>본사송금 USD</th><th>본사송금 PHP</th><th>송금 횟수</th></tr></thead><tbody>';
+    M.forEach(m=>{h+='<tr><td>'+m.label+(m.income?'':' ⚠')+'</td><td>'+kpiFmtP(m.income)+'</td><td>'+kpiFmtP(m.expenses)+'</td><td style="color:'+(m.net>=0?'#184f95':'#d03b3b')+';font-weight:700">'+kpiFmtP(m.net)+'</td><td>'+kpiFmtP(m.fixed)+'</td><td>'+kpiFmtP(m.variable)+'</td><td>'+kpiFmtUsd(m.hqUsd)+'</td><td>'+kpiFmtP(m.hqPhp)+'</td><td>'+m.wires.length+'회</td></tr>';});
+    h+='<tr style="font-weight:800"><td>합계</td><td>'+kpiFmtP(inc)+'</td><td>'+kpiFmtP(exp)+'</td><td style="color:'+(net>=0?'#184f95':'#d03b3b')+'">'+kpiFmtP(net)+'</td><td>'+kpiFmtP(fx)+'</td><td>'+kpiFmtP(exp-fx)+'</td><td>'+kpiFmtUsd(usd)+'</td><td>'+kpiFmtP(php)+'</td><td>'+M.reduce((s,m)=>s+m.wires.length,0)+'회</td></tr></tbody>';
+    t.innerHTML=h;
+  })();
+  (function(){ // G. 월 상세
+    const sel=document.getElementById('kpiMonthSel');if(!sel)return;
+    sel.innerHTML=M.map((m,i)=>'<option value="'+i+'">'+m.label+' ('+m.sheet+')</option>').join('');
+    sel.value=String(M.length-1);
+    sel.addEventListener('change',function(){kpiDetail(parseInt(sel.value,10));});
+    kpiDetail(M.length-1);
+  })();
+}
+function kpiDetail(i){
+  const m=KPI_DATA.months[i];const el=document.getElementById('kpiDetail');if(!m||!el)return;
+  let h='';
+  h+='<div class="kc-title" style="font-size:13px;margin:6px 0 8px">💸 본사 송금 내역 — 합계 '+kpiFmtUsd(m.hqUsd)+' ≈ '+kpiFmtP(m.hqPhp)+'</div>';
+  h+='<div class="kt-wrap"><table class="kt"><thead><tr><th>날짜</th><th>USD</th><th>PHP</th></tr></thead><tbody>'
+    +m.wires.map(w=>'<tr><td>'+kpiEsc(w.date)+'</td><td>'+kpiFmtUsd(w.usd)+'</td><td>'+kpiFmtP(w.php)+'</td></tr>').join('')
+    +'</tbody></table></div>';
+  h+='<div class="kc-title" style="font-size:13px;margin:16px 0 8px">🏢 고정비 — '+kpiFmtP(m.fixed)+'</div>';
+  h+='<div class="kt-wrap"><table class="kt"><thead><tr><th style="width:190px">카테고리</th><th>내용</th><th style="width:130px">금액</th></tr></thead><tbody>'
+    +m.fixedItems.map(x=>'<tr><td class="l">'+kpiEsc(x.cat)+'</td><td class="l">'+kpiEsc(x.desc)+'</td><td>'+kpiFmtP(x.amt)+'</td></tr>').join('')
+    +'</tbody></table></div>';
+  h+='<div class="kc-title" style="font-size:13px;margin:16px 0 8px">📦 변동비 — '+kpiFmtP(m.variable)+'</div>';
+  h+='<div class="kt-wrap"><table class="kt"><thead><tr><th style="width:190px">카테고리</th><th>내용</th><th style="width:130px">금액</th></tr></thead><tbody>'
+    +m.varItems.map(x=>'<tr><td class="l">'+kpiEsc(x.cat)+'</td><td class="l">'+kpiEsc(x.desc)+'</td><td>'+kpiFmtP(x.amt)+'</td></tr>').join('')
+    +'</tbody></table></div>';
+  el.innerHTML=h;
+}
+try{kpiRender();}catch(e){console.error('[kpi] render',e);}
 </script>
 
 </body>
