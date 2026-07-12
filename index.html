@@ -341,8 +341,11 @@
   .page-tab.admin-only.active {
     background: linear-gradient(135deg, rgba(28, 58, 94,0.15), rgba(250,204,21,0.1));
     color: #1c3a5e;
-    border-bottom-color: #1c3a5e;
+    border-bottom-color: transparent; /* 언더바는 일반 탭과 동일한 ::after 인디케이터 사용 */
   }
+  /* 관리자 탭(예산·KPI)은 한 그룹으로 나란히: 첫 탭만 오른쪽 밀기 + 구분선 */
+  .page-tab.admin-only + .page-tab.admin-only { margin-left: 0; }
+  .page-tab.admin-only + .page-tab.admin-only::before { display: none; }
 
   /* ── KPI 페이지 (최종관리자 전용) ── */
   #page-kpi .kpi-wrap{max-width:1280px;margin:0 auto;padding:24px 20px}
@@ -4854,8 +4857,14 @@ window.schSelectColor = schSelectColor;
 <div id="page-kpi" class="page-content">
   <div class="kpi-wrap">
     <div class="kpi-head">
-      <div class="kpi-title">📊 경영 KPI — 2026</div>
-      <div class="kpi-src">원본: EXPENSES - YR.2026.xlsx · 1~6월 · 기준일 2026-07-12 · 🔒 최종관리자 전용</div>
+      <div class="kpi-title" id="kpiTitle">📊 경영 KPI</div>
+      <div class="kpi-src" id="kpiSrcLine"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 4px">
+      <button type="button" id="kpiUploadBtn" style="border:none;background:linear-gradient(180deg,#24486f,#1c3a5e);color:#fff;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:var(--shadow-sm)">📤 엑셀 업로드 (EXPENSES 파일)</button>
+      <button type="button" id="kpiResetBtn" style="border:1px solid var(--border);background:#fff;color:var(--text2);border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">내장 데이터로 복원</button>
+      <span style="font-size:11.5px;color:var(--text3)">파일은 이 컴퓨터에서만 처리되고 서버로 전송되지 않습니다 · 같은 양식(월 시트: JAN-2026 …)이면 자동 인식</span>
+      <input type="file" id="kpiFile" accept=".xlsx,.xlsm" style="display:none">
     </div>
     <div class="kpi-note" id="kpiDataNote" style="display:none"></div>
     <div class="kpi-tiles" id="kpiTiles"></div>
@@ -9759,8 +9768,9 @@ function kpiTipHide(){const t=kpiTipEl();if(t)t.style.display='none';}
 function kpiHover(el,htmlFn){el.addEventListener('mouseenter',e=>kpiTipShow(e,htmlFn()));el.addEventListener('mousemove',kpiTipMove);el.addEventListener('mouseleave',kpiTipHide);}
 function kpiNiceMax(v,step){return Math.max(step,Math.ceil(v/step)*step);}
 function kpiEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+let kpiData=KPI_DATA; // 업로드 시 교체됨 (localStorage kpi_data_v1 우선)
 function kpiRender(){
-  const M=KPI_DATA.months;
+  const M=kpiData.months;
   const empty=M.filter(m=>!m.income);
   const note=document.getElementById('kpiDataNote');
   if(note&&empty.length){note.style.display='inline-block';note.textContent='⚠ '+empty.map(m=>m.label).join(', ')+' 수입(Sales Income)은 원본 엑셀에 아직 입력되지 않아 0으로 표시됩니다. 해당 월 순이익은 지출만 반영된 값입니다.';}
@@ -9849,7 +9859,7 @@ function kpiRender(){
   })();
   (function(){ // E. 카테고리 TOP
     const el=document.getElementById('kpiChartCat');if(!el)return;
-    const cats=KPI_DATA.topCats;const maxV=Math.max.apply(null,cats.map(c=>c.amt));
+    const cats=kpiData.topCats;const maxV=Math.max.apply(null,cats.map(c=>c.amt));
     el.innerHTML=cats.map(c=>'<div class="kh-row"><div class="kh-cat" title="'+kpiEsc(c.cat)+'">'+kpiEsc(c.cat)+'</div><div class="kh-track"><div class="kh-bar" style="width:'+(c.amt/maxV*100)+'%"></div></div><div class="kh-val">'+kpiFmtP(c.amt)+'</div></div>').join('');
   })();
   (function(){ // F. 월별 요약표
@@ -9861,14 +9871,14 @@ function kpiRender(){
   })();
   (function(){ // G. 월 상세
     const sel=document.getElementById('kpiMonthSel');if(!sel)return;
-    sel.innerHTML=M.map((m,i)=>'<option value="'+i+'">'+m.label+' ('+m.sheet+')</option>').join('');
+    sel.innerHTML=M.map((m,i)=>'<option value="'+i+'">'+kpiEsc(m.label)+' ('+kpiEsc(m.sheet)+')</option>').join('');
     sel.value=String(M.length-1);
     sel.addEventListener('change',function(){kpiDetail(parseInt(sel.value,10));});
     kpiDetail(M.length-1);
   })();
 }
 function kpiDetail(i){
-  const m=KPI_DATA.months[i];const el=document.getElementById('kpiDetail');if(!m||!el)return;
+  const m=kpiData.months[i];const el=document.getElementById('kpiDetail');if(!m||!el)return;
   let h='';
   h+='<div class="kc-title" style="font-size:13px;margin:6px 0 8px">💸 본사 송금 내역 — 합계 '+kpiFmtUsd(m.hqUsd)+' ≈ '+kpiFmtP(m.hqPhp)+'</div>';
   h+='<div class="kt-wrap"><table class="kt"><thead><tr><th>날짜</th><th>USD</th><th>PHP</th></tr></thead><tbody>'
@@ -9884,7 +9894,122 @@ function kpiDetail(i){
     +'</tbody></table></div>';
   el.innerHTML=h;
 }
-try{kpiRender();}catch(e){console.error('[kpi] render',e);}
+/* ── 엑셀 업로드 → 자동 파싱 (파이썬 추출 로직의 JS 포트, SheetJS 전역 XLSX 재사용) ── */
+const KPI_LS_KEY='kpi_data_v1';
+const KPI_MONTHS=[['JAN',1],['FEB',2],['MAR',3],['APR',4],['MAY',5],['JUN',6],['JUL',7],['AUG',8],['SEP',9],['OCT',10],['NOV',11],['DEC',12]];
+function kpiMonthNum(sheetName){
+  const up=String(sheetName||'').toUpperCase().trim();
+  for(const[pre,n]of KPI_MONTHS){if(up.indexOf(pre)===0)return n;}
+  return 0;
+}
+function kpiFmtDateCell(v){
+  if(v instanceof Date&&!isNaN(v.getTime())){const mm=String(v.getMonth()+1).padStart(2,'0'),dd=String(v.getDate()).padStart(2,'0');return mm+'-'+dd+'-'+v.getFullYear();}
+  return String(v==null?'':v).trim();
+}
+function kpiParseWorkbook(wb){
+  const months=[];const errs=[];
+  wb.SheetNames.forEach(name=>{
+    const num=kpiMonthNum(name);if(!num)return;
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:null,raw:true});
+    const d={label:num+'월',sheet:String(name),monthNum:num,income:0,expenses:0,net:0,hqUsd:0,hqPhp:0,wires:[],fixedItems:[],varItems:[],fixed:0,variable:0,_hit:false};
+    let section=null;
+    rows.forEach(r=>{
+      const a=r[0],b=r[1],c=r[2],dd=r[3];
+      const sa=(a==null?'':String(a)).trim();
+      if(sa==='BUDGET FROM HEAD OFFICE - KOREA'){section='hq';return;}
+      if(sa==='FIXED EXPENSES'){section='fixed';return;}
+      if(sa==='VARIABLE EXPENSES'){section='var';return;}
+      if(sa==='ACTUAL EXPENSES')section='done';
+      const sb=(b==null?'':String(b)).trim();
+      if(sb==='Total Income'&&typeof dd==='number'){d.income=dd;d._hit=true;}
+      if(sb==='Total Expenses'&&typeof dd==='number'){d.expenses=dd;d._hit=true;}
+      if(section==='hq'){
+        if(sb&&sb.indexOf('Wire')>=0&&typeof c==='number'){d.wires.push({date:kpiFmtDateCell(a),usd:c,php:(typeof dd==='number'?dd:0)});}
+        else if(b==null&&typeof c==='number'&&d.hqUsd===0){d.hqUsd=c;d.hqPhp=(typeof dd==='number'?dd:0);}
+      }
+      if(section==='fixed'){
+        if(sb&&sb!=='CATEGORY'&&typeof dd==='number'){d.fixedItems.push({cat:sb,desc:(c==null?'':String(c)).trim(),amt:Math.round(dd*100)/100});}
+        else if(b==null&&c==null&&typeof dd==='number'&&d.fixed===0){d.fixed=Math.round(dd*100)/100;}
+      }
+      if(section==='var'){
+        if(sb&&sb!=='CATEGORY'&&typeof dd==='number'){d.varItems.push({cat:sb,desc:(c==null?'':String(c)).trim(),amt:Math.round(dd*100)/100});}
+        else if(b==null&&c==null&&typeof dd==='number'&&d.variable===0){d.variable=Math.round(dd*100)/100;}
+      }
+    });
+    if(!d._hit)return; // 양식이 아닌 시트는 건너뜀
+    // 소계가 비면 항목 합으로 보정
+    if(!d.hqUsd&&d.wires.length){d.hqUsd=d.wires.reduce((s,w)=>s+w.usd,0);d.hqPhp=d.wires.reduce((s,w)=>s+w.php,0);}
+    if(!d.fixed&&d.fixedItems.length)d.fixed=d.fixedItems.reduce((s,x)=>s+x.amt,0);
+    if(!d.variable&&d.varItems.length)d.variable=d.varItems.reduce((s,x)=>s+x.amt,0);
+    d.net=Math.round((d.income-d.expenses)*100)/100;
+    // 무결성: 고정+변동 ≈ 총지출 (1페소 오차 허용)
+    if(d.expenses&&Math.abs((d.fixed+d.variable)-d.expenses)>1){errs.push(d.sheet+': 고정비('+kpiFmtP(d.fixed)+')+변동비('+kpiFmtP(d.variable)+') ≠ 총지출('+kpiFmtP(d.expenses)+')');}
+    delete d._hit;
+    months.push(d);
+  });
+  months.sort((a,b)=>a.monthNum-b.monthNum);
+  if(!months.length)throw new Error('인식할 수 있는 월 시트가 없습니다.\n시트 이름이 JAN-2026, FEB-2026 … 형식인지, "Total Income/Total Expenses" 행이 있는지 확인해주세요.');
+  // 카테고리 집계 TOP 10 + 기타
+  const agg={};
+  months.forEach(m=>{m.fixedItems.concat(m.varItems).forEach(x=>{agg[x.cat]=(agg[x.cat]||0)+x.amt;});});
+  const sorted=Object.keys(agg).map(k=>({cat:k,amt:Math.round(agg[k]*100)/100})).sort((a,b)=>b.amt-a.amt);
+  const topCats=sorted.slice(0,10);
+  const others=sorted.slice(10).reduce((s,x)=>s+x.amt,0);
+  if(others>0)topCats.push({cat:'기타 (Others)',amt:Math.round(others*100)/100});
+  // 연도: 시트명 숫자 추출
+  const ym=String(months[0].sheet).match(/(20\d\d)/);
+  return {year:ym?parseInt(ym[1],10):new Date().getFullYear(),months,topCats,warnings:errs};
+}
+function kpiSrcUpdate(){
+  const t=document.getElementById('kpiTitle');if(t)t.textContent='📊 경영 KPI — '+(kpiData.year||'');
+  const s=document.getElementById('kpiSrcLine');
+  if(s)s.textContent=(kpiData.source==='upload'
+    ?('업로드: '+(kpiData.fileName||'엑셀')+' · '+kpiData.months.length+'개월 · 반영일 '+(kpiData.updated||''))
+    :('내장 데이터: EXPENSES - YR.2026.xlsx · '+kpiData.months.length+'개월 · 기준일 '+(kpiData.updated||'')))+' · 🔒 최종관리자 전용';
+}
+function kpiApplyData(nd){
+  kpiData=nd;kpiSrcUpdate();
+  try{kpiRender();}catch(e){console.error('[kpi] render',e);}
+}
+function kpiHandleFile(file){
+  if(!file)return;
+  if(!/\.(xlsx|xlsm)$/i.test(file.name)){alert('엑셀(.xlsx) 파일을 선택해주세요.');return;}
+  if(typeof XLSX==='undefined'){alert('엑셀 파서(XLSX)가 아직 로드되지 않았습니다. 네트워크 연결 후 새로고침 해주세요.');return;}
+  file.arrayBuffer().then(buf=>{
+    let parsed;
+    try{parsed=kpiParseWorkbook(XLSX.read(buf,{cellDates:true}));}
+    catch(e){alert('엑셀 인식 실패: '+(e&&e.message?e.message:e));return;}
+    const today=new Date();const ymd=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+    const nd={year:parsed.year,updated:ymd,months:parsed.months,topCats:parsed.topCats,source:'upload',fileName:file.name};
+    let msg='✔ '+file.name+' 인식 완료\n'+parsed.months.map(m=>m.label).join(', ')+' ('+parsed.months.length+'개월)';
+    if(parsed.warnings.length)msg+='\n\n⚠ 검증 경고:\n'+parsed.warnings.join('\n');
+    msg+='\n\nKPI에 반영할까요? (이 브라우저에 저장되어 다음에도 유지됩니다)';
+    if(!confirm(msg))return;
+    try{localStorage.setItem(KPI_LS_KEY,JSON.stringify(nd));}catch(e){alert('브라우저 저장 공간이 부족해 이번 화면에만 반영됩니다.');}
+    kpiApplyData(nd);
+  }).catch(e=>{alert('파일을 읽지 못했습니다: '+(e&&e.message?e.message:e));});
+}
+(function kpiUploadInit(){
+  const btn=document.getElementById('kpiUploadBtn'),fi=document.getElementById('kpiFile'),rs=document.getElementById('kpiResetBtn');
+  if(btn&&fi){btn.addEventListener('click',()=>fi.click());fi.addEventListener('change',()=>{kpiHandleFile(fi.files&&fi.files[0]);fi.value='';});}
+  if(rs)rs.addEventListener('click',()=>{
+    if(!confirm('업로드한 데이터를 지우고 내장 데이터(2026-07-12 기준)로 되돌릴까요?'))return;
+    try{localStorage.removeItem(KPI_LS_KEY);}catch(e){}
+    kpiApplyData(KPI_DATA);
+  });
+  // 페이지 전체에 드래그 업로드 (KPI 페이지가 열려 있을 때만)
+  const page=document.getElementById('page-kpi');
+  if(page){
+    page.addEventListener('dragover',e=>{e.preventDefault();});
+    page.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(f)kpiHandleFile(f);});
+  }
+})();
+// 초기화: 업로드본이 저장돼 있으면 그것을 우선 사용
+(function(){
+  let init=KPI_DATA;
+  try{const r=localStorage.getItem(KPI_LS_KEY);if(r){const o=JSON.parse(r);if(o&&Array.isArray(o.months)&&o.months.length)init=o;}}catch(e){}
+  kpiApplyData(init);
+})();
 </script>
 
 </body>
