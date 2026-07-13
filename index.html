@@ -1929,7 +1929,11 @@ tbody tr:hover { background: #f7f9fc; }
   #page-purchase-master .pm-gridwrap{overflow-x:auto}
   #page-purchase-master .pm-grid{width:100%;border-collapse:collapse;font-size:12px}
   #page-purchase-master .pm-grid th,#page-purchase-master .pm-grid td{border:1px solid #e2e8f0}
-  #page-purchase-master .pm-grid thead th{background:#dde5f5;color:#1e3a8a;font-size:12px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:left}
+  #page-purchase-master .pm-grid thead th{background:#dde5f5;color:#1e3a8a;font-size:12px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:left;position:relative}
+  /* 컬럼 너비 조절 핸들 (헤더 오른쪽 경계 드래그 · 더블클릭 = 초기화) */
+  #page-purchase-master .pm-rsz{position:absolute;top:0;right:-5px;width:10px;height:100%;cursor:col-resize;z-index:3}
+  #page-purchase-master .pm-rsz::after{content:'';position:absolute;top:20%;bottom:20%;left:4px;width:2px;border-radius:2px;background:transparent;transition:background .12s}
+  #page-purchase-master .pm-rsz:hover::after,#page-purchase-master .pm-rsz.on::after{background:#2a78d6}
   #page-purchase-master .pm-grid thead th.req{color:#b3261e}
   #page-purchase-master .pm-grid thead th.c,#page-purchase-master .pm-grid td.c{text-align:center}
   #page-purchase-master .pm-grid td input,#page-purchase-master .pm-grid td select{width:100%;border:none;background:transparent;padding:6px 7px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;min-width:0}
@@ -1957,7 +1961,7 @@ tbody tr:hover { background: #f7f9fc; }
     <div class="purchase-subnav" data-cur="purchase-master"></div>
     <div style="margin-bottom:14px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">거래처·단가 관리 <span id="pmCloudBadge" style="font-size:11px;font-weight:600;margin-left:8px"></span></div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">거래처 기준정보와 품목별 구매 단가를 등록·관리합니다. 셀을 직접 수정하고 <b>💾 저장</b>을 누르면 반영되며, 기록은 <b>팀원 모두에게 공유</b>됩니다. 노란 행 = 저장 안 된 변경.</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">거래처 기준정보와 품목별 구매 단가를 등록·관리합니다. 셀을 직접 수정하고 <b>💾 저장</b>을 누르면 반영되며, 기록은 <b>팀원 모두에게 공유</b>됩니다. 노란 행 = 저장 안 된 변경. <b>칸 너비는 제목 칸의 오른쪽 경계를 드래그</b>해서 조절할 수 있어요 (더블클릭 = 초기화).</div>
     </div>
 
     <!-- 거래처 마스터 -->
@@ -6222,6 +6226,12 @@ function pmVisibleRows(g){ // 현재 화면(페이지)에 실제 보이는 행
 // 자연(숫자) 정렬 — "#1, #2, … #10" 순서 (사전순 1,10,11,2 방지)
 function pmNatCmp(a,b){return String(a==null?'':a).localeCompare(String(b==null?'':b),'ko',{numeric:true,sensitivity:'base'});}
 function pmCols(g){return g==='v'?PM_VCOLS:(g==='p'?PM_PCOLS:PM_ICOLS);}
+// ── 컬럼 너비 사용자 조절 (헤더 경계 드래그, localStorage 저장) ──
+const PM_COLW_KEY='pm_colw_v1';
+let pmColW={v:{},p:{},i:{}};
+try{const _r=localStorage.getItem(PM_COLW_KEY);if(_r){const _o=JSON.parse(_r);if(_o&&typeof _o==='object')pmColW={v:_o.v||{},p:_o.p||{},i:_o.i||{}};}}catch(e){}
+function pmColWSave(){try{localStorage.setItem(PM_COLW_KEY,JSON.stringify(pmColW));}catch(e){}}
+function pmColWEff(g,c){const w=pmColW[g]&&pmColW[g][c.k];return (typeof w==='number'&&w>=40)?w:c.w;}
 function pmGridEl(g){return document.getElementById(g==='v'?'pmGridV':(g==='p'?'pmGridP':'pmGridI'));}
 function pmCountEl(g){return document.getElementById(g==='v'?'pmCountV':(g==='p'?'pmCountP':'pmCountI'));}
 function pmNewId(){return 'm'+Date.now().toString(36)+Math.floor(Math.random()*10000);}
@@ -6278,7 +6288,7 @@ function pmRender(g){
   const st=pmS[g];const cols=pmCols(g);const rows=pmVisibleRows(g);
   const base=(pmPage[g]!=null)?(pmPage[g]-1)*PM_PAGE_SIZE:0; // № = 전체 기준 번호
   let h='<thead><tr><th class="c" style="width:34px"><input type="checkbox" data-pmall="'+g+'"'+(rows.length&&rows.every(r=>st.sel[r.id])?' checked':'')+'></th><th class="c" style="width:40px">№</th>'
-    +cols.map(c=>'<th'+(c.req?' class="req"':'')+' style="min-width:'+c.w+'px">'+c.label+'</th>').join('')+'</tr></thead><tbody>';
+    +cols.map(c=>{const W=pmColWEff(g,c);return '<th'+(c.req?' class="req"':'')+' style="min-width:'+W+'px;width:'+W+'px">'+c.label+'<span class="pm-rsz" data-g="'+g+'" data-k="'+c.k+'" title="드래그로 너비 조절 · 더블클릭 = 초기화"></span></th>';}).join('')+'</tr></thead><tbody>';
   if(!rows.length)h+='<tr class="pm-empty"><td colspan="'+(cols.length+2)+'">'+(g==='v'?'등록된 거래처가 없습니다. 「＋ 행 추가」로 등록하세요.':(g==='i'?'등록된 물품이 없습니다. 「＋ 행 추가」로 등록하세요.':'등록된 단가가 없습니다. 「＋ 행 추가」로 등록하세요.'))+'</td></tr>';
   else rows.forEach((r,i)=>{
     h+='<tr'+(st.dirty[r.id]?' class="dirty"':'')+'><td class="c"><input type="checkbox" data-pmsel="'+g+'" data-id="'+prEsc(r.id)+'"'+(st.sel[r.id]?' checked':'')+'></td><td class="num">'+(base+i+1)+'</td>'+cols.map(c=>pmCellHtml(g,r,c)).join('')+'</tr>';
@@ -6461,6 +6471,37 @@ function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.
   });
   // 편집 중 보류된 실시간 반영을 포커스 해제 시 적용
   page.addEventListener('focusout',()=>{setTimeout(()=>{const act=document.activeElement;if(act&&act.closest&&act.closest('#page-purchase-master .pm-grid'))return;['v','p','i'].forEach(g=>{if(_pmPend[g]){const rows=_pmPend[g];delete _pmPend[g];pmApply(g,rows);}});},80);});
+  // ── 컬럼 너비 드래그 조절 ──
+  let _pmRsz=null;
+  page.addEventListener('mousedown',e=>{
+    const h=e.target.closest('.pm-rsz');if(!h)return;
+    e.preventDefault();e.stopPropagation();
+    const th=h.closest('th');if(!th)return;
+    _pmRsz={g:h.dataset.g,k:h.dataset.k,startX:e.clientX,w:th.getBoundingClientRect().width,th:th,cur:null,h:h};
+    h.classList.add('on');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!_pmRsz)return;
+    const w=Math.max(40,Math.round(_pmRsz.w+(e.clientX-_pmRsz.startX)));
+    _pmRsz.cur=w;
+    _pmRsz.th.style.minWidth=w+'px';_pmRsz.th.style.width=w+'px';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!_pmRsz)return;
+    if(_pmRsz.cur!=null){pmColW[_pmRsz.g][_pmRsz.k]=_pmRsz.cur;pmColWSave();}
+    if(_pmRsz.h)_pmRsz.h.classList.remove('on');
+    document.body.style.cursor='';document.body.style.userSelect='';
+    _pmRsz=null;
+  });
+  // 더블클릭 = 해당 컬럼 기본 너비로 초기화
+  page.addEventListener('dblclick',e=>{
+    const h=e.target.closest('.pm-rsz');if(!h)return;
+    e.preventDefault();
+    const g=h.dataset.g;
+    if(pmColW[g]&&pmColW[g][h.dataset.k]!=null){delete pmColW[g][h.dataset.k];pmColWSave();pmRender(g);}
+  });
   // 사진 팝업 배선
   (function(){
     const pop=document.getElementById('pmPhotoPop');if(!pop)return;
