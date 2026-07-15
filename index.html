@@ -1090,7 +1090,10 @@ tbody tr:hover { background: #f7f9fc; }
         <div class="lm-title">가죽 변경</div>
         <div class="lm-subtitle">자재별 색상·업체 변경 이력 관리</div>
       </div>
-      <button class="btn btn-add-color" onclick="lmOpenAdd()">+ 새 가죽 추가</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="lmExportXlsx()" style="background:#fff;border:1px solid var(--border);color:var(--text2)">📥 엑셀 다운로드</button>
+        <button class="btn btn-add-color" onclick="lmOpenAdd()">+ 새 가죽 추가</button>
+      </div>
     </div>
 
     <div class="lm-stats">
@@ -7516,6 +7519,121 @@ async function lrApplyToLeather(){
   alert('가죽 변경 페이지 반영 완료: '+ok+'건'+(fail?(' · 실패 '+fail+'건'):'')+'\n「가죽 변경」 탭에서 확인하고, 「변경 보고 기록」에 자동 저장되었습니다.');
 }
 window.lrApplyToLeather=lrApplyToLeather;
+
+/* ── 가죽 변경 목록 → 엑셀 다운로드 (샘플 양식 + 테두리·가운데 정렬·색상 칠하기)
+   스타일 xlsx는 SheetJS 무료판이 못 만들므로 JSZip(앱에 이미 로드됨)으로 OOXML 직접 생성.
+   JSZip이 없으면 무스타일 SheetJS 폴백. ── */
+function lmExportBuild(list){
+  const rows=list.map(l=>({color:String(l.color||'').trim()||'(색상 없음)',co:String(l.company_name||'').trim()}));
+  rows.sort((a,b)=>a.color.localeCompare(b.color,'en',{numeric:true,sensitivity:'base'}));
+  const comps=[];rows.forEach(r=>{const c=r.co||'ETC';if(comps.indexOf(c)<0)comps.push(c);});
+  comps.sort((a,b)=>a.localeCompare(b,'en',{numeric:true,sensitivity:'base'}));
+  const ei=comps.indexOf('ETC');if(ei>=0){comps.splice(ei,1);comps.push('ETC');}
+  return {rows,comps};
+}
+// 색상명 → HEX (가죽 색상 사전 + CSS 표준색 폴백)
+const LM_COLOR_HEX={'black':'000000','white':'FFFFFF','gray':'8A8A8A','grey':'8A8A8A','red':'D22B2B','maroon':'7B241C','pink':'F5B7C5','purple':'7D3C98','lavender':'C39BD3','yellow':'F7DC6F','orange':'E67E22','navy blue':'1F3864','navy':'1F3864','royal blue':'2E5FCB','sky blue':'85C1E9','baby blue':'A9CCE3','carolina blue':'5DADE2','denim blue':'1F618D','blue steel':'4682B4','steel blue':'4682B4','forest green':'1E8449','mint green':'A9DFBF','dark brown':'5D4037','brown':'795548','tan':'D2B48C','cork tan':'C19A6B','orange tan':'DC9A50','blonde':'F5E6B8','beige':'F5F5DC','elephant skin':'9E9B90','oiled chestnut dark':'6B4226','chestnut':'954535','cream':'FFF8DC','ivory':'FFFFF0','gold':'D4AC0D','silver':'BFC5CB','charcoal':'3B3B3B','burgundy':'6E1423','olive':'808000','khaki':'BDB76B','teal':'1F8A8A','turquoise':'45B8AC','mustard':'D4A017','wine':'722F37','camel':'C19A6B','sand':'E0CDA9'};
+function lmColorHex(name){
+  const n=String(name||'').trim().toLowerCase().replace(/\s+/g,' ');
+  if(LM_COLOR_HEX[n])return LM_COLOR_HEX[n];
+  // CSS 표준색 시도 ("skyblue"처럼 공백 제거형 포함)
+  try{
+    const el=document.createElement('i');
+    for(const cand of[n,n.replace(/ /g,'')]){
+      el.style.color='';el.style.color=cand;
+      if(el.style.color){
+        document.body.appendChild(el);
+        const m=getComputedStyle(el).color.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+        el.remove();
+        if(m)return [1,2,3].map(i=>(+m[i]).toString(16).padStart(2,'0')).join('').toUpperCase();
+      }
+    }
+  }catch(e){}
+  return 'E5E7EB'; // 알 수 없는 색 = 연회색
+}
+function _lmXesc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _lmColL(i){let s='';i=i+1;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+function lmExportStyledXlsx(b,fileName){
+  const {rows,comps}=b;
+  // 고유 색상 → fill/font 매핑
+  const uniq=[];const fillOf={};
+  rows.forEach(r=>{const hx=lmColorHex(r.color);if(!(hx in fillOf)){fillOf[hx]=uniq.length;uniq.push(hx);}});
+  const lum=hx=>0.299*parseInt(hx.slice(0,2),16)+0.587*parseInt(hx.slice(2,4),16)+0.114*parseInt(hx.slice(4,6),16);
+  // styles.xml — fills: 0 none,1 gray125,2 헤더, 3+ 색상들 / fonts: 0 검정,1 검정굵게,2 흰색 / border 1=thin
+  let fillsXml='<fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FFDDE5F5"/><bgColor indexed="64"/></patternFill></fill>'
+    +uniq.map(hx=>'<fill><patternFill patternType="solid"><fgColor rgb="FF'+hx+'"/><bgColor indexed="64"/></patternFill></fill>').join('');
+  const fontsXml='<font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF1F3864"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>';
+  const bordersXml='<border><left/><right/><top/><bottom/><diagonal/></border>'
+    +'<border><left style="thin"><color rgb="FF9AA7B8"/></left><right style="thin"><color rgb="FF9AA7B8"/></right><top style="thin"><color rgb="FF9AA7B8"/></top><bottom style="thin"><color rgb="FF9AA7B8"/></bottom><diagonal/></border>';
+  const ctr='<alignment horizontal="center" vertical="center"/>';
+  // cellXfs: 0 기본 / 1 헤더 / 2 가운데+테두리 / 3+ 색상칸
+  let xfs='<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+    +'<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">'+ctr+'</xf>'
+    +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">'+ctr+'</xf>'
+    +uniq.map(hx=>'<xf numFmtId="0" fontId="'+(lum(hx)<140?2:0)+'" fillId="'+(3+fillOf[hx])+'" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">'+ctr+'</xf>').join('');
+  const stylesXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    +'<fonts count="3">'+fontsXml+'</fonts><fills count="'+(3+uniq.length)+'">'+fillsXml+'</fills>'
+    +'<borders count="2">'+bordersXml+'</borders>'
+    +'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+    +'<cellXfs count="'+(3+uniq.length)+'">'+xfs+'</cellXfs></styleSheet>';
+  // sheet1.xml — B3:B4 NO, C3:C4 COLOR, D3~ REMARKS(가운데) / 4행 회사 / 5행~ 데이터
+  const lastCol=2+comps.length; // 0-base: B=1,C=2,D=3...
+  const is=t=>'<is><t xml:space="preserve">'+_lmXesc(t)+'</t></is>';
+  let sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    +'<cols><col min="1" max="1" width="2.5" customWidth="1"/><col min="2" max="2" width="6" customWidth="1"/><col min="3" max="3" width="24" customWidth="1"/>'
+    +comps.map((c,i)=>'<col min="'+(4+i)+'" max="'+(4+i)+'" width="'+Math.max(14,c.length+6)+'" customWidth="1"/>').join('')+'</cols><sheetData>';
+  // 3행 헤더
+  sheet+='<row r="3" ht="20" customHeight="1">';
+  sheet+='<c r="B3" s="1" t="inlineStr">'+is('NO')+'</c><c r="C3" s="1" t="inlineStr">'+is('COLOR')+'</c><c r="D3" s="1" t="inlineStr">'+is('REMARKS')+'</c>';
+  for(let i=1;i<comps.length;i++)sheet+='<c r="'+_lmColL(3+i)+'3" s="1"/>';
+  sheet+='</row><row r="4" ht="20" customHeight="1"><c r="B4" s="1"/><c r="C4" s="1"/>';
+  comps.forEach((c,i)=>{sheet+='<c r="'+_lmColL(3+i)+'4" s="1" t="inlineStr">'+is(c)+'</c>';});
+  sheet+='</row>';
+  rows.forEach((r,i)=>{
+    const R=5+i;const colXf=3+fillOf[lmColorHex(r.color)];
+    sheet+='<row r="'+R+'"><c r="B'+R+'" s="2"><v>'+(i+1)+'</v></c><c r="C'+R+'" s="'+colXf+'" t="inlineStr">'+is(r.color)+'</c>';
+    comps.forEach((c,j)=>{const mark=(r.co||'ETC')===c?c:'';sheet+='<c r="'+_lmColL(3+j)+R+'" s="2"'+(mark?' t="inlineStr">'+is(mark)+'</c>':'/>');});
+    sheet+='</row>';
+  });
+  sheet+='</sheetData><mergeCells count="'+(comps.length>1?3:2)+'"><mergeCell ref="B3:B4"/><mergeCell ref="C3:C4"/>'
+    +(comps.length>1?'<mergeCell ref="D3:'+_lmColL(lastCol)+'3"/>':'')+'</mergeCells></worksheet>';
+  const zip=new JSZip();
+  zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+  zip.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+  zip.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="가죽 색상-회사" sheetId="1" r:id="rId1"/></sheets></workbook>');
+  zip.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+  zip.file('xl/styles.xml',stylesXml);
+  zip.file('xl/worksheets/sheet1.xml',sheet);
+  return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}).then(blob=>{
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fileName;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
+  });
+}
+function lmExportXlsx(){
+  const list=(typeof lmGetLeathers==='function'&&Array.isArray(lmGetLeathers()))?lmGetLeathers():[];
+  if(!list.length){alert('내보낼 가죽 데이터가 없습니다.\n(가죽 목록이 아직 로드되지 않았으면 잠시 후 다시 시도해주세요.)');return;}
+  const b=lmExportBuild(list);
+  const d=new Date();const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const fileName='가죽관리_색상-회사_'+ymd+'.xlsx';
+  if(typeof JSZip!=='undefined'){
+    lmExportStyledXlsx(b,fileName).catch(e=>{console.error('[lm] styled export',e);alert('엑셀 생성 실패: '+(e&&e.message?e.message:e));});
+    return;
+  }
+  // 폴백: JSZip 미로드 시 무스타일 SheetJS
+  if(typeof XLSX==='undefined'){alert('엑셀 모듈이 아직 로드되지 않았습니다. 네트워크 확인 후 새로고침 해주세요.');return;}
+  const aoa=[[],[],['','NO','COLOR','REMARKS'].concat(Array(Math.max(0,b.comps.length-1)).fill('')),['','',''].concat(b.comps)];
+  b.rows.forEach((r,i)=>{aoa.push(['',i+1,r.color].concat(b.comps.map(c=>((r.co||'ETC')===c?(r.co||'ETC'):''))));});
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges']=[{s:{r:2,c:1},e:{r:3,c:1}},{s:{r:2,c:2},e:{r:3,c:2}}];
+  if(b.comps.length>1)ws['!merges'].push({s:{r:2,c:3},e:{r:2,c:3+b.comps.length-1}});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'가죽 색상-회사');
+  XLSX.writeFile(wb,fileName);
+}
+window.lmExportXlsx=lmExportXlsx;
 
 /* ───────────────────────────────────────────── */
 /* ── Spec Change Report (스펙 변경 보고) ── */
