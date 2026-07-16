@@ -624,6 +624,11 @@
 #purchase-page .pr-section-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #1c3a5e;letter-spacing:.5px}
 #purchase-page .pr-grid{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center}
 #purchase-page .pr-grid label{font-size:12px;color:#6b7280;font-weight:500;padding:0 4px}
+#purchase-page .pr-me{display:flex;align-items:center;gap:10px;background:#f4f7fb;border:1px solid #dbe4f0;border-radius:7px;padding:8px 10px 8px 12px;min-height:39px;box-sizing:border-box}
+#purchase-page .pr-me-name{flex:1;font-size:13px;font-weight:700;color:#1a1a2e}
+#purchase-page .pr-me-name.empty{font-weight:400;color:#9aa3b0}
+#purchase-page .pr-me-edit{border:1px solid #cbd5e1;background:#fff;color:#64748b;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
+#purchase-page .pr-me-edit:hover{background:#f8fafc;color:#334155}
 #purchase-page .pr-grid input[type=text],#purchase-page .pr-grid input[type=date],#purchase-page .pr-grid select,#purchase-page .pr-grid textarea{background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1a1a2e;width:100%;outline:none;transition:border .15s;cursor:pointer}
 #purchase-page .pr-grid input[type=text],#purchase-page .pr-grid textarea{cursor:text}
 #purchase-page .pr-grid input:focus,#purchase-page .pr-grid textarea:focus{border-color:#1c3a5e}
@@ -1790,19 +1795,9 @@ tbody tr:hover { background: #f7f9fc; }
           <label>소속/현장</label>
           <input type="text" id="prSite" value="KSM Sports">
           <label>기안자</label>
-          <div style="display:flex;gap:8px">
-            <select id="prReqName" style="flex:1" onchange="prReqNameChange()">
-              <option value="">이름 선택</option>
-              <option>장도규</option>
-              <option>박교순</option>
-              <option>김민성</option>
-            </select>
-            <select id="prReqTitle" style="flex:1">
-              <option value="">직급 선택</option>
-              <option>공장장</option>
-              <option>해외영업팀장</option>
-              <option>해외영업사원</option>
-            </select>
+          <div class="pr-me" id="prReqDisplay" title="로그인한 본인 정보가 자동으로 들어갑니다">
+            <span class="pr-me-name" id="prReqName2">—</span>
+            <button type="button" class="pr-me-edit" onclick="sigOpen()">프로필 수정</button>
           </div>
           <label>요청 목적</label>
           <input type="text" id="prPurpose" placeholder="예: 노후 장비 교체, 글러브 생산용 부자재 확보, 공장 차량 수리 부품 구매">
@@ -2029,7 +2024,21 @@ tbody tr:hover { background: #f7f9fc; }
   .pt-signm{font-size:12px;font-weight:700;color:var(--text);padding:3px 0 0}
   .pt-sigdt{font-size:10px;color:var(--text3);padding-bottom:5px}
   .pt-rejmsg{margin-top:9px;font-size:11.5px;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 9px}
-  .pt-apprbtns{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:11px}
+  .pt-apprbtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:13px}
+  .pt-btn{border:1px solid transparent;border-radius:9px;padding:8px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .13s;display:inline-flex;align-items:center;gap:5px;line-height:1}
+  .pt-btn:hover{transform:translateY(-1px)}
+  .pt-btn.ok{background:linear-gradient(180deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 6px rgba(22,163,74,.28)}
+  .pt-btn.ok:hover{box-shadow:0 4px 11px rgba(22,163,74,.36)}
+  .pt-btn.no{background:#fff;border-color:#fca5a5;color:#dc2626}
+  .pt-btn.no:hover{background:#fef2f2;border-color:#ef4444}
+  .pt-btn.undo{background:#fff;border-color:var(--border);color:var(--text3)}
+  .pt-btn.undo:hover{background:var(--bg);color:var(--text2)}
+  .pt-btn.print{background:linear-gradient(180deg,#24486f,#1c3a5e);color:#fff;box-shadow:0 2px 6px rgba(16,29,48,.25)}
+  .pt-btn.print:hover{box-shadow:0 4px 11px rgba(16,29,48,.32)}
+  .pt-btn.warn{background:#fff;border-color:#fcd34d;color:#b45309}
+  .pt-btn.warn:hover{background:#fffbeb;border-color:#f59e0b}
+  .pt-btn.del{background:#fff;border-color:#fecaca;color:#ef4444}
+  .pt-btn.del:hover{background:#fef2f2;border-color:#f87171}
   #page-purchase-master .pm-pager{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
   #page-purchase-master .pm-pager button{border:1px solid var(--border);background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text)}
   #page-purchase-master .pm-pager button:disabled{opacity:.4;cursor:default}
@@ -5875,8 +5884,26 @@ function prFormatMoney(n,cur){
 }
 /* 기안자 이름/직급 — 이름 선택 시 직급 자동 매칭 (수동 변경 가능) */
 const PR_REQ_TITLE_MAP={'장도규':'공장장','박교순':'해외영업팀장','김민성':'해외영업사원'};
-function prReqNameChange(){const n=(document.getElementById('prReqName')||{}).value||'';const t=PR_REQ_TITLE_MAP[n];const sel=document.getElementById('prReqTitle');if(t&&sel)sel.value=t;}
-function prGetRequestor(){const n=((document.getElementById('prReqName')||{}).value||'').trim();const t=((document.getElementById('prReqTitle')||{}).value||'').trim();return n?(t?n+' ('+t+')':n):t;}
+/* 기안자 = 로그인한 본인 (가입 시 이름 + 프로필의 직급). 직급 미설정이면 이름으로 추정 */
+function prMyTitle(){
+  const me=(typeof window.auMe==='function'&&window.auMe())||{};
+  return me.title||PR_REQ_TITLE_MAP[me.name]||sessionStorage.getItem('lt_title')||'';
+}
+function prGetRequestor(){
+  const me=(typeof window.auMe==='function'&&window.auMe())||{};
+  const n=(me.name||sessionStorage.getItem('lt_name')||'').trim();
+  if(!n)return '';
+  const t=prMyTitle();
+  return t?(n+' ('+t+')'):n;
+}
+// 기안자 표시 갱신 (로그인 직후 · 프로필 저장 후 호출)
+function prRenderRequestor(){
+  const el=document.getElementById('prReqName2');if(!el)return;
+  const v=prGetRequestor();
+  el.textContent=v||'로그인 정보 없음';
+  el.className='pr-me-name'+(v?'':' empty');
+}
+window.prRenderRequestor=prRenderRequestor;
 function prAddRow(){
   const tbody=document.getElementById('prItemsBody');if(!tbody)return;
   const idx=tbody.children.length+1;
@@ -6258,8 +6285,12 @@ async function ptSetAppr(id,status){
   }else{
     if(!confirm('이 구매요청을 승인할까요?\n승인자: '+(me.name||'')+'\n본인 서명이 결재 양식에 기록됩니다.'))return;
   }
-  const myTitle=me.title||(PR_REQ_TITLE_MAP[me.name]||'');
-  r.appr={status:status,by:me.id||'',byName:me.name||'',byTitle:myTitle,sig:me.signature||'',at:new Date().toISOString(),comment:comment||''};
+  if(status==='pending'){   // 결재 취소 — 승인자 정보를 남기면 "대기 — 홍길동"처럼 잘못 표기됨
+    r.appr={status:'pending',by:'',byName:'',byTitle:'',sig:'',at:'',comment:''};
+  }else{
+    const myTitle=me.title||(PR_REQ_TITLE_MAP[me.name]||'');
+    r.appr={status:status,by:me.id||'',byName:me.name||'',byTitle:myTitle,sig:me.signature||'',at:new Date().toISOString(),comment:comment||''};
+  }
   ptPersist(r);ptRender();
 }
 function ptApprSection(r){
@@ -6285,13 +6316,13 @@ function ptApprSection(r){
   if(a.status==='rejected'&&a.comment)h+='<div class="pt-rejmsg">반려 사유: '+prEsc(a.comment)+'</div>';
   h+='<div class="pt-apprbtns">';
   if(ptIsAdmin()){
-    if(a.status!=='approved')h+='<button type="button" class="pr-btn-add" data-ptappr="'+prEsc(r.id)+'" data-v="approved" style="color:#15803d;border-color:#bbf7d0">✔ 승인</button>';
-    if(a.status!=='rejected')h+='<button type="button" class="pr-btn-add" data-ptappr="'+prEsc(r.id)+'" data-v="rejected" style="color:#b91c1c;border-color:#fecaca">✕ 반려</button>';
-    if(a.status!=='pending')h+='<button type="button" class="pr-btn-add" data-ptappr="'+prEsc(r.id)+'" data-v="pending" style="color:var(--text3)">↩ 결재 취소</button>';
+    if(a.status!=='approved')h+='<button type="button" class="pt-btn ok" data-ptappr="'+prEsc(r.id)+'" data-v="approved">✔ 승인</button>';
+    if(a.status!=='rejected')h+='<button type="button" class="pt-btn no" data-ptappr="'+prEsc(r.id)+'" data-v="rejected">✕ 반려</button>';
+    if(a.status!=='pending')h+='<button type="button" class="pt-btn undo" data-ptappr="'+prEsc(r.id)+'" data-v="pending">↩ 결재 취소</button>';
   }else if(a.status==='pending'){
     h+='<span style="font-size:12px;color:var(--text3)">최종관리자의 승인을 기다리는 중입니다.</span>';
   }
-  h+='<button type="button" class="pr-btn-add" data-ptprint="'+prEsc(r.id)+'" style="margin-left:auto">🖨️ 결재 양식 인쇄</button>';
+  h+='<button type="button" class="pt-btn print" data-ptprint="'+prEsc(r.id)+'" style="margin-left:auto">🖨️ 결재 양식 인쇄</button>';
   h+='</div></div>';
   return h;
 }
@@ -6313,10 +6344,10 @@ function ptApprPrint(id){
     +'html{color-scheme:light}body{font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕",sans-serif;padding:24px;color:#1a1a2e;font-size:12px;background:#ffffff}'
     +'h1{font-size:23px;font-weight:800;letter-spacing:6px;text-align:center;margin-bottom:4px}'
     +'.sub{text-align:center;font-size:11px;color:#6b7280;margin-bottom:18px}'
-    +'.hd{display:flex;align-items:flex-start;gap:14px;margin-bottom:6px}'
-    +'.hd-logo{flex:0 0 auto}.hd-logo img{height:44px;width:auto;object-fit:contain;display:block}'
+    +'.hd{display:flex;align-items:center;gap:14px;margin-bottom:10px}'
+    +'.hd-logo{flex:0 0 auto}.hd-logo img{height:78px;width:auto;object-fit:contain;display:block}'
     +'.hd-mid{flex:1;text-align:center}'
-    +'.hd-sp{flex:0 0 auto;width:96px}'
+    +'.hd-sp{flex:0 0 auto;width:150px}'
     +'.sig-tbl{border-collapse:collapse;margin:0 0 18px auto}'
     +'.sig-tbl td{border:1px solid #94a3b8;width:130px;height:104px;text-align:center;vertical-align:top;padding:0}'
     +'.st{font-size:10px;background:#eef2f7;border-bottom:1px solid #cbd5e1;padding:3px 0;font-weight:700;color:#334155}'
@@ -6383,8 +6414,8 @@ function ptRender(){
       +(r.vendor?'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">거래처: '+prEsc(r.vendor)+'</div>':'')
       +'<textarea class="pt-memo" data-ptmemo="'+prEsc(r.id)+'" placeholder="메모 (업체 연락, 지연 사유 등 — 자동 저장)">'+prEsc(r.memo||'')+'</textarea>'
       +'<div class="pt-actions">'
-      +'<button type="button" class="pr-btn-add" data-ptcancel="'+prEsc(r.id)+'" style="color:'+(r.cancelled?'#16a34a':'#b45309')+'">'+(r.cancelled?'↩ 취소 해제':'⚠ 요청 취소')+'</button>'
-      +'<button type="button" class="pr-btn-add" data-ptdel="'+prEsc(r.id)+'" style="color:#ef4444;border-color:#fecaca">🗑 삭제</button>'
+      +'<button type="button" class="pt-btn '+(r.cancelled?'undo':'warn')+'" data-ptcancel="'+prEsc(r.id)+'">'+(r.cancelled?'↩ 취소 해제':'⚠ 요청 취소')+'</button>'
+      +'<button type="button" class="pt-btn del" data-ptdel="'+prEsc(r.id)+'">🗑 삭제</button>'
       +'</div></div>'):'';
     return '<div class="pt-card"><div class="pt-head" data-pthead="'+prEsc(r.id)+'">'
       +'<span style="color:var(--accent);font-weight:700">'+(isOpen?'▾':'▸')+'</span>'
@@ -7078,7 +7109,6 @@ function prFastPrint(){
   }
 })();
 window.prAddRow=prAddRow;
-window.prReqNameChange=prReqNameChange;
 window.prAddDiscountRow=prAddDiscountRow;
 window.prRemoveRow=prRemoveRow;
 window.prRecalc=prRecalc;
@@ -8357,6 +8387,7 @@ window.srFastPrint=srFastPrint;
       else setTimeout(wait,50);
     })();
     if(typeof window.ptRender==='function'){try{window.ptRender();}catch(e){}}
+    if(typeof window.prRenderRequestor==='function'){try{window.prRenderRequestor();}catch(e){}}
     // 서명이 없으면 등록 안내 (한 번)
     if(!profile.signature){
       setTimeout(function(){
@@ -8502,6 +8533,7 @@ window.srFastPrint=srFastPrint;
         try{sessionStorage.setItem('lt_sig',sig);sessionStorage.setItem('lt_title',title||'');}catch(e){}
         sigClose();
         if(typeof window.ptRender==='function'){try{window.ptRender();}catch(e){}}
+        if(typeof window.prRenderRequestor==='function'){try{window.prRenderRequestor();}catch(e){}}
         alert('✔ 저장되었습니다.\n이제 구매 요청·결재에 사용됩니다.');
       }catch(e){alert('서명 저장 실패: '+((e&&e.message)||e));}
       finally{s.disabled=false;s.textContent='서명 저장';}
