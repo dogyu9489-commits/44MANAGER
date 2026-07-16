@@ -1042,9 +1042,19 @@ tbody tr:hover { background: #f7f9fc; }
 <!-- 내 서명 등록 모달 -->
 <div id="sigModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:16px;max-width:460px;width:100%;box-shadow:0 24px 70px rgba(15,23,42,.35);overflow:hidden">
-    <div style="padding:15px 20px;border-bottom:1px solid #e6eaf0;font-weight:800;font-size:15px;color:#1a1a2e">✍️ 내 서명 등록</div>
+    <div style="padding:15px 20px;border-bottom:1px solid #e6eaf0;font-weight:800;font-size:15px;color:#1a1a2e">✍️ 내 프로필 · 서명</div>
     <div style="padding:18px 20px">
       <div id="sigMsg" style="font-size:12.5px;color:#4b5563;line-height:1.6;margin-bottom:11px">구매 결재 양식에 그대로 들어갑니다. 손가락 또는 마우스로 서명해주세요.</div>
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+        <span style="font-size:12.5px;font-weight:700;color:#334155;width:38px">직급</span>
+        <select id="sigTitle" style="flex:1;border:1px solid #e4e4e0;border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:inherit;color:#1a1a2e;outline:none;background:#fff">
+          <option value="">직급 선택</option>
+          <option>공장장</option>
+          <option>해외영업팀장</option>
+          <option>해외영업사원</option>
+        </select>
+        <input type="text" id="sigTitleEtc" placeholder="직접 입력" style="flex:1;border:1px solid #e4e4e0;border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:inherit;color:#1a1a2e;outline:none">
+      </div>
       <div class="au-sigwrap" style="border-radius:10px">
         <canvas id="auSigPad" width="600" height="200" style="height:130px"></canvas>
         <div class="au-sigph" id="auSigPh">여기에 손가락/마우스로 서명하세요</div>
@@ -6224,7 +6234,7 @@ function ptIsAdmin(){
 }
 function ptAppr(r){
   const a=r.appr||{};
-  return {status:a.status||'pending',by:a.by||'',byName:a.byName||'',sig:a.sig||'',at:a.at||'',comment:a.comment||''};
+  return {status:a.status||'pending',by:a.by||'',byName:a.byName||'',byTitle:a.byTitle||'',sig:a.sig||'',at:a.at||'',comment:a.comment||''};
 }
 function ptApprBadge(r){
   const a=ptAppr(r);
@@ -6248,7 +6258,8 @@ async function ptSetAppr(id,status){
   }else{
     if(!confirm('이 구매요청을 승인할까요?\n승인자: '+(me.name||'')+'\n본인 서명이 결재 양식에 기록됩니다.'))return;
   }
-  r.appr={status:status,by:me.id||'',byName:me.name||'',sig:me.signature||'',at:new Date().toISOString(),comment:comment||''};
+  const myTitle=me.title||(PR_REQ_TITLE_MAP[me.name]||'');
+  r.appr={status:status,by:me.id||'',byName:me.name||'',byTitle:myTitle,sig:me.signature||'',at:new Date().toISOString(),comment:comment||''};
   ptPersist(r);ptRender();
 }
 function ptApprSection(r){
@@ -6268,7 +6279,7 @@ function ptApprSection(r){
     +(a.status==='approved'&&a.sig?'<img src="'+prSafeImg(a.sig)+'" alt="">'
       :a.status==='rejected'?'<span style="color:#b91c1c;font-weight:700">반려</span>'
       :'<span>결재 대기</span>')+'</div>'
-    +'<div class="pt-signm">'+prEsc(a.byName||'-')+'</div>'
+    +'<div class="pt-signm">'+prEsc(a.byName?(a.byName+(a.byTitle?' ('+a.byTitle+')':'')):'-')+'</div>'
     +'<div class="pt-sigdt">'+prEsc(when)+'</div></div>';
   h+='</div>';
   if(a.status==='rejected'&&a.comment)h+='<div class="pt-rejmsg">반려 사유: '+prEsc(a.comment)+'</div>';
@@ -6296,11 +6307,16 @@ function ptApprPrint(id){
       +(rej?'<span class="rej">반려</span>':(sig?'<img src="'+prSafeImg(sig)+'">':''))
       +'</div><div class="sn">'+prEsc(name||'')+'</div><div class="sd">'+prEsc(dt||'')+'</div></td>';
   };
+  const logo=(typeof prGetLogoSrc==='function')?prGetLogoSrc():'';
   const doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>구매 결재서 - '+prEsc(r.title||'')+'</title><style>'
     +'*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'
-    +'body{font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕",sans-serif;padding:24px;color:#1a1a2e;font-size:12px}'
+    +'html{color-scheme:light}body{font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕",sans-serif;padding:24px;color:#1a1a2e;font-size:12px;background:#ffffff}'
     +'h1{font-size:23px;font-weight:800;letter-spacing:6px;text-align:center;margin-bottom:4px}'
     +'.sub{text-align:center;font-size:11px;color:#6b7280;margin-bottom:18px}'
+    +'.hd{display:flex;align-items:flex-start;gap:14px;margin-bottom:6px}'
+    +'.hd-logo{flex:0 0 auto}.hd-logo img{height:44px;width:auto;object-fit:contain;display:block}'
+    +'.hd-mid{flex:1;text-align:center}'
+    +'.hd-sp{flex:0 0 auto;width:96px}'
     +'.sig-tbl{border-collapse:collapse;margin:0 0 18px auto}'
     +'.sig-tbl td{border:1px solid #94a3b8;width:130px;height:104px;text-align:center;vertical-align:top;padding:0}'
     +'.st{font-size:10px;background:#eef2f7;border-bottom:1px solid #cbd5e1;padding:3px 0;font-weight:700;color:#334155}'
@@ -6320,15 +6336,18 @@ function ptApprPrint(id){
     +'.stamp{position:fixed;top:150px;right:60px;font-size:52px;font-weight:900;letter-spacing:8px;opacity:.14;transform:rotate(-18deg)}'
     +'@page{size:A4;margin:14mm}</style></head><body>'
     +(a.status==='approved'?'<div class="stamp" style="color:#15803d">APPROVED</div>':a.status==='rejected'?'<div class="stamp" style="color:#b91c1c">REJECTED</div>':'')
-    +'<h1>구매 결재서</h1><div class="sub">Purchase Approval · KSM SPORTS</div>'
+    +'<div class="hd">'
+    +'<div class="hd-logo">'+(logo?'<img src="'+logo+'" alt="KSM SPORTS">':'')+'</div>'
+    +'<div class="hd-mid"><h1>구매 결재서</h1><div class="sub">Purchase Approval · KSM SPORTS</div></div>'
+    +'<div class="hd-sp"></div></div>'
     +'<table class="sig-tbl"><tr>'
     +sigCell('기안',r.requestor||'',r.reqSig||'',(r.dates||{}).requested||'',false)
-    +sigCell('최종 승인',a.byName||'',a.status==='approved'?a.sig:'',when,a.status==='rejected')
+    +sigCell('최종 승인',(a.byName?(a.byName+(a.byTitle?' ('+a.byTitle+')':'')):''),a.status==='approved'?a.sig:'',when,a.status==='rejected')
     +'</tr></table>'
     +'<table class="info">'
     +'<tr><th>건명</th><td colspan="3">'+prEsc(r.title||'')+'</td></tr>'
     +'<tr><th>요청자</th><td>'+prEsc(r.requestor||'-')+'</td><th>요청일</th><td>'+prEsc((r.dates||{}).requested||'-')+'</td></tr>'
-    +'<tr><th>거래처</th><td>'+prEsc(r.vendor||'-')+'</td><th>결재 상태</th><td>'+(a.status==='approved'?'승인':a.status==='rejected'?'반려':'대기')+'</td></tr>'
+    +'<tr><th>거래처</th><td>'+prEsc(r.vendor||'-')+'</td><th>결재 상태</th><td>'+(a.status==='approved'?'승인':a.status==='rejected'?'반려':'대기')+(a.byName?' — '+prEsc(a.byName+(a.byTitle?' ('+a.byTitle+')':'')):'')+'</td></tr>'
     +'</table>'
     +(a.status==='rejected'&&a.comment?'<div class="rejbox"><b>반려 사유:</b> '+prEsc(a.comment)+'</div>':'')
     +'<table class="itm"><thead><tr><th style="width:36px">No</th><th>품명</th><th style="width:60px">수량</th><th style="width:120px">금액</th></tr></thead><tbody>'
@@ -8347,7 +8366,9 @@ window.srFastPrint=srFastPrint;
     }
   }
   async function auLoadProfile(sb,uid){
-    const r=await sb.from('app_users').select('id,name,email,role,signature').eq('id',uid).maybeSingle();
+    let r=await sb.from('app_users').select('id,name,email,role,signature,title').eq('id',uid).maybeSingle();
+    if(r.error&&/title/i.test(r.error.message||''))   // title 컬럼 없는 구스키마 폴백
+      r=await sb.from('app_users').select('id,name,email,role,signature').eq('id',uid).maybeSingle();
     if(r.error)throw r.error;
     return r.data;
   }
@@ -8441,6 +8462,13 @@ window.srFastPrint=srFastPrint;
     const cur=document.getElementById('sigCur'), img=document.getElementById('sigCurImg');
     if(me.signature){cur.style.display='';img.src=me.signature;}else{cur.style.display='none';}
     document.getElementById('sigMsg').innerHTML=msg||'구매 결재 양식에 그대로 들어갑니다. 손가락 또는 마우스로 서명해주세요.';
+    // 직급 (없으면 이름으로 추정)
+    const t=me.title||((typeof PR_REQ_TITLE_MAP!=='undefined'&&PR_REQ_TITLE_MAP[me.name])||'');
+    const sel=document.getElementById('sigTitle'), etc=document.getElementById('sigTitleEtc');
+    if(sel&&etc){
+      const known=[...sel.options].some(function(o){return o.value===t&&t;});
+      sel.value=known?t:'';etc.value=known?'':(t||'');
+    }
     m.style.display='flex';
   };
   function sigClose(){const m=document.getElementById('sigModal');if(m)m.style.display='none';}
@@ -8450,19 +8478,31 @@ window.srFastPrint=srFastPrint;
     const m=document.getElementById('sigModal');if(m)m.addEventListener('click',function(e){if(e.target===m)sigClose();});
     const s=document.getElementById('sigSave');
     if(s)s.addEventListener('click',async function(){
-      const sig=auSigData();
+      const sig=auSigData()||((window.__me||{}).signature||'');
       if(!sig){alert('먼저 서명을 그려주세요.');return;}
       const sb=auSb();
       if(!sb){alert('연결이 없어 저장하지 못했습니다.');return;}
+      const title=((document.getElementById('sigTitleEtc')||{}).value||'').trim()
+                ||((document.getElementById('sigTitle')||{}).value||'').trim();
       s.disabled=true;s.textContent='저장 중…';
       try{
-        const r=await sb.rpc('update_signature',{p_sig:sig});
-        if(r.error)throw new Error(r.error.message||r.error);
+        if(auSigData()){
+          const r=await sb.rpc('update_signature',{p_sig:sig});
+          if(r.error)throw new Error(r.error.message||r.error);
+        }
+        // 직급 저장 (app_users update self 정책으로 본인 행만)
+        const me2=window.__me||{};
+        if(me2.id&&title!==(me2.title||'')){
+          const t=await sb.from('app_users').update({title:title}).eq('id',me2.id);
+          if(t.error&&!/column .*title.* does not exist/i.test(t.error.message||''))
+            throw new Error('직급 저장 실패: '+(t.error.message||t.error));
+          if(!t.error)me2.title=title;
+        }
         if(window.__me)window.__me.signature=sig;
-        try{sessionStorage.setItem('lt_sig',sig);}catch(e){}
+        try{sessionStorage.setItem('lt_sig',sig);sessionStorage.setItem('lt_title',title||'');}catch(e){}
         sigClose();
         if(typeof window.ptRender==='function'){try{window.ptRender();}catch(e){}}
-        alert('✔ 서명이 저장되었습니다.\n이제 구매 요청·결재에 사용됩니다.');
+        alert('✔ 저장되었습니다.\n이제 구매 요청·결재에 사용됩니다.');
       }catch(e){alert('서명 저장 실패: '+((e&&e.message)||e));}
       finally{s.disabled=false;s.textContent='서명 저장';}
     });
