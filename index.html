@@ -7172,6 +7172,37 @@ function prSigCellHtml(src,name,dt,status){
     +(name?'<div class="sig-nm">'+prEscape(name)+'</div>':'')
     +(dt?'<div class="sig-dt">'+prEscape(prFmtDate?prFmtDate(dt):dt)+'</div>':'');
 }
+// 최초 로딩 시 기본 3행 + 오늘 날짜 + 사진 슬롯 2개 세팅 (한 번만)
+(function prInit(){
+  if(!document.getElementById('prItemsBody'))return;
+  if(document.getElementById('prItemsBody').children.length===0){
+    for(let i=0;i<3;i++)prAddRow();
+  }
+  const dEl=document.getElementById('prDate');
+  if(dEl&&!dEl.value){
+    const t=new Date();
+    const iso=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+    dEl.value=iso;
+  }
+  // 기본 사진 슬롯 2개 생성
+  const grid=document.getElementById('prPhotoGrid');
+  if(grid && grid.children.length===0){
+    prAddPhoto('📷 참고 사진 1 (물품 정면/전체)');
+    prAddPhoto('📷 참고 사진 2 (상세 규격/모델명/파손 부위)');
+  }
+})();
+window.prAddRow=prAddRow;
+window.prAddDiscountRow=prAddDiscountRow;
+window.prRemoveRow=prRemoveRow;
+window.prRecalc=prRecalc;
+window.prHandlePhoto=prHandlePhoto;
+window.prClearPhoto=prClearPhoto;
+window.prAddPhoto=prAddPhoto;
+window.prRemovePhoto=prRemovePhoto;
+window.prPhotoAreaClick=prPhotoAreaClick;
+window.prDragOver=prDragOver;
+window.prDragLeave=prDragLeave;
+window.prHandleDrop=prHandleDrop;
 window.prFastPrint=prFastPrint;
 window.prLibOpen=prLibOpen;
 window.prLibPopOpen=prLibPopOpen;
