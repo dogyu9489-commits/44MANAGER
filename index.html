@@ -1028,17 +1028,9 @@ tbody tr:hover { background: #f7f9fc; }
       <input class="pw-input au-in" type="text" id="auName" placeholder="이름 (예: 장도규)" maxlength="20">
       <input class="pw-input au-in" type="email" id="auEmail" placeholder="이메일" autocomplete="username">
       <input class="pw-input au-in" type="password" id="auPw" placeholder="비밀번호 (6자 이상)" autocomplete="new-password">
-      <input class="pw-input au-in" type="password" id="auCode" placeholder="가입코드 (회사에서 받은 코드)">
-      <div class="au-siglabel">본인 서명 <span>— 결재 양식에 그대로 들어갑니다</span></div>
-      <div class="au-sigwrap">
-        <canvas id="auSigPad" width="600" height="200"></canvas>
-        <div class="au-sigph" id="auSigPh">여기에 손가락/마우스로 서명하세요</div>
-      </div>
-      <div class="au-sigbar">
-        <button type="button" id="auSigClear">지우기</button>
-        <span id="auSigState">미작성</span>
-      </div>
-      <button class="pw-btn" id="auSignupBtn" onclick="auDoSignup()" style="margin-top:12px">가입하고 입장하기</button>
+      <input class="pw-input au-in" type="password" id="auCode" placeholder="회사코드" onkeydown="if(event.key==='Enter')auDoSignup()">
+      <button class="pw-btn" id="auSignupBtn" onclick="auDoSignup()" style="margin-top:2px">가입하고 입장하기</button>
+      <div class="au-note" style="margin-top:9px">가입 후 <b>「✍️ 내 서명」</b>에서 서명을 등록하면 구매 결재에 사용됩니다.</div>
     </div>
     <div class="pw-error" id="pwError"></div>
     <div class="au-note" id="auNote"></div>
@@ -1046,6 +1038,32 @@ tbody tr:hover { background: #f7f9fc; }
 </div>
 
 <div id="mainWrap" style="display:none">
+
+<!-- 내 서명 등록 모달 -->
+<div id="sigModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;max-width:460px;width:100%;box-shadow:0 24px 70px rgba(15,23,42,.35);overflow:hidden">
+    <div style="padding:15px 20px;border-bottom:1px solid #e6eaf0;font-weight:800;font-size:15px;color:#1a1a2e">✍️ 내 서명 등록</div>
+    <div style="padding:18px 20px">
+      <div id="sigMsg" style="font-size:12.5px;color:#4b5563;line-height:1.6;margin-bottom:11px">구매 결재 양식에 그대로 들어갑니다. 손가락 또는 마우스로 서명해주세요.</div>
+      <div class="au-sigwrap" style="border-radius:10px">
+        <canvas id="auSigPad" width="600" height="200" style="height:130px"></canvas>
+        <div class="au-sigph" id="auSigPh">여기에 손가락/마우스로 서명하세요</div>
+      </div>
+      <div class="au-sigbar">
+        <button type="button" id="auSigClear">지우기</button>
+        <span id="auSigState">미작성</span>
+      </div>
+      <div id="sigCur" style="display:none;margin-top:12px;padding-top:11px;border-top:1px solid #eef1f5">
+        <div style="font-size:11.5px;color:#94a3b8;margin-bottom:5px">현재 등록된 서명</div>
+        <img id="sigCurImg" alt="" style="max-height:52px;max-width:100%;object-fit:contain">
+      </div>
+    </div>
+    <div style="display:flex;gap:9px;padding:0 20px 18px">
+      <button type="button" id="sigClose" style="border:1px solid #e4e4e0;background:#fff;color:#64748b;border-radius:8px;padding:10px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit">나중에</button>
+      <button type="button" id="sigSave" style="margin-left:auto;border:none;background:#1c3a5e;color:#fff;border-radius:8px;padding:10px 22px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit">서명 저장</button>
+    </div>
+  </div>
+</div>
 
 <div class="topbar">
   <div class="topbar-title" style="display:flex;align-items:center;gap:10px;">
@@ -1057,6 +1075,7 @@ tbody tr:hover { background: #f7f9fc; }
       <div class="live-dot"></div>
       <span class="live-txt">연결 중...</span>
     </div>
+    <button type="button" id="sigOpenBtn" onclick="sigOpen()" title="내 서명 등록/수정" style="border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.10);color:#fff;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:10px">✍️ 내 서명</button>
     <button type="button" id="auLogoutBtn" onclick="auLogout()" title="로그아웃" style="border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.10);color:#fff;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:10px">로그아웃</button>
   </div>
 </div>
@@ -6187,6 +6206,9 @@ function prSubmitRequest(){
     reqSig:((typeof window.auMe==='function'&&window.auMe())?window.auMe().signature:'')||sessionStorage.getItem('lt_sig')||'',
     appr:{status:'pending',by:'',byName:'',sig:'',at:'',comment:''}
   };
+  if(!rec.reqSig&&typeof window.sigOpen==='function'){
+    setTimeout(function(){if(window.__me&&!window.__me.signature)window.sigOpen('구매 요청이 등록되었습니다.<br><b>본인 서명</b>을 등록하면 결재 양식의 기안란에 표시됩니다.');},900);
+  }
   ptOpenIds[rec.id]=true;
   ptRecords.unshift(rec);ptPersist(rec);ptRender();
   alert('구매요청이 등록되었습니다.\n「구매 진행」에서 최종관리자 결재를 기다립니다.');
@@ -6214,7 +6236,11 @@ async function ptSetAppr(id,status){
   const r=ptRecords.find(x=>x.id===id);if(!r)return;
   if(!ptIsAdmin()){alert('결재 승인은 최종관리자만 가능합니다.');return;}
   const me=(typeof window.auMe==='function')?window.auMe():null;
-  if(!me||!me.signature){alert('결재하려면 본인 서명이 등록되어 있어야 합니다.\n(가입 시 서명을 등록했는지 확인해주세요)');return;}
+  if(!me||!me.signature){
+    if(typeof window.sigOpen==='function')window.sigOpen('결재 승인에는 <b>본인 서명</b>이 필요합니다.<br>지금 등록하면 바로 결재할 수 있어요.');
+    else alert('결재하려면 본인 서명을 먼저 등록해야 합니다.');
+    return;
+  }
   let comment='';
   if(status==='rejected'){
     comment=prompt('반려 사유를 입력하세요.','');
@@ -8312,6 +8338,13 @@ window.srFastPrint=srFastPrint;
       else setTimeout(wait,50);
     })();
     if(typeof window.ptRender==='function'){try{window.ptRender();}catch(e){}}
+    // 서명이 없으면 등록 안내 (한 번)
+    if(!profile.signature){
+      setTimeout(function(){
+        if(window.__me&&!window.__me.signature)
+          window.sigOpen('환영합니다, <b>'+(profile.name||'')+'</b>님!<br>구매 요청·결재에 쓰일 <b>본인 서명</b>을 등록해주세요. (나중에 톱바 「✍️ 내 서명」에서 언제든 가능)');
+      },700);
+    }
   }
   async function auLoadProfile(sb,uid){
     const r=await sb.from('app_users').select('id,name,email,role,signature').eq('id',uid).maybeSingle();
@@ -8359,9 +8392,8 @@ window.srFastPrint=srFastPrint;
     if(!name){auErr('이름을 입력하세요.');return;}
     if(!email){auErr('이메일을 입력하세요.');return;}
     if(pw.length<6){auErr('비밀번호는 6자 이상이어야 합니다.');return;}
-    if(!code){auErr('가입코드를 입력하세요.');return;}
-    const sig=auSigData();
-    if(!sig){auErr('본인 서명을 그려주세요. (결재 양식에 사용됩니다)');return;}
+    if(!code){auErr('회사코드를 입력하세요.');return;}
+    const sig=null;   // 서명은 가입 후 「✍️ 내 서명」에서 등록
     const btnLabel=document.getElementById('auSignupBtn').textContent;
     auErr('');auNote('');auBusy('auSignupBtn',true,btnLabel);
     try{
@@ -8394,6 +8426,47 @@ window.srFastPrint=srFastPrint;
       auErr('가입 실패: '+((e&&e.message)||e));
     }finally{auBusy('auSignupBtn',false,btnLabel);}
   }
+  /* ── 내 서명 등록 (앱 내부) ── */
+  function auSigReset(){
+    const cv=document.getElementById('auSigPad');if(!cv)return;
+    cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+    auSigDrawn=false;
+    const ph=document.getElementById('auSigPh');if(ph)ph.style.display='flex';
+    const st=document.getElementById('auSigState');if(st){st.textContent='미작성';st.style.color='';}
+  }
+  window.sigOpen=function(msg){
+    const m=document.getElementById('sigModal');if(!m)return;
+    auSigReset();
+    const me=window.__me||{};
+    const cur=document.getElementById('sigCur'), img=document.getElementById('sigCurImg');
+    if(me.signature){cur.style.display='';img.src=me.signature;}else{cur.style.display='none';}
+    document.getElementById('sigMsg').innerHTML=msg||'구매 결재 양식에 그대로 들어갑니다. 손가락 또는 마우스로 서명해주세요.';
+    m.style.display='flex';
+  };
+  function sigClose(){const m=document.getElementById('sigModal');if(m)m.style.display='none';}
+  window.sigClose=sigClose;
+  (function sigWire(){
+    const c=document.getElementById('sigClose');if(c)c.addEventListener('click',sigClose);
+    const m=document.getElementById('sigModal');if(m)m.addEventListener('click',function(e){if(e.target===m)sigClose();});
+    const s=document.getElementById('sigSave');
+    if(s)s.addEventListener('click',async function(){
+      const sig=auSigData();
+      if(!sig){alert('먼저 서명을 그려주세요.');return;}
+      const sb=auSb();
+      if(!sb){alert('연결이 없어 저장하지 못했습니다.');return;}
+      s.disabled=true;s.textContent='저장 중…';
+      try{
+        const r=await sb.rpc('update_signature',{p_sig:sig});
+        if(r.error)throw new Error(r.error.message||r.error);
+        if(window.__me)window.__me.signature=sig;
+        try{sessionStorage.setItem('lt_sig',sig);}catch(e){}
+        sigClose();
+        if(typeof window.ptRender==='function'){try{window.ptRender();}catch(e){}}
+        alert('✔ 서명이 저장되었습니다.\n이제 구매 요청·결재에 사용됩니다.');
+      }catch(e){alert('서명 저장 실패: '+((e&&e.message)||e));}
+      finally{s.disabled=false;s.textContent='서명 저장';}
+    });
+  })();
   window.auDoLogin=auDoLogin;window.auDoSignup=auDoSignup;window.auNeedProfile=auNeedProfile;window.auRedirectUrl=auRedirectUrl;
   window.checkPw=auDoLogin; // 구버전 호출 호환
 
