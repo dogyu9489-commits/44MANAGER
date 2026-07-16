@@ -5884,6 +5884,30 @@ function prFormatMoney(n,cur){
 }
 /* 기안자 이름/직급 — 이름 선택 시 직급 자동 매칭 (수동 변경 가능) */
 const PR_REQ_TITLE_MAP={'장도규':'공장장','박교순':'해외영업팀장','김민성':'해외영업사원'};
+/* 결재 양식용 폼 스냅샷 — 요청서 전체(사진 포함)를 레코드에 담아두면
+   「결재 양식 인쇄」가 같은 양식을 그대로 재현할 수 있다.
+   사진 원본은 팀 공유(purchase_track) 용량을 키우므로 캔버스로 축소해 담는다. */
+function prShrinkDataUrl(src,maxDim){
+  try{
+    if(!/^data:image\//.test(String(src||'')))return src||'';
+    const img=new Image();img.src=src;
+    if(!img.complete||!img.naturalWidth)return src;
+    let w=img.naturalWidth,hh=img.naturalHeight;const m=maxDim||1000;
+    if(w<=m&&hh<=m)return src;
+    if(w>=hh){hh=Math.round(hh*m/w);w=m;}else{w=Math.round(w*m/hh);hh=m;}
+    const cv=document.createElement('canvas');cv.width=w;cv.height=hh;
+    cv.getContext('2d').drawImage(img,0,0,w,hh);
+    return cv.toDataURL('image/jpeg',0.82);
+  }catch(e){return src||'';}
+}
+function prFormSnapshot(){
+  try{
+    const d=prCollectForm();
+    (d.photoSlots||[]).forEach(function(s){ if(s.hasImg&&s.img)s.img=prShrinkDataUrl(s.img,1000); });
+    return d;
+  }catch(e){console.error('[pr] snapshot',e);return null;}
+}
+
 /* 기안자 = 로그인한 본인 (가입 시 이름 + 프로필의 직급). 직급 미설정이면 이름으로 추정 */
 function prMyTitle(){
   const me=(typeof window.auMe==='function'&&window.auMe())||{};
@@ -6241,7 +6265,8 @@ function prSubmitRequest(){
     dates:{requested:(document.getElementById('prDate')||{}).value||ptToday()},
     cancelled:false,memo:'',createdTs:Date.now(),
     reqSig:((typeof window.auMe==='function'&&window.auMe())?window.auMe().signature:'')||sessionStorage.getItem('lt_sig')||'',
-    appr:{status:'pending',by:'',byName:'',sig:'',at:'',comment:''}
+    appr:{status:'pending',by:'',byName:'',sig:'',at:'',comment:''},
+    form:prFormSnapshot()
   };
   if(!rec.reqSig&&typeof window.sigOpen==='function'){
     setTimeout(function(){if(window.__me&&!window.__me.signature)window.sigOpen('구매 요청이 등록되었습니다.<br><b>본인 서명</b>을 등록하면 결재 양식의 기안란에 표시됩니다.');},900);
@@ -6329,6 +6354,34 @@ function ptApprSection(r){
 function ptApprPrint(id){
   const r=ptRecords.find(x=>x.id===id);if(!r)return;
   const a=ptAppr(r);
+  const apprName=a.byName?(a.byName+(a.byTitle?' ('+a.byTitle+')':'')):'';
+  const sig={
+    reqSig:r.reqSig||'', reqName:r.requestor||'', reqDate:(r.dates||{}).requested||'',
+    apprSig:(a.status==='approved')?a.sig:'', apprName:apprName,
+    apprDate:a.at?a.at.slice(0,10):'', status:a.status,
+    docTitle:'구매 결재서 - '+(r.title||'')
+  };
+  // 요청서 전체 양식(사진 포함)을 그대로 재현 — 등록 시 저장한 스냅샷 사용
+  if(r.form&&typeof prRenderRequestDoc==='function'){
+    let doc=null;
+    try{
+      const f=Object.assign({},r.form);
+      if(!f.date)f.date=(r.dates||{}).requested||'';          // 스냅샷에 날짜 없으면 요청일로
+      if(!f.requestor)f.requestor=r.requestor||'';
+      if(!f.vendor)f.vendor=r.vendor||'';
+      doc=prRenderRequestDoc(f,sig);
+    }catch(e){ console.error('[pt] render form',e); }
+    if(doc){
+      const w=window.open('','ptAppr_'+Date.now(),'width=900,height=1000,scrollbars=yes');
+      if(!w){alert('팝업이 차단되어 인쇄 창을 열지 못했습니다. 브라우저에서 팝업을 허용해주세요.');return;}
+      w.document.open();w.document.write(doc);w.document.close();w.focus();
+      setTimeout(function(){w.print();},700);
+      return;
+    }
+  }
+  ptApprPrintLegacy(r,a);   // 스냅샷 없는 예전 기록 → 간단 결재서
+}
+function ptApprPrintLegacy(r,a){
   const rows=(r.items||[]).map(function(x,i){
     return '<tr><td class="c">'+(i+1)+'</td><td>'+prEsc(x.name)+'</td><td class="c">'+prEsc(x.qty===''?'-':x.qty)+'</td><td class="r">'+ptFmtMoney(x.total,r.currency)+'</td></tr>';
   }).join('');
@@ -6866,7 +6919,8 @@ function prGetLogoSrc(){
   if(pwLogoImg && pwLogoImg.src) return pwLogoImg.src;
   return '';
 }
-function prFastPrint(){
+/* 요청서 폼 → 데이터 스냅샷 (인쇄·결재 양식이 공용으로 사용) */
+function prCollectForm(){
   const cur=prGetCurrency();
   const date=document.getElementById('prDate').value||'';
   const site=document.getElementById('prSite').value||'';
@@ -6936,30 +6990,39 @@ function prFastPrint(){
     </tr>`;
   }).join(''):`<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:12px">(요청 항목 없음)</td></tr>`;
 
-  // 동적 사진 HTML 생성: 2장씩 한 행으로 묶어 표시
-  let photosHtml='';
-  if(photoSlots.length===0){
-    photosHtml='<div style="text-align:center;color:#9ca3af;font-size:11px;font-style:italic;padding:14px;border:1px solid #d1d5db;border-radius:4px;background:#fafafa">첨부된 사진 없음</div>';
-  } else {
-    const chunks=[];
-    for(let i=0;i<photoSlots.length;i+=2){
-      chunks.push(photoSlots.slice(i,i+2));
-    }
-    photosHtml=chunks.map(pair=>{
-      const cellWidth = pair.length===1 ? '100%' : '50%';
-      const headTh=pair.map(p=>`<th style="width:${cellWidth}">${prEscape(p.title)}</th>`).join('');
-      const photoTd=pair.map(p=>`<td class="photo-cell">${p.hasImg?`<img src="${p.img}">`:'<div class="no-photo">사진 없음</div>'}</td>`).join('');
-      const descTd=pair.map(p=>`<td class="desc">${prEscape(p.desc)||'-'}</td>`).join('');
-      return`<table class="pr-photos">
-        <thead><tr>${headTh}</tr></thead>
-        <tbody>
-          <tr>${photoTd}</tr>
-          <tr>${descTd}</tr>
-        </tbody>
-      </table>`;
-    }).join('<div style="height:8px"></div>');
-  }
-
+  return {cur:cur,date:date,site:site,requestor:requestor,purpose:purpose,dueDate:dueDate,
+    vendor:vendor,delivery:delivery,notes:notes,rows:rows,photoSlots:photoSlots,
+    subtotal:subtotal,discountTotal:discountTotal,grandTotal:grandTotal,hasDiscount:hasDiscount,
+    rowsHtml:rowsHtml};
+}
+/* 사진 슬롯 → 인쇄용 HTML (2장씩 한 행) — 수집·렌더 양쪽에서 공용 */
+function prPhotosHtml(photoSlots){
+  photoSlots=photoSlots||[];
+  if(!photoSlots.length)
+    return '<div style="text-align:center;color:#9ca3af;font-size:11px;font-style:italic;padding:14px;border:1px solid #d1d5db;border-radius:4px;background:#fafafa">첨부된 사진 없음</div>';
+  const chunks=[];
+  for(let i=0;i<photoSlots.length;i+=2)chunks.push(photoSlots.slice(i,i+2));
+  return chunks.map(function(pair){
+    const cellWidth = pair.length===1 ? '100%' : '50%';
+    const headTh=pair.map(function(p){return '<th style="width:'+cellWidth+'">'+prEscape(p.title)+'</th>';}).join('');
+    const photoTd=pair.map(function(p){
+      const src=(p.hasImg&&p.img&&typeof prSafeImg==='function')?prSafeImg(p.img):(p.hasImg?p.img:'');
+      return '<td class="photo-cell">'+(src?'<img src="'+src+'">':'<div class="no-photo">사진 없음</div>')+'</td>';
+    }).join('');
+    const descTd=pair.map(function(p){return '<td class="desc">'+(prEscape(p.desc)||'-')+'</td>';}).join('');
+    return '<table class="pr-photos"><thead><tr>'+headTh+'</tr></thead><tbody><tr>'+photoTd+'</tr><tr>'+descTd+'</tr></tbody></table>';
+  }).join('<div style="height:8px"></div>');
+}
+/* 스냅샷 → 인쇄 문서 HTML.
+   sig = {reqSig, reqName, reqDate, apprSig, apprName, apprDate, status}
+   → 기안/공장장 서명칸에 실제 서명 이미지를 넣는다. (결재 양식 인쇄가 이 경로를 씀) */
+function prRenderRequestDoc(d, sig){
+  sig=sig||{};
+  const cur=d.cur, date=d.date, site=d.site, requestor=d.requestor, purpose=d.purpose,
+        dueDate=d.dueDate, vendor=d.vendor, delivery=d.delivery, notes=d.notes,
+        subtotal=d.subtotal, discountTotal=d.discountTotal, grandTotal=d.grandTotal,
+        hasDiscount=d.hasDiscount, rowsHtml=d.rowsHtml;
+  const photosHtml=prPhotosHtml(d.photoSlots);
   const logoSrc = prGetLogoSrc();
   const titleBlock = logoSrc
     ? `<div class="pr-title-row">
@@ -6985,8 +7048,8 @@ function prFastPrint(){
         </thead>
         <tbody>
           <tr>
-            <td class="sig">(서명)</td>
-            <td class="sig">(서명)</td>
+            <td class="sig">${prSigCellHtml(sig.reqSig, sig.reqName||requestor, sig.reqDate||date)}</td>
+            <td class="sig">${prSigCellHtml(sig.apprSig, sig.apprName, sig.apprDate, sig.status)}</td>
           </tr>
         </tbody>
       </table>
@@ -7060,7 +7123,11 @@ function prFastPrint(){
       .pr-doc h2{font-size:13px;font-weight:700;color:#1a1a2e;margin:12px 0 6px;padding:5px 10px;background:#f9fafb;border-left:3px solid #1a1a2e;page-break-after:avoid}
       .pr-approve{width:99.5%;border-collapse:collapse;margin:0 auto 10px;table-layout:fixed}
       .pr-approve th{width:50%;background:#f3f4f6;border:1.5px solid #1a1a2e;padding:6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
-      .pr-approve td.sig{width:50%;height:56px;border:1.5px solid #1a1a2e;text-align:center;font-size:10px;color:#9ca3af;vertical-align:bottom;padding-bottom:5px;background:#fff}
+      .pr-approve td.sig{width:50%;height:72px;border:1.5px solid #1a1a2e;text-align:center;font-size:10px;color:#9ca3af;vertical-align:bottom;padding-bottom:5px;background:#fff}
+      .pr-approve td.sig .sig-img{max-height:40px;max-width:88%;object-fit:contain;display:block;margin:2px auto 0}
+      .pr-approve td.sig .sig-nm{font-size:10px;font-weight:700;color:#1a1a2e;margin-top:1px}
+      .pr-approve td.sig .sig-dt{font-size:8.5px;color:#6b7280}
+      .pr-approve td.sig .sig-rej{font-size:15px;font-weight:800;color:#b91c1c;letter-spacing:1px;padding-top:12px}
       .pr-info{width:99.5%;border-collapse:collapse;font-size:12px;margin:0 auto 4px}
       .pr-info th{background:#f9fafb;border:1px solid #d1d5db;padding:6px 10px;text-align:left;width:95px;font-weight:600;color:#374151;font-size:11px;vertical-align:middle;white-space:nowrap}
       .pr-info td{border:1px solid #d1d5db;padding:6px 10px;color:#1a1a2e;vertical-align:middle}
@@ -7086,44 +7153,25 @@ function prFastPrint(){
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
   `;
   const winName='prPrintWin_'+Date.now();
-  const w=window.open('',winName,'width=820,height=920,scrollbars=yes');
-  w.document.open();
-  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>구매 요청서 - Purchase Request Form</title>'+printStyles+'</head><body>'+content+'</body></html>');
-  w.document.close();
-  w.focus();
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+(sig.docTitle||'구매 요청서 - Purchase Request Form')+'</title>' + printStyles + '</head><body>' + content + '</body></html>';
+}
+function prFastPrint(){
+  const me=(typeof window.auMe==='function'&&window.auMe())||{};
+  const doc=prRenderRequestDoc(prCollectForm(),{reqSig:me.signature||sessionStorage.getItem('lt_sig')||''});
+  const w=window.open('','prPrintWin_'+Date.now(),'width=900,height=1000,scrollbars=yes');
+  if(!w){alert('팝업이 차단되어 인쇄 창을 열지 못했습니다. 브라우저에서 팝업을 허용해주세요.');return;}
+  w.document.open();w.document.write(doc);w.document.close();w.focus();
   setTimeout(function(){w.print();},700);
 }
-// 최초 로딩 시 기본 3행 + 오늘 날짜 + 사진 슬롯 2개 세팅 (한 번만)
-(function prInit(){
-  if(!document.getElementById('prItemsBody'))return;
-  if(document.getElementById('prItemsBody').children.length===0){
-    for(let i=0;i<3;i++)prAddRow();
-  }
-  const dEl=document.getElementById('prDate');
-  if(dEl&&!dEl.value){
-    const t=new Date();
-    const iso=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
-    dEl.value=iso;
-  }
-  // 기본 사진 슬롯 2개 생성
-  const grid=document.getElementById('prPhotoGrid');
-  if(grid && grid.children.length===0){
-    prAddPhoto('📷 참고 사진 1 (물품 정면/전체)');
-    prAddPhoto('📷 참고 사진 2 (상세 규격/모델명/파손 부위)');
-  }
-})();
-window.prAddRow=prAddRow;
-window.prAddDiscountRow=prAddDiscountRow;
-window.prRemoveRow=prRemoveRow;
-window.prRecalc=prRecalc;
-window.prHandlePhoto=prHandlePhoto;
-window.prClearPhoto=prClearPhoto;
-window.prAddPhoto=prAddPhoto;
-window.prRemovePhoto=prRemovePhoto;
-window.prPhotoAreaClick=prPhotoAreaClick;
-window.prDragOver=prDragOver;
-window.prDragLeave=prDragLeave;
-window.prHandleDrop=prHandleDrop;
+/* 서명칸 셀 — 이미지가 있으면 서명, 없으면 (서명) 자리표시 */
+function prSigCellHtml(src,name,dt,status){
+  const safe=(typeof prSafeImg==='function')?prSafeImg(src||''):(src||'');
+  if(status==='rejected')return '<div class="sig-rej">반려</div>'+(name?'<div class="sig-nm">'+prEscape(name)+'</div>':'');
+  if(!safe)return '(서명)';
+  return '<img class="sig-img" src="'+safe+'">'
+    +(name?'<div class="sig-nm">'+prEscape(name)+'</div>':'')
+    +(dt?'<div class="sig-dt">'+prEscape(prFmtDate?prFmtDate(dt):dt)+'</div>':'');
+}
 window.prFastPrint=prFastPrint;
 window.prLibOpen=prLibOpen;
 window.prLibPopOpen=prLibPopOpen;
