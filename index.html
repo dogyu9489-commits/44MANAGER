@@ -5188,7 +5188,7 @@ window.schSelectColor = schSelectColor;
       <div id="ob-drop" class="pa-drop">
         <div style="font-size:32px;margin-bottom:4px">📦</div>
         <div style="font-weight:600">워드 파일을 끌어다 놓거나 클릭</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">Box#1 (10pcs) 구조 인식</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">Box#1 (10pcs) 구조 인식 · 번호는 7자리 <code>#NNNNNNN</code> 또는 새 양식 <code>S151703-1</code> / <code>S151703</code> / Glove ID <code>P8XHC8RY</code></div>
         <input id="ob-fileInput" type="file" accept=".docx" style="display:none">
       </div>
       <div id="ob-parseInfo" class="pa-file-section">
@@ -5245,7 +5245,7 @@ window.schSelectColor = schSelectColor;
   <div class="container">
     <div style="margin-bottom:16px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">파일 중복검사</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
     </div>
 
     <!-- 신규 폴더 -->
@@ -8904,7 +8904,8 @@ const CRITERIA = [
   { name: "Enable Wrist Text = Yes",        field: "Enable Wrist Text",        match: "eq",  value: "Yes",              exclude: [], nf: { field: "Wrist Text", custom: "wristText" } },
   // 새 양식: "Flag"(None/국가) → "Flag Patch"(No/Yes/Custom). 국가는 별도 "Flag" 라벨
   { name: "Flag ≠ None",                    field: "Flag",                     match: "ne",  value: "None",             exclude: [], nf: { field: "Flag Patch", value: "No", custom: "flagPatch" } },
-  { name: "Inlay Color (Mesh 제외, 색상만)",  field: "Inlay Color",              match: "ne_contains", value: "Mesh",        exclude: [] },
+  // 새 양식: 캐처는 Inlay=No 여도 "Inlay Color" 기본값이 찍힘 → Inlay 가 No 면 제외
+  { name: "Inlay Color (Mesh 제외, 색상만)",  field: "Inlay Color",              match: "ne_contains", value: "Mesh",        exclude: [], nf: { custom: "inlayOff" } },
   { name: "Web Style = Card Holder Web",    field: "Web Style",                match: "eq",  value: "Card Holder Web",  exclude: [] },
 ];
 
@@ -9167,6 +9168,9 @@ function paEvalFile(fields, fname){
       const art = (sections["Web Style"] || {}).Artwork;
       m = /graphic/i.test(v || '') || !!art;
       displayValue = m ? (art ? `${art} (${v || ''})` : (v || '')) : "";
+    } else if (nf.custom === 'inlayOff' && m){
+      const [, inlayOn] = findValue(fields, "Inlay");
+      if (/^no$/i.test(String(inlayOn || '').trim())){ m = false; displayValue = `${v} (Inlay: No) — 제외`; }
     } else if (nf.custom === 'wristText' && m){
       // 예전 양식은 Enable=Yes 면 항상 문구가 있었지만, 새 양식은 Yes 인데 문구를 안 넣은 주문이 있다
       // (「Wrist Text」 상세 섹션 자체가 없음 = 자수할 내용 없음) → 3색 동일 끈처럼 집계에서 제외하고 표시만 남김
@@ -9203,7 +9207,10 @@ function paEvalFile(fields, fname){
     }
     evals.push({match:m, value: displayValue});
   }
-  return {model, isNew, evals};
+  // byField: 기준의 (예전) 라벨로 결과를 찾을 수 있게 — 오더유형 분류가 Flag / Inlay Color 판정을 그대로 재사용
+  const byField = {};
+  CRITERIA.forEach((c, j) => { byField[c.field] = evals[j]; });
+  return {model, isNew, evals, byField};
 }
 window.paEvalFile = paEvalFile;
 
@@ -9417,11 +9424,33 @@ async function obParseDocx(file){
     // 라인에 6~8자리 숫자가 있으면 오더번호로 추출
     // ("AMBI 1248726", "PROPLAYER 1234567" 등 prefix 붙은 경우도 처리)
     const om = line.match(/\b(\d{6,8})\b/);
-    if (om) cur.orders.push(om[1]);
+    if (om){ cur.orders.push(om[1]); continue; }
+    // 새 오더 양식(2026-09~): "S151703-1-P8XHC8RY" / "S151703-1" / "S151703" / Glove ID "P8XHC8RY" 어느 쪽으로 적어도 인식
+    const nt = obNewToken(line);
+    if (nt) cur.orders.push(nt);
   }
   if (cur) boxes.push(cur);
   return boxes;
 }
+
+// ── 새 오더 양식(2026-09~) ──
+// 파일명 "S151703-1-P8XHC8RY.pdf" = 오더 S151703 · 글러브 순번 1 · Glove ID P8XHC8RY
+// ("S151703-1-P8XHC8RY (1).pdf" 처럼 브라우저 중복 다운로드 접미사 허용). 예전 양식 파일명이면 null.
+function obNewName(name){
+  const m = name.match(/^(S\d{4,})-(\d+)-([A-Z0-9]{4,})(?:\s*\(\d+\))?\.pdf$/i);
+  return m ? { order: m[1].toUpperCase(), item: m[2], design: m[3].toUpperCase() } : null;
+}
+// 패킹리스트 한 줄에서 새 양식 번호 추출. S번호는 줄 어디에 있어도 인식 ("AMBI S151703-1" 등).
+// Glove ID 는 줄 전체가 그 번호일 때만: 8자리, 44 Pro 가 쓰는 문자(2-9 · I/O 뺀 대문자)만, 숫자 5개 이하.
+//   → 예전 패킹리스트의 "2346786S" · "J3815370"(7자리+문자) 나 "PRO ANDERSON" 같은 줄은 예전처럼 무시된다
+//     (2017~2026 실제 패킹리스트 4,662개로 확인 — 새로 잡히는 줄 0개).
+function obNewToken(line){
+  const s = line.match(/\bS\d{4,}(?:-\d+(?:-[A-Z0-9]{4,})?)?\b/i);
+  if (s) return s[0].toUpperCase();
+  const g = line.match(/^#?\s*([2-9A-HJ-NP-Z]{8})$/);
+  return (g && g[1].replace(/\D/g, '').length < 6) ? g[1] : null;
+}
+window.obNewFormatHelpers = { obNewName, obNewToken };   // 테스트용 노출
 
 obQ('ob-drop').addEventListener('click', () => obQ('ob-fileInput').click());
 ['dragenter','dragover'].forEach(ev => obQ('ob-drop').addEventListener(ev, e => { e.preventDefault(); obQ('ob-drop').classList.add('dragging'); }));
@@ -9585,7 +9614,21 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
     for await (const f of obWalk(obSrcHandle)){
       // 파일명에서 #뒤의 숫자 추출
       const m = f.name.match(/#\s*(\d{4,10})/);
-      if (m) fileMap.set(m[1], f);
+      if (m){ fileMap.set(m[1], f); continue; }
+      // 새 오더 양식: 패킹리스트에 어떤 번호로 적든 찾도록 한 파일을 여러 키로 등록
+      //   "S151703-1-P8XHC8RY" / "S151703-1" = 글러브 1개를 정확히 가리킴
+      //   "P8XHC8RY"(Glove ID) / "S151703"(오더) = 서로 다른 글러브가 같이 걸릴 수 있음(재주문 · 한 오더에 글러브 여러 개)
+      //     → 그런 번호는 임의로 고르지 않고 {ambiguous} 로 표시해 "확인 필요" 로 남긴다
+      const nf = obNewName(f.name);
+      if (!nf) continue;
+      f.glove = `${nf.order}-${nf.item}-${nf.design}`;
+      f.keys = [f.glove, `${nf.order}-${nf.item}`, nf.design, nf.order];
+      for (const k of f.keys){
+        const prev = fileMap.get(k);
+        if (!prev || (!prev.ambiguous && prev.glove === f.glove)) fileMap.set(k, f);   // 같은 글러브의 사본이면 예전처럼 마지막 파일
+        else if (prev.ambiguous){ if (!prev.files.some(x => x.glove === f.glove)) prev.files.push(f); }
+        else fileMap.set(k, { ambiguous: true, files: [prev, f] });
+      }
     }
   } catch(e){
     alert('원본 폴더 인덱싱 실패: ' + e.message);
@@ -9607,7 +9650,7 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   const total = obBoxes.reduce((s,b) => s + b.orders.length, 0);
   let done = 0;
   const rows = [];   // {box, order, name, status, method, error}
-  const counts = { moved: 0, copied: 0, notFound: 0, failed: 0 };
+  const counts = { moved: 0, copied: 0, notFound: 0, failed: 0, ambiguous: 0 };   // ambiguous = 새 양식 전용
 
   for (const box of obBoxes){
     for (const order of box.orders){
@@ -9621,6 +9664,12 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
         counts.notFound++;
         continue;
       }
+      if (f.ambiguous){
+        // 새 양식: 이 번호에 서로 다른 글러브 PDF가 여러 개 → 옮기지 않고 후보만 보여줌
+        rows.push({ box: box.boxNum, order, name: f.files.map(x => x.name).join(' / '), status: 'ambiguous' });
+        counts.ambiguous++;
+        continue;
+      }
       try {
         const dest = await getBoxDir(box.boxNum);
         const method = await obMoveFile(f.handle, f.parent, dest, f.name);
@@ -9629,6 +9678,14 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
         if (status === 'moved') counts.moved++;
         else counts.copied++;
         fileMap.delete(order);
+        // 새 양식: 옮긴 파일의 나머지 키도 정리 (후보가 하나만 남은 번호는 다시 찾을 수 있게)
+        for (const k of (f.keys || [])){
+          const ent = fileMap.get(k);
+          if (!ent) continue;
+          if (!ent.ambiguous){ if (ent.glove === f.glove) fileMap.delete(k); continue; }
+          ent.files = ent.files.filter(x => x.glove !== f.glove);
+          if (ent.files.length === 1) fileMap.set(k, ent.files[0]);
+        }
       } catch(e){
         rows.push({ box: box.boxNum, order, name: f.name, status: 'failed', error: String(e && e.message || e) });
         counts.failed++;
@@ -9637,14 +9694,15 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   }
 
   obQ('ob-progressBar').style.width = '100%';
-  obQ('ob-status').textContent = `완료! 이동 ${counts.moved} / 복사+삭제 ${counts.copied} / 못 찾음 ${counts.notFound} / 실패 ${counts.failed}`;
+  obQ('ob-status').textContent = `완료! 이동 ${counts.moved} / 복사+삭제 ${counts.copied} / 못 찾음 ${counts.notFound} / 실패 ${counts.failed}${counts.ambiguous ? ` / 확인 필요 ${counts.ambiguous}` : ''}`;
 
   // 결과 표시
   obQ('ob-summary').innerHTML =
     `<div style="background:#dcfce7;color:#166534;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✓ 이동 ${counts.moved}</div>` +
     (counts.copied ? `<div style="background:#dbeafe;color:#1e40af;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">↺ 복사+삭제 ${counts.copied}</div>` : '') +
     `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠ 못 찾음 ${counts.notFound}</div>` +
-    `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✕ 실패 ${counts.failed}</div>`;
+    `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✕ 실패 ${counts.failed}</div>` +
+    (counts.ambiguous ? `<div style="background:#ede9fe;color:#5b21b6;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="같은 번호에 서로 다른 글러브 PDF가 여러 개 — 옮기지 않았습니다">? 확인 필요 ${counts.ambiguous}</div>` : '');
 
   const body = obQ('ob-resultBody');
   body.innerHTML = '';
@@ -9657,6 +9715,8 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
       statusCell = '<span style="color:#1e40af;font-weight:600" title="원본 폴더와 출고 폴더가 별도 root라 복사 후 삭제 방식으로 처리됨. 결과는 동일.">↺ 복사+삭제</span>';
     } else if (r.status === 'notFound'){
       statusCell = '<span style="color:#d97706;font-weight:600">⚠ 못 찾음</span>';
+    } else if (r.status === 'ambiguous'){
+      statusCell = '<span style="color:#6d28d9;font-weight:600" title="이 번호에 서로 다른 글러브 PDF가 여러 개 있어 옮기지 않았습니다. 패킹리스트에 S151703-1 처럼 오더-순번으로 적으면 정확히 찾습니다.">? 확인 필요</span>';
     } else {
       statusCell = `<span style="color:#dc2626;font-weight:600" title="${obEsc(r.error||'')}">✕ 실패</span>`;
     }
@@ -9678,7 +9738,9 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
 (function(){
 if (typeof pdfjsLib === 'undefined' || typeof docx === 'undefined') return;
 
-const OC_CATEGORIES = ['Pro44', 'CB44', 'Pro Trainer', 'HND', 'Japan select', 'Pancake', 'AMBI', 'C2', 'EX-10', 'PRX'];
+// 2026-09 개편: C2 → 'Select'(Select 등급 전체: Select C2 / Select PRO44 / Select PRO 44 Travel Fit …),
+//               PRX → 'ELITE'(Elite 등급: PRX + CXR). 예전 양식의 "C2" / "PRX" / "CXR" 모델도 같은 항목으로 들어간다.
+const OC_CATEGORIES = ['Pro44', 'CB44', 'Pro Trainer', 'HND', 'Japan select', 'Pancake', 'AMBI', 'Select', 'EX-10', 'ELITE'];
 
 const ocQ = id => document.getElementById(id);
 const ocEsc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
@@ -9687,31 +9749,35 @@ const ocEsc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;","
 function ocFolderCategory(name){
   const up = (name || '').toUpperCase();
   if (/\bCB\s*44\b/.test(up)) return 'CB44';
-  if (/\bC2\b/.test(up)) return 'C2';
+  if (/\bJPS\b|\bJAPAN\s*SELECT\b/.test(up)) return 'Japan select';   // 'Select' 보다 먼저 검사
+  if (/\bC2\b|\bSELECT\b/.test(up)) return 'Select';
   if (/\bEX[\s-]?10\b/.test(up)) return 'EX-10';
   if (/\bHND\b/.test(up)) return 'HND';
-  if (/\bJPS\b|\bJAPAN\s*SELECT\b/.test(up)) return 'Japan select';
-  if (/\bPRX\b/.test(up)) return 'PRX';
+  if (/\bPRX\b|\bCXR\b|\bELITE\b/.test(up)) return 'ELITE';
   if (/\bAMBI\b/.test(up)) return 'AMBI';
   if (/\bTRAINER\b/.test(up)) return 'Pro Trainer';
   if (/\bPANCAKE\b/.test(up)) return 'Pancake';
-  if (/\bPRO\s*44\b|\bPRO44\b|\b574\b|\bCROWN\b|\bCXR\b|\bJP\s*11\b|\bJP11\b|\bRB\s*5\b|\bRB5\b|\bCF\b|\bPROPLAYER\b|\bPRO\s*PLAYER\b/.test(up)) return 'Pro44';
-  return null;  // 알 수 없음 (ORDERS, NY, SAMPLE 등)
+  if (/\bPRO\s*44\b|\bPRO44\b|\b574\b|\bCROWN\b|\bJP\s*11\b|\bJP11\b|\bRB\s*5\b|\bRB5\b|\bCF\b|\bPROPLAYER\b|\bPRO\s*PLAYER\b/.test(up)) return 'Pro44';
+  return null;  // 알 수 없음 (ORDERS, NY, SAMPLE, Travelfit_Youth 처럼 Signature/Select 가 섞인 폴더 등)
 }
 
 // 실제 Glove Model 값 → 카테고리
 function ocModelCategory(model){
+  // 예전 양식: "Pro 44", "C2", "PRX", "CXR", "Cb44", "Japan Select" …
+  // 새 양식(2026-09~): "<Sport> <등급> <모델> <포지션>" — 예 "Baseball Signature PRO44 INF", "Softball Select C2 OF",
+  //   "Baseball Elite PRX INF", "Baseball Signature JAPANSEL INF", "Select PRO 44 Travel Fit".
+  // 등급이 우선: Elite → ELITE, Select → Select (Select PRO44 · Select PRO 44 Travel Fit 도 Select), Signature → 모델로 판정.
   const m = (model || '').toLowerCase().trim();
-  if (/cb\s*44/.test(m)) return 'CB44';
-  if (/^c2\b/.test(m)) return 'C2';
+  if (/japan\s*sel/.test(m)) return 'Japan select';            // "Japan Select" / "JAPANSEL" — Select 보다 먼저
   if (/ex.?10/.test(m)) return 'EX-10';
+  if (/\belite\b|\bprx\b|\bcxr\b/.test(m)) return 'ELITE';     // PRX · CXR = Elite 등급
+  if (/\bselect\b|^c2\b/.test(m)) return 'Select';             // Select 등급 (예전 "C2" 포함)
+  if (/cb\s*44/.test(m)) return 'CB44';
   if (/hnd/.test(m)) return 'HND';
-  if (/japan\s*select/.test(m)) return 'Japan select';
-  if (/^prx\b/.test(m)) return 'PRX';
   if (/ambi/.test(m)) return 'AMBI';
   if (/pancake/.test(m)) return 'Pancake';
   if (/trainer/.test(m)) return 'Pro Trainer';
-  if (/pro\s*44|574|crown\s*tip|^cxr$|jp\s*11|^rb\s*5$|^cf$/.test(m)) return 'Pro44';
+  if (/pro\s*44|574|crown|jp\s*11|\brb\s*5\b|^cf$/.test(m)) return 'Pro44';
   return 'Unknown';
 }
 
@@ -9730,11 +9796,15 @@ function ocPathCategory(relPath){
   return { categoryGuess: null, folder: parts[0] || '' };
 }
 
-// 오더번호 추출 (파일명에서 #뒤 6~8자리)
+// 오더번호 추출 — 예전: 파일명의 #뒤 6~8자리 / 새 양식: "S151727-1-FKTFHT9J.pdf" → "S151727-1" (오더-글러브 순번)
 function ocExtractOrderNum(filename){
   const m = filename.match(/#\s*(\d{6,8})/);
-  return m ? m[1] : '';
+  if (m) return m[1];
+  const n = filename.match(/(?:^|\/)(S\d{4,}-\d+)-[A-Z0-9]{4,}[^\/]*\.pdf$/i);
+  return n ? n[1] : '';
 }
+// 테스트/다른 모듈용 노출
+window.ocClassifyHelpers = { ocFolderCategory, ocModelCategory, ocPathCategory, ocExtractOrderNum };
 
 // ── 파일 수집 (드래그&드롭 폴더 지원, 경로 보존) ──
 let ocFiles = [];   // [{ file, relPath }, ...]
@@ -9837,15 +9907,22 @@ ocQ('oc-analyzeBtn').addEventListener('click', async () => {
       const orderNum = ocExtractOrderNum(file.name) || ocExtractOrderNum(relPath);
       const { categoryGuess, folder } = ocPathCategory(relPath);
 
-      // Flag / Inlay 평가
-      const [, flagVal] = findValue(fields, 'Flag');
-      const hasFlag = flagVal && flagVal.trim().toLowerCase() !== 'none';
-      const [, inlayVal] = findValue(fields, 'Inlay Color');
-      const hasInlay = inlayVal && !inlayVal.trim().toLowerCase().includes('mesh');
+      // Flag / Inlay 평가 — 추가비용 분석과 같은 판정을 그대로 사용 (새 양식: Flag Patch ≠ No, 국가 없는 Yes 제외 / 예전 양식: Flag ≠ None)
+      let hasFlag, hasInlay, flagText = '', inlayText = '';
+      const ev = (typeof window.paEvalFile === 'function') ? window.paEvalFile(fields, file.name) : null;
+      if (ev && ev.byField && ev.byField['Flag'] && ev.byField['Inlay Color']){
+        hasFlag = ev.byField['Flag'].match;         flagText  = ev.byField['Flag'].value || '';
+        hasInlay = ev.byField['Inlay Color'].match; inlayText = ev.byField['Inlay Color'].value || '';
+      } else {
+        const [, flagVal] = findValue(fields, 'Flag');
+        hasFlag = !!(flagVal && flagVal.trim().toLowerCase() !== 'none');   flagText = flagVal || '';
+        const [, inlayVal] = findValue(fields, 'Inlay Color');
+        hasInlay = !!(inlayVal && !inlayVal.trim().toLowerCase().includes('mesh')); inlayText = inlayVal || '';
+      }
 
       // 디버그 로그 + 파일별 결과 저장
-      console.log(`[오더분류] ${file.name} → model="${model}" → cat=${modelCat}`);
-      perFile.push({ name: file.name, model, cat: modelCat, folder });
+      console.log(`[오더분류] ${file.name} → model="${model}" → cat=${modelCat}${hasFlag ? ' · Flag=' + flagText : ''}${hasInlay ? ' · Inlay=' + inlayText : ''}`);
+      perFile.push({ name: file.name, model, cat: modelCat, folder, flag: hasFlag ? flagText : '', inlay: hasInlay ? inlayText : '' });
 
       if (modelCat === 'Unknown'){
         unknownCount++;
@@ -9956,7 +10033,8 @@ function ocShowResults(){
     let html = `<td colspan="5" style="background:var(--bg);font-size:11px;padding:10px 14px"><b style="font-size:12px">파일별 인식 결과:</b><br><div style="margin-top:6px;max-height:200px;overflow-y:auto">`;
     for (const f of perFile){
       const color = f.cat === 'Unknown' ? '#92400e' : f.cat === 'Error' ? '#dc2626' : 'var(--text)';
-      html += `<div style="font-family:ui-monospace,monospace;color:${color}">${ocEsc(f.name)} → <b>${ocEsc(f.model || '(없음)')}</b> → ${ocEsc(f.cat)}</div>`;
+      const extra = (f.flag ? ` · <span style="color:#b45309">Flag: ${ocEsc(f.flag)}</span>` : '') + (f.inlay ? ` · <span style="color:#1d4ed8">Inlay: ${ocEsc(f.inlay)}</span>` : '');
+      html += `<div style="font-family:ui-monospace,monospace;color:${color}">${ocEsc(f.name)} → <b>${ocEsc(f.model || '(없음)')}</b> → ${ocEsc(f.cat)}${extra}</div>`;
     }
     html += `</div></td>`;
     dTr.innerHTML = html;
@@ -10129,11 +10207,30 @@ async function* dcWalk(dirHandle, prefix = ''){
 //   "Custom Glove Design v3 #NNNNNNN (1).pdf"  ← 브라우저 중복 다운로드 접미사
 //   "Custom Design #NNNNNNN.pdf"               ← AMBI 양식
 //   "Custom Design #NNNNNNN (2).pdf"
+//   "S151703-1-P8XHC8RY.pdf"                   ← 새 오더 양식(2026-09~): 오더 S151703 · 글러브 순번 1 · Glove ID P8XHC8RY
+//   "S151703-1-P8XHC8RY (1).pdf"
 // 그 외 (mockup, 디자인 도안 등) 자동 제외.
+// 비교 기준은 두 양식 모두 Glove ID — 예전 #NNNNNNN 도 PDF의 Glove ID 와 같은 번호였다.
+// 새 양식은 같은 디자인을 재주문하면 Glove ID 는 같고 S번호만 달라진다 (예전 REORDER 폴더가 중복으로 잡히던 것과 같은 동작).
+function dcNewName(name){
+  const m = name.match(/^(S\d{4,})-(\d+)-([A-Z0-9]{4,})(?:\s*\(\d+\))?\.pdf$/i);
+  return m ? { order: m[1].toUpperCase(), item: m[2], design: m[3].toUpperCase() } : null;
+}
 function dcMatchFilename(name){
   const m = name.match(/^Custom\s+(?:Glove\s+Design\s+v\d+|Design)\s+#(\d{4,10})(?:\s+\(\d+\))?\.pdf$/i);
-  return m ? m[1] : null;
+  if (m) return m[1];
+  const n = dcNewName(name);
+  return n ? n.design : null;
 }
+// 새 양식끼리 중복일 때: 같은 오더가 다시 온 것인지, S번호가 다른 재주문인지 표시 (예전 양식 파일이면 빈 문자열)
+function dcOrderTag(newName, otherName){
+  const a = dcNewName(newName), b = dcNewName(otherName);
+  if (!a || !b) return '';
+  return (a.order === b.order && a.item === b.item)
+    ? ` <span style="color:#991b1b;font-weight:600">· 같은 오더 ${dcEsc(b.order)}-${dcEsc(b.item)}</span>`
+    : ` <span style="color:#1d4ed8;font-weight:600">· 다른 오더 ${dcEsc(b.order)}-${dcEsc(b.item)} (재주문 가능)</span>`;
+}
+window.dcNewFormatHelpers = { dcNewName, dcMatchFilename, dcOrderTag };   // 테스트용 노출
 
 dcQ('dc-checkBtn').addEventListener('click', async () => {
   if (!dcNewHandle){
@@ -10250,7 +10347,7 @@ function dcShowResults(){
   for (const d of dupExt){
     const tr = document.createElement('tr');
     const existingDisp = d.existing.map(e =>
-      `<div style="font-size:11px;color:var(--text2)"><b>[${dcEsc(e.folder)}]</b> ${dcEsc(e.relPath)}</div>`
+      `<div style="font-size:11px;color:var(--text2)"><b>[${dcEsc(e.folder)}]</b> ${dcEsc(e.relPath)}${dcOrderTag(d.name, e.name)}</div>`
     ).join('');
     tr.innerHTML = `<td><span style="color:#dc2626;font-weight:600">⚠ 외부중복</span></td>
       <td><span style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.order)}</span></td>
@@ -10262,7 +10359,7 @@ function dcShowResults(){
   for (const d of dupInt){
     const tr = document.createElement('tr');
     const dupDisp = d.internalDups.map(x =>
-      `<div style="font-size:11px;color:var(--text2)">↳ ${dcEsc(x.relPath)}</div>`
+      `<div style="font-size:11px;color:var(--text2)">↳ ${dcEsc(x.relPath)}${dcOrderTag(d.name, x.name)}</div>`
     ).join('');
     tr.innerHTML = `<td><span style="color:#b45309;font-weight:600" title="같은 신규 폴더 안에 같은 오더# PDF가 여러 개 존재">⚠ 내부중복</span></td>
       <td><span style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.order)}</span></td>
@@ -10282,7 +10379,7 @@ function dcShowResults(){
   // 패턴 불일치로 검사 제외된 파일
   for (const s of skippedNew){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf 등 인식 패턴이 아니라서 검사에서 제외">⊘ 제외</span></td>
+    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf / S151703-1-P8XHC8RY.pdf(새 양식) 등 인식 패턴이 아니라서 검사에서 제외">⊘ 제외</span></td>
       <td style="color:var(--text2);font-size:11px">-</td>
       <td style="font-family:ui-monospace,monospace;font-size:12px;color:var(--text2)">${dcEsc(s.relPath)}</td>
       <td style="color:var(--text2);font-size:11px">-</td>`;
@@ -10457,16 +10554,63 @@ function mrpDzParse(items){
     parts:parts,laces:laces,missing:missing
   };
 }
-// 부위→색상 + 비중 → 색상별 % 합산
-function mrpDzRollup(map,weights){
-  const by={};let tot=0;
-  Object.keys(map).forEach(function(k){
-    const col=String(map[k]||'').trim().toUpperCase();if(!col)return;
-    const w=Number(weights[k])||0;if(!w)return;
-    by[col]=(by[col]||0)+w;tot+=w;
-  });
-  return Object.keys(by).sort(function(a,b){return by[b]-by[a];})
-    .map(function(c){return {color:c,pct:tot?(by[c]/tot):0,raw:by[c]};});
+/* ── 새 오더 양식 (2026-09~, 파일명 "S151703-1-P8XHC8RY.pdf") ──
+   부위 라벨에서 " Color"가 빠지고 이름이 바뀌었다 (Palm Leather Color→Palm, Back Leather N Color→Leather N …).
+   새 라벨을 예전 라벨로 "번역"만 하고, 프로필·비중·계산법(본체수율/웰팅/바인딩)은 기존 방식을 그대로 쓴다. */
+const MRP_NEW_LABELS={
+  'Palm':'Palm Leather Color',
+  'Leather 1':'Back Leather 1 Color','Leather 2':'Back Leather 2 Color','Leather 3':'Back Leather 3 Color','Leather 4':'Back Leather 4 Color',
+  'Leather 5':'Back Leather 5 Color','Leather 6':'Back Leather 6 Color','Leather 7':'Back Leather 7 Color','Leather 8':'Back Leather 8 Color',
+  'Web':'Web Color','Wrist':'Wrist Color',
+  'Wingtip Thumb':'Wing Tip Thumb Color','Wingtip Pinky':'Wing Tip Pinky Color',
+  'Home Plate':'Homeplate Color','Finger Strip':'Finger Strip Color','Finger Strips':'Finger Strip Color',
+  'Web Crown':'Web Crown Color','Palm Trim':'Palm Trim Color','Wrist Guard Color':'Wrist Guard Color',
+  'Pro Finger Pad':'Finger Pad Color','Finger Pad Color':'Finger Pad Color','Finger Hood':'Finger Hood Color',
+  'Welting':'Welting Color','Palm Welting':'Palm Welting Color','Binding':'Binding Color',
+  // 1루 미트: 예전 "Back Leather 1" 한 장 = 새 "Back Leather".
+  // RB5(First Baseman)는 예전 Back Leather 1~4 자리에 새 이름 4부위(비중은 4부위 동일).
+  'Back Leather':'Back Leather 1 Color','Glove Crown':'Back Leather 2 Color','Back Trim':'Back Leather 3 Color','Thumb Leather':'Back Leather 4 Color'
+};
+function mrpDzIsNewFormat(items){
+  const has=function(s){for(let i=0;i<items.length;i++){if(items[i].str===s)return true;}return false;};
+  return !has('Glove ID')&&(has('Palm Stamp')||has('Tricolor Lacing')||has('Thumb Logo/Graphic')||has('Flag Patch'));
+}
+// fields = window.extractPdfFields(file) 결과 (추가비용 분석과 같은 검증된 라벨-값 추출)
+function mrpDzParseNew(fields,fileName){
+  const f=function(k){const v=fields[k];return v==null?'':String(v).trim();};
+  const model=f('Glove Model'), rawType=f('Glove Type');
+  // Glove Type "1st Base" → 기존 프로필 이름. 모델명에 OB(Open Back: OBPRO44 / OBC2)가 있으면 Open Back.
+  let type=rawType;
+  if(/^1st\s*base|first\s*base/i.test(rawType))type=/\bOB[A-Z0-9]/.test(model)?'First Baseman Open Back':'First Baseman';
+  const tr={},src={};
+  const put=function(oldKey,newLabel){const v=f(newLabel);if(v&&!tr[oldKey]){tr[oldKey]=v;src[oldKey]=newLabel;}};
+  Object.keys(MRP_NEW_LABELS).forEach(function(nl){put(MRP_NEW_LABELS[nl],nl);});
+  // "Crown": 캐처 = Crown / 그 외(Crown Tip 모델) = Crown Tip
+  put(/^catcher$/i.test(type)?'Crown Color':'Crown Tip Color','Crown');
+  // "Finger Hood or Pad Color": 선택값이 Hood 면 후드, 아니면 패드 (None 이면 색 라벨 자체가 없음)
+  if(!/^none$/i.test(f('Finger Hood or Pad')))put(/hood/i.test(f('Finger Hood or Pad'))?'Finger Hood Color':'Finger Pad Color','Finger Hood or Pad Color');
+  // Inlay: 캐처는 Inlay=No 여도 Inlay Color 기본값이 찍힘 → 꺼져 있으면 제외
+  if(!/^no$/i.test(f('Inlay')))put('Inlay Color','Inlay Color');
+  const parts={},missing=[];
+  mrpAllPartKeys().forEach(function(k){if(tr[k])parts[k]=tr[k];else missing.push(k);});
+  // 레이스: 새 양식은 Tricolor=No 여도 3색 라벨이 기본값으로 찍힘 → Yes 일 때만 3색, 아니면 단색 "Laces"
+  const laces={};
+  const tri=/^yes$/i.test(f('Tricolor Lacing'));
+  if(tri||!f('Laces')){
+    [['Web and Finger Laces','Web and Finger Laces Color'],['Palm Laces','Palm Laces Color'],['Wrist and Wingtip Laces','Wrist and Wingtip Laces Color']]
+      .forEach(function(p){if(f(p[0]))laces[p[1]]=f(p[0]);});
+  }
+  if(!Object.keys(laces).length&&f('Laces'))laces['Laces Color']=f('Laces');
+  // 디자인 ID: 파일명 "S151703-1-P8XHC8RY.pdf" 또는 본문 "Design: P8XHC8RY"
+  const txt=String(fields.__firstPageText||'');
+  const idm=String(fileName||'').match(/^S\d{4,}-\d+-([A-Z0-9]{4,})/i)||txt.match(/Design:\s*([A-Z0-9]{4,})/);
+  const om=String(fileName||'').match(/^(S\d{4,}-\d+)-/i)||txt.match(/Order:\s*(S\d{4,})/);
+  return {
+    meta:{model:model,type:type,typeRaw:rawType,size:f('Size'),hand:f('Throwing Hand'),web:f('Web Style'),stiff:f('Glove Stiffness'),
+          liner:/^yes$/i.test(f('Kip Palm Liner'))?f('Kip Palm Liner Color'):'',   // 새 양식은 Kip=No 여도 색 기본값이 찍힘
+          stitch:f('Stitching'),logo:f('Logo'),id:idm?idm[1].toUpperCase():'',order:om?om[1].toUpperCase():''},
+    parts:parts,laces:laces,missing:missing,src:src,isNew:true
+  };
 }
 // 기존 데이터의 색상 어휘 / 가죽종류 수집 (새 표기가 재고를 쪼개지 않도록)
 function mrpVocab(key){
@@ -10509,9 +10653,15 @@ function mrpDzHandleFile(file){
         if(s)items.push({str:s,x:it.transform[4],y:it.transform[5]});
       });
     }
-    const d=mrpDzParse(items);
+    let d;
+    if(mrpDzIsNewFormat(items)&&typeof window.extractPdfFields==='function'){
+      // 새 오더 양식 → 라벨만 예전 이름으로 번역해서 기존 계산 방식에 그대로 태움
+      d=mrpDzParseNew(await window.extractPdfFields(file),file.name);
+    }else{
+      d=mrpDzParse(items);
+    }
     if(!Object.keys(d.parts).length){
-      alert('디자인 PDF에서 가죽 부위 색상을 찾지 못했습니다.\n44 Pro Custom Glove Design 형식인지 확인해주세요.\n(Palm Leather Color / Back Leather 1 Color … 항목이 있어야 합니다)');return;
+      alert('디자인 PDF에서 가죽 부위 색상을 찾지 못했습니다.\n44 Pro 디자인 PDF 형식인지 확인해주세요.\n(예전 양식: Palm Leather Color / Back Leather 1 Color …, 새 양식: Palm / Leather 1 … 항목이 있어야 합니다)');return;
     }
     _mrpDzPending={d:d,fileName:file.name};
     mrpDzShow();
@@ -10525,7 +10675,8 @@ function mrpDzShow(){
   const exact=(String(d.meta.type||'').trim()===pk);
   let h='<div style="font-size:13px;color:var(--text2);margin-bottom:10px"><b>'+esc(_mrpDzPending.fileName)+'</b>'
     +' · '+esc(d.meta.model||'-')+' '+esc(d.meta.size||'')+' · <b style="color:var(--text)">'+esc(d.meta.type||'-')+'</b>'
-    +' · '+esc(d.meta.web||'')+' · Glove ID '+esc(d.meta.id||'-')+'</div>';
+    +' · '+esc(d.meta.web||'')+' · '+(d.isNew?'Design ':'Glove ID ')+esc(d.meta.id||'-')
+    +(d.isNew?' <span style="font-size:11px;color:#1d4ed8;border:1px solid #bfdbfe;background:#eff6ff;border-radius:999px;padding:1px 8px">새 양식</span>':'')+'</div>';
   // 프로필 선택
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:12px">'
     +'<span style="color:var(--text2);font-weight:700">부위 프로필</span>'
@@ -10562,7 +10713,8 @@ function mrpDzShow(){
     if(shown[k])return '';shown[k]=1;
     const col=d.parts[k];
     return '<tr style="border-top:1px solid var(--border)'+(col?'':';opacity:.42')+(isUnknown?';background:#fffbeb':'')+'">'
-      +'<td style="padding:5px 9px">'+esc(k.replace(/ Color$/,''))+(isUnknown?' <span style="font-size:10px;color:#92400e">신규</span>':'')+'</td>'
+      +'<td style="padding:5px 9px">'+esc(k.replace(/ Color$/,''))+(isUnknown?' <span style="font-size:10px;color:#92400e">신규</span>':'')
+        +((d.src&&d.src[k]&&d.src[k]!==k.replace(/ Color$/,''))?' <span style="font-size:10px;color:var(--text3)">← PDF: '+esc(d.src[k])+'</span>':'')+'</td>'
       +'<td style="padding:5px 9px;font-weight:600">'+(col?esc(col):'<span style="color:var(--text3)">— 없음</span>')+'</td>'
       +'<td style="padding:4px 9px;text-align:right"><input type="number" step="1" min="0" data-dzw="'+esc(k)+'" value="'+num(BW[k]||0)+'" style="width:68px;text-align:right;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-family:inherit;font-size:12px"></td>'
       +'<td style="padding:5px 9px;text-align:right;color:var(--text2)">'+(W[k]?(W[k]*100).toFixed(1)+'%':'—')+'</td></tr>';
