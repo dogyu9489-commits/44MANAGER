@@ -9796,12 +9796,13 @@ function ocPathCategory(relPath){
   return { categoryGuess: null, folder: parts[0] || '' };
 }
 
-// 오더번호 추출 — 예전: 파일명의 #뒤 6~8자리 / 새 양식: "S151727-1-FKTFHT9J.pdf" → "S151727-1" (오더-글러브 순번)
+// 오더번호 추출 — 예전: 파일명의 #뒤 6~8자리 / 새 양식: "S151727-1-FKTFHT9J.pdf" → "FKTFHT9J"
+// (PDF 제목의 "#FKTFHT9J" = Glove ID. 예전 #NNNNNNN 도 Glove ID 였으므로 비고란 번호의 의미가 그대로 이어진다)
 function ocExtractOrderNum(filename){
   const m = filename.match(/#\s*(\d{6,8})/);
   if (m) return m[1];
-  const n = filename.match(/(?:^|\/)(S\d{4,}-\d+)-[A-Z0-9]{4,}[^\/]*\.pdf$/i);
-  return n ? n[1] : '';
+  const n = filename.match(/(?:^|\/)S\d{4,}-\d+-([A-Z0-9]{4,})[^\/]*\.pdf$/i);
+  return n ? n[1].toUpperCase() : '';
 }
 // 테스트/다른 모듈용 노출
 window.ocClassifyHelpers = { ocFolderCategory, ocModelCategory, ocPathCategory, ocExtractOrderNum };
