@@ -8937,15 +8937,15 @@ function groupWordsIntoLines(words, yTol=3){
     else if (Math.abs(w.y-curY)<=yTol){ cur.push(w); }
     else {
       cur.sort((a,b)=>a.x-b.x);
-      lines.push({y:curY, text: cur.map(x=>x.text).join(" ").replace(/\s+/g," ").trim()});
+      lines.push({y:curY, x:cur[0].x, text: cur.map(x=>x.text).join(" ").replace(/\s+/g," ").trim()});
       cur=[w]; curY=w.y;
     }
   }
   if (cur.length){
     cur.sort((a,b)=>a.x-b.x);
-    lines.push({y:curY, text: cur.map(x=>x.text).join(" ").replace(/\s+/g," ").trim()});
+    lines.push({y:curY, x:cur[0].x, text: cur.map(x=>x.text).join(" ").replace(/\s+/g," ").trim()});
   }
-  return lines;
+  return lines;   // x = 줄의 시작 위치 (새 양식의 들여쓰기 판별용)
 }
 function pairLinesByGap(lines, maxGap=10){
   // 페어링: 인접한 두 라인의 y-gap이 작으면 (label, value) 쌍.
@@ -8960,7 +8960,7 @@ function pairLinesByGap(lines, maxGap=10){
       const b = lines[i+1];
       if ((a.y - b.y) < maxGap){
         pairs.push([a.text.trim(), b.text.trim()]);
-        seq.push({label: a.text.trim(), value: b.text.trim()});
+        seq.push({label: a.text.trim(), value: b.text.trim(), x: a.x});
         i+=2; continue;
       }
     }
@@ -9006,6 +9006,11 @@ async function extractPdfFields(file){
   // (fields는 첫 값만 보관) 섹션 제목 아래로 따로 묶어둔다. 예: sections["Web Style"].Artwork
   const sections = {};
   let curSection = '';
+  // 2026-09-21~ 양식: 상세 항목이 별도 제목 없이 토글 바로 아래 들여쓰기로 붙는다
+  //   "Wrist Text: Yes" → (들여쓰기) Text 48 / Font Block / Thread Color Red
+  // → 들여쓴 쌍을 바로 위 (들여쓰지 않은) 항목 이름으로도 묶는다: sections["Wrist Text"].Text
+  //   부모 없이 컬럼 첫머리에 들여써진 쌍(다른 컬럼 옵션의 상세, 예: Web Style 그래픽)은 sections["(부모 없음) <제목>"]
+  let curParent = '';
   // 컬럼별 orphan 라벨 (페이지 끝에서 페어링 안 된 마지막 라인) — 다음 페이지 첫 줄을 값으로
   let prevOrphans = {};  // anchor x → orphan text
   try {
@@ -9062,8 +9067,17 @@ async function extractPdfFields(file){
             if (field && !(field in fields)) fields[field] = value;
           }
           for (const s of seq){
-            if (s.header !== undefined){ curSection = s.header; continue; }
-            if (!curSection || !s.label) continue;
+            if (s.header !== undefined){ curSection = s.header; curParent = ''; continue; }
+            if (!s.label) continue;
+            // 들여쓰기 = 컬럼 시작보다 4pt 이상 오른쪽 (새 양식 상세 항목은 약 9pt 들여씀)
+            if (typeof s.x === 'number' && s.x - anchorX > 4){
+              const owner = curParent || ('(부모 없음) ' + curSection);
+              const ps = sections[owner] || (sections[owner] = {});
+              if (!(s.label in ps)) ps[s.label] = s.value;
+            } else {
+              curParent = s.label;
+            }
+            if (!curSection) continue;
             const sec = sections[curSection] || (sections[curSection] = {});
             if (!(s.label in sec)) sec[s.label] = s.value;
           }
@@ -9165,8 +9179,10 @@ function paEvalFile(fields, fname){
       if (m && oc) displayValue = `${v || 'Outline'} · ${oc}`;
     } else if (nf.custom === 'webGraphic'){
       // Web Style = "1-Piece Full Web + Graphic" + 그래픽 이름은 「Web Style」 섹션의 Artwork
-      const art = (sections["Web Style"] || {}).Artwork;
-      m = /graphic/i.test(v || '') || !!art;
+      // (2026-09-21~ 양식은 Personalization 첫머리에 부모 없이 들여써진 Artwork 로 나옴 — 표시에만 사용)
+      const artWS = (sections["Web Style"] || {}).Artwork;
+      m = /graphic/i.test(v || '') || !!artWS;
+      const art = artWS || (m ? (sections["(부모 없음) Personalization"] || {}).Artwork : '');
       displayValue = m ? (art ? `${art} (${v || ''})` : (v || '')) : "";
     } else if (nf.custom === 'inlayOff' && m){
       const [, inlayOn] = findValue(fields, "Inlay");
