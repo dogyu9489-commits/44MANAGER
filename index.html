@@ -8889,7 +8889,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs
 //      라벨/값이 바뀐 항목만 지정 — nf가 없으면 예전 규칙이 새 양식에도 그대로 적용된다.
 //      예전 양식("Custom Glove Design v3 #NNNNNNN.pdf")은 기존 규칙 그대로.
 const CRITERIA = [
-  { name: "Kip Palm Liner = Yes",           field: "Kip Palm Liner",           match: "eq",  value: "Yes",              exclude: ["Japan Select"] },
+  // 새 양식: Select 시리즈는 내피 원판이 자동 적용 → PDF 에 No 여도 Yes 로 집계 (대상 모델은 PA_SELECT_LINER_RE)
+  { name: "Kip Palm Liner = Yes",           field: "Kip Palm Liner",           match: "eq",  value: "Yes",              exclude: ["Japan Select"], nf: { custom: "selectLiner" } },
   // 새 양식: "Enable Logo Outline" 없음 → Logo Style 값이 "Embroidered (Outline)"
   { name: "Enable Logo Outline = Yes",      field: "Enable Logo Outline",      match: "eq",  value: "Yes",              exclude: [], nf: { field: "Logo Style", custom: "logoOutline" } },
   { name: "Logo Style = Embroidered Flag",  field: "Logo Style",               match: "eq",  value: "Embroidered Flag", exclude: [] },
@@ -9156,6 +9157,9 @@ function paModelKey(model){
   if (/\bprx\b/i.test(m)) return 'PRX';
   return m;
 }
+// Select 시리즈 내피 원판 자동 적용 (2026-09-25 지시): Select C2 INF · C2 OF · C2 P · OBC2 1B · PRO 44 Travel Fit.
+// Baseball Select PRO44 C(포수)는 제외 — PDF 값대로. Japan Select(JAPANSEL)는 다른 라인이라 해당 없음.
+const PA_SELECT_LINER_RE = /\bselect\s+(?:c2\s+(?:inf|of|p)|obc2\s+1b|pro\s*44\s+travel\s*fit)\b/i;
 // PDF 한 개의 11가지 기준 판정. 예전 양식은 기존 규칙 그대로, 새 양식은 CRITERIA 의 nf 규칙 적용.
 function paEvalFile(fields, fname){
   const model = (fields["Glove Model"]||"").trim();
@@ -9172,7 +9176,9 @@ function paEvalFile(fields, fname){
     const [, v] = findValue(fields, nf.field || c.field);
     let m = evaluate(v, c.match, ('value' in nf) ? nf.value : c.value);
     let displayValue = v || "";
-    if (nf.custom === 'logoOutline'){
+    if (nf.custom === 'selectLiner'){
+      if (!m && PA_SELECT_LINER_RE.test(model)){ m = true; displayValue = `Yes (Select 내피 원판 자동${v ? ' · PDF: ' + v : ''})`; }
+    } else if (nf.custom === 'logoOutline'){
       // Logo Style = "Embroidered (Outline)" + 테두리 색은 "Logo Outline"
       const [, oc] = findValue(fields, "Logo Outline");
       m = /outline/i.test(v || '') || (!v && !!(oc && oc.trim()));
@@ -9433,7 +9439,8 @@ async function obParseDocx(file){
     const m = line.match(/Box\s*#?\s*(\d+)/i);
     if (m){
       if (cur) boxes.push(cur);
-      cur = { boxNum: parseInt(m[1]), orders: [] };
+      const pc = line.match(/\((\d+)\s*pcs?\)/i);   // "Box#1 (10pcs)" → 10 (인식 개수와 비교용 — 이동에는 안 씀)
+      cur = { boxNum: parseInt(m[1]), orders: [], pcs: pc ? parseInt(pc[1]) : null };
       continue;
     }
     if (!cur) continue;
@@ -9461,14 +9468,22 @@ function obNewName(name){
   return m ? { order: m[1].toUpperCase(), item: m[2], design: m[3].toUpperCase() } : null;
 }
 // 패킹리스트 한 줄에서 새 양식 번호 추출. S번호는 줄 어디에 있어도 인식 ("AMBI S151703-1" 등).
-// Glove ID 는 줄 전체가 그 번호일 때만: 8자리, 44 Pro 가 쓰는 문자(2-9 · I/O 뺀 대문자)만, 숫자 5개 이하.
-//   → 예전 패킹리스트의 "2346786S" · "J3815370"(7자리+문자) 나 "PRO ANDERSON" 같은 줄은 예전처럼 무시된다
-//     (2017~2026 실제 패킹리스트 4,662개로 확인 — 새로 잡히는 줄 0개).
+// Glove ID (2026-09-28~ 패킹리스트 오더번호로 사용, 예 "94JGKCTK"): 8자리, 44 Pro 가 쓰는 문자(2-9 · I/O 뺀 영문)만, 숫자 6개 이하.
+//   · 줄 전체가 ID 면 (앞의 "#", "1.", "1)", "-" 무시 · 소문자 허용) 영문만으로 된 ID(예 MLEVVVJD, 실제 ID의 9%)도 인식
+//   · 다른 글자와 같이 적힌 줄("AMBI 94JGKCTK", "94JGKCTK (Travel Fit)")은 숫자+영문이 섞인 ID만
+//     (패킹리스트 4,398개의 박스 안 줄 626,797개에서 숫자+영문 8자리 오인 0건 / 영문만은 GREENBAY·REJECTED 같은 단어가 있어 제외)
+//   · 숫자 7개 이상은 제외 → 예전 패킹리스트의 "2346786S" · "J3815370"(7자리+문자)은 예전처럼 무시
+//   · 실제 Glove ID 658개 모두 이 규칙으로 인식 (숫자 6개 ID "7A449A69" 포함 — 예전 규칙은 숫자 5개까지라 놓쳤음)
 function obNewToken(line){
   const s = line.match(/\bS\d{4,}(?:-\d+(?:-[A-Z0-9]{4,})?)?\b/i);
   if (s) return s[0].toUpperCase();
-  const g = line.match(/^#?\s*([2-9A-HJ-NP-Z]{8})$/);
-  return (g && g[1].replace(/\D/g, '').length < 6) ? g[1] : null;
+  const isId = t => /^[2-9A-HJ-NP-Z]{8}$/i.test(t) && t.replace(/\D/g, '').length <= 6;
+  const whole = line.trim().replace(/^(?:\d{1,3}\s*[.)]\s*|[-•·*]\s*)/, '').replace(/^#\s*/, '').trim();
+  if (isId(whole)) return whole.toUpperCase();
+  for (const t of line.split(/[^A-Za-z0-9]+/)){
+    if (isId(t) && /\d/.test(t) && /[A-Za-z]/.test(t)) return t.toUpperCase();
+  }
+  return null;
 }
 window.obNewFormatHelpers = { obNewName, obNewToken };   // 테스트용 노출
 
@@ -9490,7 +9505,10 @@ async function obHandleWord(file){
     for (const box of obBoxes){
       const row = document.createElement('div');
       row.className = 'pa-file-row';
-      row.innerHTML = `<span class="pa-name">Box ${String(box.boxNum).padStart(2,'0')} (${box.orders.length}개): ${box.orders.join(', ')}</span>`;
+      // 헤더의 pcs 와 인식된 번호 개수가 다르면 표시 (오타 등으로 빠진 줄 확인용 — 실제 패킹리스트 박스의 96.5%는 일치)
+      const warn = (box.pcs != null && box.pcs !== box.orders.length)
+        ? ` <span style="color:#b45309;font-weight:600" title="박스 제목의 수량과 인식된 번호 개수가 다릅니다. 오타(0·1·I·O 등)나 빠진 줄이 없는지 워드 파일을 확인하세요.">⚠ ${box.pcs}pcs 중 ${box.orders.length}개 인식</span>` : '';
+      row.innerHTML = `<span class="pa-name">Box ${String(box.boxNum).padStart(2,'0')} (${box.orders.length}개): ${box.orders.join(', ')}${warn}</span>`;
       list.appendChild(row);
     }
     obQ('ob-parseInfo').classList.add('show');
