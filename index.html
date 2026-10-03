@@ -6318,15 +6318,22 @@ function prSubmitRequest(){
     dates:{requested:(document.getElementById('prDate')||{}).value||ptToday()},
     cancelled:false,memo:'',createdTs:Date.now(),
     reqSig:((typeof window.auMe==='function'&&window.auMe())?window.auMe().signature:'')||sessionStorage.getItem('lt_sig')||'',
+    reqTitle:prMyTitle(),
+    reqBy:((typeof window.auMe==='function'&&window.auMe())||{}).id||'',   // 본인 요청을 본인이 확인하지 못하게
     appr:{status:'pending',by:'',byName:'',sig:'',at:'',comment:''},
     form:prFormSnapshot()
   };
+  // 결재 라인: 요청자 직급에 중간 확인 단계가 있으면 등록 시점에 고정 (예: 해외영업사원 → 해외영업팀장 확인 → 공장장)
+  const rvw=ptReviewRule(rec.reqTitle);
+  if(rvw)rec.review={title:rvw.title,label:rvw.label,status:'pending',by:'',byName:'',byTitle:'',sig:'',at:'',comment:''};
   if(!rec.reqSig&&typeof window.sigOpen==='function'){
     setTimeout(function(){if(window.__me&&!window.__me.signature)window.sigOpen('구매 요청이 등록되었습니다.<br><b>본인 서명</b>을 등록하면 결재 양식의 기안란에 표시됩니다.');},900);
   }
   ptOpenIds[rec.id]=true;
   ptRecords.unshift(rec);ptPersist(rec);ptRender();
-  alert('구매요청이 등록되었습니다.\n「구매 진행」에서 최종관리자 결재를 기다립니다.');
+  alert(rec.review
+    ?'구매요청이 등록되었습니다.\n「구매 진행」에서 '+rec.review.title+' 확인 → 공장장 최종 결재 순서로 진행됩니다.'
+    :'구매요청이 등록되었습니다.\n「구매 진행」에서 최종관리자 결재를 기다립니다.');
   if(typeof purchaseGo==='function')purchaseGo('purchase-track');
 }
 /* ══════════════════════════════════════════════════════════════
@@ -6337,14 +6344,72 @@ function ptIsAdmin(){
   const me=(typeof window.auMe==='function')?window.auMe():null;
   return !!(me&&me.role==='admin')||sessionStorage.getItem('lt_role')==='admin';
 }
+/* 결재 라인 (2026-09-29) — 요청자 직급별 중간 확인 단계
+   · 해외영업사원(김민성) → 해외영업팀장(박교순) 확인 → 공장장(장도규) 최종 승인
+   · 그 외(해외영업팀장 본인 등) → 바로 공장장 최종 승인 (기존과 동일)
+   단계는 요청 등록 때 레코드(rec.review)에 고정되므로, 나중에 규칙을 바꿔도 이미 올라온 요청은 그대로. */
+const PT_REVIEW_RULES={'해외영업사원':{title:'해외영업팀장',label:'팀장 확인'}};
+function ptReviewRule(reqTitle){const x=PT_REVIEW_RULES[String(reqTitle||'').trim()];return x?{title:x.title,label:x.label}:null;}
+function ptTitleOf(u){return u?String(u.title||PR_REQ_TITLE_MAP[u.name]||'').trim():'';}
+function ptReview(r){   // 중간 확인 단계가 없는 요청이면 null
+  if(!r||!r.review)return null;
+  const v=r.review;
+  return {title:v.title||'',label:v.label||'팀장 확인',status:v.status||'pending',by:v.by||'',byName:v.byName||'',byTitle:v.byTitle||'',sig:v.sig||'',at:v.at||'',comment:v.comment||''};
+}
+function ptReviewDone(rv){return !rv||rv.status==='approved'||rv.status==='skipped';}
+function ptIsReviewer(r){
+  const rv=ptReview(r);const me=(typeof window.auMe==='function')?window.auMe():null;
+  if(r&&r.reqBy&&me&&me.id===r.reqBy)return false;   // 요청자 본인은 확인 불가
+  return !!(rv&&me&&rv.title&&ptTitleOf(me)===rv.title);
+}
+function ptReviewSigCell(rv){   // 결재 양식용 팀장 확인 칸 데이터
+  if(!rv)return null;
+  return {label:rv.label,title:rv.title,sig:rv.status==='approved'?rv.sig:'',
+    name:rv.byName?(rv.byName+(rv.byTitle?' ('+rv.byTitle+')':'')):'',
+    date:rv.at?ptLocalYmd(rv.at):'',status:rv.status};
+}
+// 지금 로그인한 사람이 처리해야 하는 결재인지 (목록 배지 · 요약 칩용)
+function ptNeedsMyAction(r){
+  if(!r||r.cancelled)return false;
+  const a=ptAppr(r),rv=ptReview(r);
+  if(a.status!=='pending')return false;
+  if(rv&&rv.status==='pending')return ptIsReviewer(r);
+  if(rv&&rv.status==='rejected')return false;
+  return ptIsAdmin();
+}
+// 중간 확인 (해외영업팀장) — 확인 / 반려 / 확인 취소
+async function ptSetReview(id,status){
+  const r=ptRecords.find(x=>x.id===id);if(!r)return;
+  const rv=ptReview(r);if(!rv)return;
+  if(!ptIsReviewer(r)){alert(rv.title+'만 '+rv.label+'을(를) 할 수 있습니다.');return;}
+  if(ptAppr(r).status!=='pending'){alert('이미 공장장 결재가 끝난 요청입니다. 공장장이 결재를 취소해야 변경할 수 있습니다.');return;}
+  const me=window.auMe();
+  if(status!=='pending'&&!me.signature){
+    if(typeof window.sigOpen==='function')window.sigOpen(rv.label+'에는 <b>본인 서명</b>이 필요합니다.<br>지금 등록하면 바로 확인할 수 있어요.');
+    else alert('확인하려면 본인 서명을 먼저 등록해야 합니다.');
+    return;
+  }
+  let comment='';
+  if(status==='rejected'){comment=prompt('반려 사유를 입력하세요.','');if(comment===null)return;}
+  else if(status==='approved'){if(!confirm('이 구매요청을 확인할까요?\n확인자: '+(me.name||'')+'\n확인 후 공장장에게 최종 결재가 올라갑니다.'))return;}
+  else if(!confirm(rv.label+'을(를) 취소할까요? 다시 확인 대기 상태가 됩니다.'))return;
+  r.review=(status==='pending')
+    ?{title:rv.title,label:rv.label,status:'pending',by:'',byName:'',byTitle:'',sig:'',at:'',comment:''}
+    :{title:rv.title,label:rv.label,status:status,by:me.id||'',byName:me.name||'',byTitle:ptTitleOf(me),sig:me.signature||'',at:new Date().toISOString(),comment:comment||''};
+  ptPersist(r);ptRender();
+}
+window.ptSetReview=ptSetReview;
 function ptAppr(r){
   const a=r.appr||{};
   return {status:a.status||'pending',by:a.by||'',byName:a.byName||'',byTitle:a.byTitle||'',sig:a.sig||'',at:a.at||'',comment:a.comment||''};
 }
 function ptApprBadge(r){
-  const a=ptAppr(r);
+  const a=ptAppr(r),rv=ptReview(r);
   if(a.status==='approved')return '<span class="pt-appr ok">✔ 승인</span>';
   if(a.status==='rejected')return '<span class="pt-appr no">✕ 반려</span>';
+  if(rv&&rv.status==='rejected')return '<span class="pt-appr no">✕ 반려 ('+prEsc(rv.label)+')</span>';
+  if(rv&&rv.status==='pending')return '<span class="pt-appr wait">🕘 '+prEsc(rv.label)+' 대기</span>';
+  if(rv)return '<span class="pt-appr wait">🕘 공장장 결재 대기</span>';
   return '<span class="pt-appr wait">🕘 결재 대기</span>';
 }
 async function ptSetAppr(id,status){
@@ -6356,15 +6421,29 @@ async function ptSetAppr(id,status){
     else alert('결재하려면 본인 서명을 먼저 등록해야 합니다.');
     return;
   }
+  // 중간 확인 단계가 있는 요청: 팀장 확인이 끝나야 최종 결재 가능
+  const rv=ptReview(r);
+  let skipReview=false;
+  if(rv&&status!=='pending'&&!ptReviewDone(rv)){
+    if(rv.status==='rejected'){alert(rv.title+'이(가) 반려한 요청입니다.\n'+rv.title+'이(가) 반려를 취소해야 최종 결재할 수 있습니다.');return;}
+    // 팀장 부재 등 — 공장장이 명시적으로 확인하면 '팀장 확인 생략'으로 기록하고 진행
+    if(!confirm('아직 '+rv.title+' '+rv.label+' 전입니다.\n'+rv.label+' 없이 바로 '+(status==='approved'?'승인':'반려')+'할까요?\n(결재 기록에 「'+rv.label+' 생략」으로 남습니다)'))return;
+    skipReview=true;
+  }
   let comment='';
   if(status==='rejected'){
     comment=prompt('반려 사유를 입력하세요.','');
     if(comment===null)return;
-  }else{
+  }else if(!skipReview&&status==='approved'){
     if(!confirm('이 구매요청을 승인할까요?\n승인자: '+(me.name||'')+'\n본인 서명이 결재 양식에 기록됩니다.'))return;
+  }else if(status==='pending'){
+    if(!confirm('결재를 취소할까요? 다시 결재 대기 상태가 됩니다.'))return;
   }
+  if(skipReview)r.review=Object.assign({},r.review,{status:'skipped',by:me.id||'',byName:me.name||'',byTitle:ptTitleOf(me),sig:'',at:new Date().toISOString(),comment:''});
   if(status==='pending'){   // 결재 취소 — 승인자 정보를 남기면 "대기 — 홍길동"처럼 잘못 표기됨
     r.appr={status:'pending',by:'',byName:'',byTitle:'',sig:'',at:'',comment:''};
+    // 공장장이 '생략'으로 처리했던 팀장 확인은 결재 취소와 함께 다시 확인 대기로
+    if(rv&&rv.status==='skipped')r.review=Object.assign({},r.review,{status:'pending',by:'',byName:'',byTitle:'',sig:'',at:'',comment:''});
   }else{
     const myTitle=me.title||(PR_REQ_TITLE_MAP[me.name]||'');
     r.appr={status:status,by:me.id||'',byName:me.name||'',byTitle:myTitle,sig:me.signature||'',at:new Date().toISOString(),comment:comment||''};
@@ -6372,16 +6451,28 @@ async function ptSetAppr(id,status){
   ptPersist(r);ptRender();
 }
 function ptApprSection(r){
-  const a=ptAppr(r);
+  const a=ptAppr(r),rv=ptReview(r);
   const when=a.at?new Date(a.at).toLocaleString('ko-KR'):'';
   let h='<div class="pt-apprbox">';
-  h+='<div class="pt-apprhead"><b>📋 구매 결재</b> '+ptApprBadge(r)+'</div>';
+  h+='<div class="pt-apprhead"><b>📋 구매 결재</b> '+ptApprBadge(r)
+    +(rv?'<span style="margin-left:auto;font-size:11px;color:var(--text3)">결재 라인: 기안 → '+prEsc(rv.title)+' '+prEsc(rv.label)+' → 공장장</span>':'')+'</div>';
   h+='<div class="pt-sigrow">';
   // 기안
   h+='<div class="pt-sigcell"><div class="pt-sigt">기안 (요청자)</div>'
     +'<div class="pt-sigbox">'+(r.reqSig?'<img src="'+prSafeImg(r.reqSig)+'" alt="">':'<span>서명 없음</span>')+'</div>'
     +'<div class="pt-signm">'+prEsc(r.requestor||'-')+'</div>'
     +'<div class="pt-sigdt">'+prEsc((r.dates||{}).requested||'')+'</div></div>';
+  // 중간 확인 (예: 해외영업팀장)
+  if(rv){
+    h+='<div class="pt-sigcell"><div class="pt-sigt">'+prEsc(rv.label)+' ('+prEsc(rv.title)+')</div>'
+      +'<div class="pt-sigbox'+(rv.status==='rejected'?' rej':'')+'">'
+      +(rv.status==='approved'&&rv.sig?'<img src="'+prSafeImg(rv.sig)+'" alt="">'
+        :rv.status==='rejected'?'<span style="color:#b91c1c;font-weight:700">반려</span>'
+        :rv.status==='skipped'?'<span style="font-weight:700">생략 (공장장 처리)</span>'
+        :'<span>확인 대기</span>')+'</div>'
+      +'<div class="pt-signm">'+prEsc(rv.status==='skipped'?'-':(rv.byName?(rv.byName+(rv.byTitle?' ('+rv.byTitle+')':'')):'-'))+'</div>'
+      +'<div class="pt-sigdt">'+prEsc(rv.status!=='skipped'&&rv.at?new Date(rv.at).toLocaleString('ko-KR'):'')+'</div></div>';
+  }
   // 승인
   h+='<div class="pt-sigcell"><div class="pt-sigt">최종 승인 (관리자)</div>'
     +'<div class="pt-sigbox'+(a.status==='rejected'?' rej':'')+'">'
@@ -6391,14 +6482,30 @@ function ptApprSection(r){
     +'<div class="pt-signm">'+prEsc(a.byName?(a.byName+(a.byTitle?' ('+a.byTitle+')':'')):'-')+'</div>'
     +'<div class="pt-sigdt">'+prEsc(when)+'</div></div>';
   h+='</div>';
+  if(rv&&rv.status==='rejected'&&rv.comment)h+='<div class="pt-rejmsg">'+prEsc(rv.label)+' 반려 사유 ('+prEsc(rv.byName||rv.title)+'): '+prEsc(rv.comment)+'</div>';
   if(a.status==='rejected'&&a.comment)h+='<div class="pt-rejmsg">반려 사유: '+prEsc(a.comment)+'</div>';
   h+='<div class="pt-apprbtns">';
+  // 중간 확인자 버튼 (공장장 결재 전까지만)
+  if(rv&&ptIsReviewer(r)&&a.status==='pending'){
+    if(rv.status==='pending'){
+      h+='<button type="button" class="pt-btn ok" data-ptrev="'+prEsc(r.id)+'" data-v="approved">✔ '+prEsc(rv.label)+'</button>';
+      h+='<button type="button" class="pt-btn no" data-ptrev="'+prEsc(r.id)+'" data-v="rejected">✕ 반려</button>';
+    }else if(rv.status==='approved'||rv.status==='rejected'){
+      h+='<button type="button" class="pt-btn undo" data-ptrev="'+prEsc(r.id)+'" data-v="pending">↩ '+(rv.status==='rejected'?'반려':prEsc(rv.label))+' 취소</button>';
+    }
+  }
   if(ptIsAdmin()){
     if(a.status!=='approved')h+='<button type="button" class="pt-btn ok" data-ptappr="'+prEsc(r.id)+'" data-v="approved">✔ 승인</button>';
     if(a.status!=='rejected')h+='<button type="button" class="pt-btn no" data-ptappr="'+prEsc(r.id)+'" data-v="rejected">✕ 반려</button>';
     if(a.status!=='pending')h+='<button type="button" class="pt-btn undo" data-ptappr="'+prEsc(r.id)+'" data-v="pending">↩ 결재 취소</button>';
-  }else if(a.status==='pending'){
-    h+='<span style="font-size:12px;color:var(--text3)">최종관리자의 승인을 기다리는 중입니다.</span>';
+    if(rv&&rv.status==='pending'&&a.status==='pending')h+='<span style="font-size:12px;color:#b45309">'+prEsc(rv.title)+' '+prEsc(rv.label)+' 전입니다.</span>';
+  }else if(a.status==='pending'&&!(rv&&ptIsReviewer(r))){
+    h+='<span style="font-size:12px;color:var(--text3)">'
+      +(rv&&rv.status==='pending'?prEsc(rv.title)+'의 '+prEsc(rv.label)+'을(를) 기다리는 중입니다.'
+        :rv&&rv.status==='rejected'?prEsc(rv.title)+'이(가) 반려했습니다.'
+        :'최종관리자의 승인을 기다리는 중입니다.')+'</span>';
+  }else if(a.status==='pending'&&rv&&ptIsReviewer(r)&&ptReviewDone(rv)){
+    h+='<span style="font-size:12px;color:var(--text3)">공장장 최종 결재를 기다리는 중입니다.</span>';
   }
   h+='<button type="button" class="pt-btn print" data-ptprint="'+prEsc(r.id)+'" style="margin-left:auto">🖨️ 결재 양식 인쇄</button>';
   h+='</div></div>';
@@ -6412,6 +6519,7 @@ function ptApprPrint(id){
     reqSig:r.reqSig||'', reqName:r.requestor||'', reqDate:(r.dates||{}).requested||'',
     apprSig:(a.status==='approved')?a.sig:'', apprName:apprName,
     apprDate:a.at?ptLocalYmd(a.at):'', status:a.status,
+    review:ptReviewSigCell(ptReview(r)),   // 중간 확인 칸 (없으면 null → 기존 2칸 양식)
     docTitle:'구매 결재서 - '+(r.title||'')
   };
   // 요청서 전체 양식(사진 포함)을 그대로 재현 — 등록 시 저장한 스냅샷 사용
@@ -6483,6 +6591,10 @@ function ptApprPrintLegacy(r,a){
     +'</div>'
     +'<table class="sig-tbl"><tr>'
     +sigCell('기안',r.requestor||'',r.reqSig||'',(r.dates||{}).requested||'',false)
+    +(function(){const rv=ptReview(r);if(!rv)return '';
+        return rv.status==='skipped'
+          ?'<td><div class="st">'+prEsc(rv.label)+'</div><div class="sb"><span style="color:#6b7280;font-weight:800">생략</span></div><div class="sn">공장장 처리</div><div class="sd"></div></td>'
+          :sigCell(rv.label,rv.byName?(rv.byName+(rv.byTitle?' ('+rv.byTitle+')':'')):'',rv.status==='approved'?rv.sig:'',rv.at?new Date(rv.at).toLocaleDateString('ko-KR'):'',rv.status==='rejected');})()
     +sigCell('최종 승인',(a.byName?(a.byName+(a.byTitle?' ('+a.byTitle+')':'')):''),a.status==='approved'?a.sig:'',when,a.status==='rejected')
     +'</tr></table>'
     +'<table class="info">'
@@ -6507,10 +6619,12 @@ function ptRender(){
   const empty=document.getElementById('ptEmpty');const sum=document.getElementById('ptSummary');
   let ing=0,done=0,canc=0;
   ptRecords.forEach(r=>{if(r.cancelled)canc++;else if((r.dates||{}).received)done++;else ing++;});
+  const mine=ptRecords.filter(ptNeedsMyAction).length;   // 내가 확인/결재해야 할 요청
   if(sum)sum.innerHTML='<span class="pt-chip">전체 <b>'+ptRecords.length+'</b></span>'
     +'<span class="pt-chip">진행중 <b style="color:#b45309">'+ing+'</b></span>'
     +'<span class="pt-chip">수령완료 <b style="color:#15803d">'+done+'</b></span>'
-    +'<span class="pt-chip">취소 <b style="color:#b91c1c">'+canc+'</b></span>';
+    +'<span class="pt-chip">취소 <b style="color:#b91c1c">'+canc+'</b></span>'
+    +(mine?'<span class="pt-chip" style="border-color:#f59e0b;background:#fffbeb">✍️ 내 결재 대기 <b style="color:#b45309">'+mine+'</b></span>':'');
   if(empty)empty.style.display=ptRecords.length?'none':'block';
   list.innerHTML=ptRecords.map(r=>{
     const st=ptStatus(r);const d=r.dates||{};
@@ -6531,6 +6645,8 @@ function ptRender(){
       +'<span style="color:var(--accent);font-weight:700">'+(isOpen?'▾':'▸')+'</span>'
       +'<div class="pt-title">'+prEsc(r.title)+(r.requestor?' <span style="font-weight:400;color:var(--text3);font-size:11px">· '+prEsc(r.requestor)+'</span>':'')+'</div>'
       +'<span class="pt-pill" style="background:'+st.bg+';color:'+st.fg+'">'+st.label+'</span>'
+      +(r.cancelled?'':ptApprBadge(r))
+      +(ptNeedsMyAction(r)?'<span class="pt-appr wait" style="background:#f59e0b;color:#fff">✍️ 내 차례</span>':'')
       +'<span class="pt-total">'+ptFmtMoney(r.total,r.currency)+'</span>'
       +'<span class="pt-meta">요청 '+prEsc(d.requested||'-')+(d.received?' → 수령 '+prEsc(d.received):'')+'</span>'
       +'</div>'+body+'</div>';
@@ -6541,6 +6657,8 @@ function ptRender(){
   list.addEventListener('click',e=>{
     const ap=e.target.closest('[data-ptappr]');
     if(ap){ptSetAppr(ap.dataset.ptappr,ap.dataset.v);return;}
+    const rvb=e.target.closest('[data-ptrev]');
+    if(rvb){ptSetReview(rvb.dataset.ptrev,rvb.dataset.v);return;}
     const pp=e.target.closest('[data-ptprint]');
     if(pp){ptApprPrint(pp.dataset.ptprint);return;}
     const del=e.target.closest('[data-ptdel]');
@@ -7071,6 +7189,9 @@ function prPhotosHtml(photoSlots){
    → 기안/공장장 서명칸에 실제 서명 이미지를 넣는다. (결재 양식 인쇄가 이 경로를 씀) */
 function prRenderRequestDoc(d, sig){
   sig=sig||{};
+  // sig.review = {label, title, sig, name, date, status} → 기안 · 팀장 확인 · 공장장 3칸 (없으면 기존 2칸)
+  const rv=sig.review||null;
+  const rvW=rv?' style="width:33.33%"':'';
   const cur=d.cur, date=d.date, site=d.site, requestor=d.requestor, purpose=d.purpose,
         dueDate=d.dueDate, vendor=d.vendor, delivery=d.delivery, notes=d.notes,
         subtotal=d.subtotal, discountTotal=d.discountTotal, grandTotal=d.grandTotal,
@@ -7095,14 +7216,16 @@ function prRenderRequestDoc(d, sig){
       <table class="pr-approve">
         <thead>
           <tr>
-            <th>기안 (Requestor)</th>
-            <th>공장장 (Managing Director)</th>
+            <th${rvW}>기안 (Requestor)</th>
+            ${rv?`<th${rvW}>${prEscape(rv.label)} (Team Leader)</th>`:''}
+            <th${rvW}>공장장 (Managing Director)</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td class="sig">${prSigCellHtml(sig.reqSig, sig.reqName||requestor, sig.reqDate||date)}</td>
-            <td class="sig">${prSigCellHtml(sig.apprSig, sig.apprName, sig.apprDate, sig.status)}</td>
+            <td class="sig"${rvW}>${prSigCellHtml(sig.reqSig, sig.reqName||requestor, sig.reqDate||date)}</td>
+            ${rv?`<td class="sig"${rvW}>${prSigCellHtml(rv.sig, rv.name, rv.date, rv.status)}</td>`:''}
+            <td class="sig"${rvW}>${prSigCellHtml(sig.apprSig, sig.apprName, sig.apprDate, sig.status)}</td>
           </tr>
         </tbody>
       </table>
@@ -7210,7 +7333,10 @@ function prRenderRequestDoc(d, sig){
 }
 function prFastPrint(){
   const me=(typeof window.auMe==='function'&&window.auMe())||{};
-  const doc=prRenderRequestDoc(prCollectForm(),{reqSig:me.signature||sessionStorage.getItem('lt_sig')||''});
+  // 결재 라인에 중간 확인이 있는 사람(해외영업사원)이 인쇄하면 빈 「팀장 확인」 칸이 들어간 3칸 양식
+  const rule=(typeof ptReviewRule==='function')?ptReviewRule(prMyTitle()):null;
+  const doc=prRenderRequestDoc(prCollectForm(),{reqSig:me.signature||sessionStorage.getItem('lt_sig')||'',
+    review:rule?{label:rule.label,title:rule.title,sig:'',name:'',date:'',status:'pending'}:null});
   const w=window.open('','prPrintWin_'+Date.now(),'width=900,height=1000,scrollbars=yes');
   if(!w){alert('팝업이 차단되어 인쇄 창을 열지 못했습니다. 브라우저에서 팝업을 허용해주세요.');return;}
   w.document.open();w.document.write(doc);w.document.close();w.focus();
@@ -7220,6 +7346,7 @@ function prFastPrint(){
 function prSigCellHtml(src,name,dt,status){
   const safe=(typeof prSafeImg==='function')?prSafeImg(src||''):(src||'');
   if(status==='rejected')return '<div class="sig-rej">반려</div>'+(name?'<div class="sig-nm">'+prEscape(name)+'</div>':'');
+  if(status==='skipped')return '<div class="sig-rej" style="color:#6b7280">생략</div><div class="sig-dt">공장장 처리</div>';
   if(!safe)return '(서명)';
   return '<img class="sig-img" src="'+safe+'">'
     +(name?'<div class="sig-nm">'+prEscape(name)+'</div>':'')
