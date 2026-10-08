@@ -5245,7 +5245,7 @@ window.schSelectColor = schSelectColor;
   <div class="container">
     <div style="margin-bottom:16px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">파일 중복검사</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), <code>44pro-P8XHC8RY.pdf</code> (같은 Glove ID 면 <code>S…-P8XHC8RY.pdf</code> 와 중복), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
     </div>
 
     <!-- 신규 폴더 -->
@@ -6318,7 +6318,8 @@ function prSubmitRequest(){
     dates:{requested:(document.getElementById('prDate')||{}).value||ptToday()},
     cancelled:false,memo:'',createdTs:Date.now(),
     reqSig:((typeof window.auMe==='function'&&window.auMe())?window.auMe().signature:'')||sessionStorage.getItem('lt_sig')||'',
-    reqTitle:prMyTitle(),
+    // 결재 라인 판정용 직급 = 로그인 프로필 직급(없으면 이름표). 예전 로그인이 남긴 sessionStorage 직급은 쓰지 않음
+    reqTitle:ptTitleOf((typeof window.auMe==='function'&&window.auMe())||null),
     reqBy:((typeof window.auMe==='function'&&window.auMe())||{}).id||'',   // 본인 요청을 본인이 확인하지 못하게
     appr:{status:'pending',by:'',byName:'',sig:'',at:'',comment:''},
     form:prFormSnapshot()
@@ -6377,15 +6378,38 @@ function ptNeedsMyAction(r){
   if(rv&&rv.status==='rejected')return false;
   return ptIsAdmin();
 }
+/* 결재 저장 직전, 서버의 최신 레코드를 다시 읽어 그사이 다른 사람이 결재를 바꿨으면 중단.
+   저장은 레코드 전체를 덮어쓰므로, 오래 열어둔 탭(노트북 잠자기 후 등)이 상대의 확인/승인을 지우지 않게 한다. */
+function ptDecisionKey(r){return JSON.stringify([ptReview(r),ptAppr(r),!!(r&&r.cancelled)]);}
+async function ptFreshForDecision(id,seenKey){
+  if(!ptCloud)return ptRecords.find(x=>x.id===id)||null;   // 로컬 모드 — 다른 사람과 공유 안 됨
+  const c=ptSupa();
+  if(!c){alert('서버에 연결되지 않아 결재를 저장하지 않았습니다.');return null;}
+  let fresh=null;
+  try{
+    const{data,error}=await c.from(PT_TABLE).select('data').eq('id',id).maybeSingle();
+    if(error)throw error;
+    fresh=data&&data.data;
+  }catch(e){alert('최신 결재 상태를 불러오지 못해 저장하지 않았습니다.\n네트워크를 확인하고 다시 시도하세요.');return null;}
+  if(!fresh){alert('이 요청은 이미 삭제되었습니다.');ptFetch().then(ptApplyCloud).catch(()=>{});return null;}
+  const i=ptRecords.findIndex(x=>x.id===id);if(i>=0)ptRecords[i]=fresh;
+  if(ptDecisionKey(fresh)!==seenKey){
+    ptRender();
+    alert('다른 사람이 방금 이 요청의 결재를 처리했습니다.\n화면을 최신 상태로 바꿨으니 다시 확인해 주세요.');
+    return null;
+  }
+  return fresh;
+}
 // 중간 확인 (해외영업팀장) — 확인 / 반려 / 확인 취소
 async function ptSetReview(id,status){
-  const r=ptRecords.find(x=>x.id===id);if(!r)return;
+  let r=ptRecords.find(x=>x.id===id);if(!r)return;
   const rv=ptReview(r);if(!rv)return;
+  const seenKey=ptDecisionKey(r);
   if(!ptIsReviewer(r)){alert(rv.title+'만 '+rv.label+'을(를) 할 수 있습니다.');return;}
   if(ptAppr(r).status!=='pending'){alert('이미 공장장 결재가 끝난 요청입니다. 공장장이 결재를 취소해야 변경할 수 있습니다.');return;}
   const me=window.auMe();
   if(status!=='pending'&&!me.signature){
-    if(typeof window.sigOpen==='function')window.sigOpen(rv.label+'에는 <b>본인 서명</b>이 필요합니다.<br>지금 등록하면 바로 확인할 수 있어요.');
+    if(typeof window.sigOpen==='function')window.sigOpen(prEsc(rv.label)+'에는 <b>본인 서명</b>이 필요합니다.<br>지금 등록하면 바로 확인할 수 있어요.');
     else alert('확인하려면 본인 서명을 먼저 등록해야 합니다.');
     return;
   }
@@ -6393,6 +6417,7 @@ async function ptSetReview(id,status){
   if(status==='rejected'){comment=prompt('반려 사유를 입력하세요.','');if(comment===null)return;}
   else if(status==='approved'){if(!confirm('이 구매요청을 확인할까요?\n확인자: '+(me.name||'')+'\n확인 후 공장장에게 최종 결재가 올라갑니다.'))return;}
   else if(!confirm(rv.label+'을(를) 취소할까요? 다시 확인 대기 상태가 됩니다.'))return;
+  r=await ptFreshForDecision(id,seenKey);if(!r)return;
   r.review=(status==='pending')
     ?{title:rv.title,label:rv.label,status:'pending',by:'',byName:'',byTitle:'',sig:'',at:'',comment:''}
     :{title:rv.title,label:rv.label,status:status,by:me.id||'',byName:me.name||'',byTitle:ptTitleOf(me),sig:me.signature||'',at:new Date().toISOString(),comment:comment||''};
@@ -6413,7 +6438,8 @@ function ptApprBadge(r){
   return '<span class="pt-appr wait">🕘 결재 대기</span>';
 }
 async function ptSetAppr(id,status){
-  const r=ptRecords.find(x=>x.id===id);if(!r)return;
+  let r=ptRecords.find(x=>x.id===id);if(!r)return;
+  const seenKey=ptDecisionKey(r);
   if(!ptIsAdmin()){alert('결재 승인은 최종관리자만 가능합니다.');return;}
   const me=(typeof window.auMe==='function')?window.auMe():null;
   if(!me||!me.signature){
@@ -6422,7 +6448,10 @@ async function ptSetAppr(id,status){
     return;
   }
   // 중간 확인 단계가 있는 요청: 팀장 확인이 끝나야 최종 결재 가능
-  const rv=ptReview(r);
+  let rv=ptReview(r);
+  // 반려↔승인 직접 전환: 이전 결정 때 한 '팀장 확인 생략'은 새 결정에 이어지지 않음 → 생략 확인을 다시 받는다
+  const prevA=ptAppr(r).status;
+  if(rv&&rv.status==='skipped'&&status!=='pending'&&prevA!=='pending'&&prevA!==status)rv=Object.assign({},rv,{status:'pending'});
   let skipReview=false;
   if(rv&&status!=='pending'&&!ptReviewDone(rv)){
     if(rv.status==='rejected'){alert(rv.title+'이(가) 반려한 요청입니다.\n'+rv.title+'이(가) 반려를 취소해야 최종 결재할 수 있습니다.');return;}
@@ -6439,6 +6468,7 @@ async function ptSetAppr(id,status){
   }else if(status==='pending'){
     if(!confirm('결재를 취소할까요? 다시 결재 대기 상태가 됩니다.'))return;
   }
+  r=await ptFreshForDecision(id,seenKey);if(!r)return;
   if(skipReview)r.review=Object.assign({},r.review,{status:'skipped',by:me.id||'',byName:me.name||'',byTitle:ptTitleOf(me),sig:'',at:new Date().toISOString(),comment:''});
   if(status==='pending'){   // 결재 취소 — 승인자 정보를 남기면 "대기 — 홍길동"처럼 잘못 표기됨
     r.appr={status:'pending',by:'',byName:'',byTitle:'',sig:'',at:'',comment:''};
@@ -6594,7 +6624,7 @@ function ptApprPrintLegacy(r,a){
     +(function(){const rv=ptReview(r);if(!rv)return '';
         return rv.status==='skipped'
           ?'<td><div class="st">'+prEsc(rv.label)+'</div><div class="sb"><span style="color:#6b7280;font-weight:800">생략</span></div><div class="sn">공장장 처리</div><div class="sd"></div></td>'
-          :sigCell(rv.label,rv.byName?(rv.byName+(rv.byTitle?' ('+rv.byTitle+')':'')):'',rv.status==='approved'?rv.sig:'',rv.at?new Date(rv.at).toLocaleDateString('ko-KR'):'',rv.status==='rejected');})()
+          :sigCell(prEsc(rv.label),rv.byName?(rv.byName+(rv.byTitle?' ('+rv.byTitle+')':'')):'',rv.status==='approved'?rv.sig:'',rv.at?new Date(rv.at).toLocaleDateString('ko-KR'):'',rv.status==='rejected');})()
     +sigCell('최종 승인',(a.byName?(a.byName+(a.byTitle?' ('+a.byTitle+')':'')):''),a.status==='approved'?a.sig:'',when,a.status==='rejected')
     +'</tr></table>'
     +'<table class="info">'
@@ -6689,6 +6719,8 @@ function ptRender(){
     try{localStorage.removeItem(PT_KEY);}catch(e){}
     ptApplyCloud(rows);ptBadge(true);
     c.channel('rt-'+PT_TABLE).on('postgres_changes',{event:'*',schema:'public',table:PT_TABLE},()=>{ptFetch().then(ptApplyCloud).catch(()=>{});}).subscribe();
+    // 탭으로 돌아오면 다시 불러오기 — 잠자기·백그라운드 동안 끊긴 실시간 이벤트를 놓쳐 옛 결재 상태가 보이지 않게
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ptCloud)ptFetch().then(ptApplyCloud).catch(()=>{});});
   }).catch(e=>{console.error('[pt] 공유 저장 연결 실패 — 로컬 모드로 동작',e);ptCloud=false;ptBadge(false);});
 })();
 window.prSubmitRequest=prSubmitRequest;
@@ -10381,6 +10413,8 @@ async function* dcWalk(dirHandle, prefix = ''){
 //   "Custom Design #NNNNNNN (2).pdf"
 //   "S151703-1-P8XHC8RY.pdf"                   ← 새 오더 양식(2026-09~): 오더 S151703 · 글러브 순번 1 · Glove ID P8XHC8RY
 //   "S151703-1-P8XHC8RY (1).pdf"
+//   "44pro-LRP2J8VD.pdf"                       ← 44pro 사이트에서 한 장씩 받은 같은 오더 시트 (Glove ID 만 파일명에 있음)
+//   "44pro-LRP2J8VD (1).pdf"
 // 그 외 (mockup, 디자인 도안 등) 자동 제외.
 // 비교 기준은 두 양식 모두 Glove ID — 예전 #NNNNNNN 도 PDF의 Glove ID 와 같은 번호였다.
 // 새 양식은 같은 디자인을 재주문하면 Glove ID 는 같고 S번호만 달라진다 (예전 REORDER 폴더가 중복으로 잡히던 것과 같은 동작).
@@ -10392,11 +10426,17 @@ function dcMatchFilename(name){
   const m = name.match(/^Custom\s+(?:Glove\s+Design\s+v\d+|Design)\s+#(\d{4,10})(?:\s+\(\d+\))?\.pdf$/i);
   if (m) return m[1];
   const n = dcNewName(name);
-  return n ? n.design : null;
+  if (n) return n.design;
+  // "44pro-LRP2J8VD.pdf" — S번호 없이 Glove ID 만 있는 이름. 같은 Glove ID 의 "S160875-1-LRP2J8VD.pdf" 와 중복으로 잡힌다
+  const p = name.match(/^44\s*pro[-_ ]+([A-Z0-9]{4,})(?:\s*\(\d+\))?\.pdf$/i);
+  return p ? p[1].toUpperCase() : null;
 }
 // 새 양식끼리 중복일 때: 같은 오더가 다시 온 것인지, S번호가 다른 재주문인지 표시 (예전 양식 파일이면 빈 문자열)
 function dcOrderTag(newName, otherName){
   const a = dcNewName(newName), b = dcNewName(otherName);
+  // 한쪽이 "44pro-ID.pdf" 면 파일명에 S번호가 없어 같은 오더인지는 알 수 없음 → 무엇으로 묶였는지만 표시
+  if ((!a || !b) && (/^44\s*pro[-_ ]/i.test(newName) || /^44\s*pro[-_ ]/i.test(otherName)))
+    return ` <span style="color:#6b7280;font-weight:600">· Glove ID 같음 (44pro 파일 — 오더번호는 PDF 안에서 확인)</span>`;
   if (!a || !b) return '';
   return (a.order === b.order && a.item === b.item)
     ? ` <span style="color:#991b1b;font-weight:600">· 같은 오더 ${dcEsc(b.order)}-${dcEsc(b.item)}</span>`
@@ -10551,7 +10591,7 @@ function dcShowResults(){
   // 패턴 불일치로 검사 제외된 파일
   for (const s of skippedNew){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf / S151703-1-P8XHC8RY.pdf(새 양식) 등 인식 패턴이 아니라서 검사에서 제외">⊘ 제외</span></td>
+    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf / S151703-1-P8XHC8RY.pdf(새 양식) / 44pro-P8XHC8RY.pdf 등 인식 패턴이 아니라서 검사에서 제외">⊘ 제외</span></td>
       <td style="color:var(--text2);font-size:11px">-</td>
       <td style="font-family:ui-monospace,monospace;font-size:12px;color:var(--text2)">${dcEsc(s.relPath)}</td>
       <td style="color:var(--text2);font-size:11px">-</td>`;
