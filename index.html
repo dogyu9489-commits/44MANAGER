@@ -5245,7 +5245,7 @@ window.schSelectColor = schSelectColor;
   <div class="container">
     <div style="margin-bottom:16px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">파일 중복검사</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), <code>44pro-P8XHC8RY.pdf</code> (같은 Glove ID 면 <code>S…-P8XHC8RY.pdf</code> 와 중복), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), <code>44pro-P8XHC8RY.pdf</code> (같은 Glove ID 면 <code>S…-P8XHC8RY.pdf</code> 와 중복), 앞에 수량·메모가 붙은 이름(<code>4EA S161733-11-MCQHUTGB.pdf</code>, <code>16. 4EA 44pro-MCQHUTGB.pdf</code> — 이름이 달라도 8자리 Glove ID 가 같으면 중복), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
     </div>
 
     <!-- 신규 폴더 -->
@@ -9560,6 +9560,32 @@ paQ("pa-dlBtn").addEventListener("click", () => {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 (function(){
+// ── 새 양식 파일명에서 Glove ID 찾기 — 파일 중복검사 · 출고 자동화 · 오더유형 분류 공용 (JSZip 가드보다 앞에 두어 항상 정의) ──
+// 44 Pro 의 Glove ID = 8자리, 0·1·I·O 를 뺀 32자(2-9 · A-Z). 실제 ID 1,953개 전부 이 꼴.
+// 파일 이름 앞에 "4EA " · "16. 4EA 44pro-" 같은 수량·메모가 붙어도 찾도록 이름 어디에 있든 본다. 우선순위:
+//   1. "S161733-11-MCQHUTGB" (오더-순번-ID, 어디에 있든)   → ID + 오더번호
+//   2. "44pro-MCQHUTGB" (어디에 있든)
+//   3. 숫자+영문이 섞인 8자리 토큰 (마지막 것)
+//   4. 영문만 8자리 토큰은 이름 맨 끝에 있을 때만 — 로고 파일의 영단어("ETSU BASEBALL LOGO.pdf" 의 BASEBALL, STANDARD, NEBRASKA …)는
+//      전부 이름 중간에 오므로 제외 (실제 PDF 이름 69,088개로 확인: 1~4 로 잘못 잡히는 파일 0개)
+// 예전 양식("Custom Glove Design v3 #NNNNNNN.pdf")은 8자 토큰이 없어 null → 각 모듈의 예전 규칙이 그대로 적용된다.
+// "(1)" 브라우저 사본 접미사는 무시. 반환: { id, order|null, item|null, via }
+window.k44GloveId = function(name){
+  const base = String(name || '').replace(/\.pdf$/i, '').replace(/\s*\(\d+\)\s*$/, '').trim();
+  let m = base.match(/(?:^|[^A-Za-z0-9])(S\d{4,})-(\d+)-([A-Z0-9]{4,})(?![A-Za-z0-9])/i);
+  if (m) return { id: m[3].toUpperCase(), order: m[1].toUpperCase(), item: m[2], via: 'S' };
+  // ID 는 대문자 8자(소문자로 쓴 것도 허용) — 대소문자 섞인 "44Pro_Techbugs" 같은 로고 파일명은 ID 가 아님 (그래서 i 플래그 없이 44pro 만 직접 대소문자 허용)
+  m = base.match(/(?:^|[^A-Za-z0-9])44\s*[Pp][Rr][Oo][-_ ]+([2-9A-HJ-NP-Z]{8}|[2-9a-hj-np-z]{8})(?![A-Za-z0-9])/);
+  if (m) return { id: m[1].toUpperCase(), order: null, item: null, via: '44pro' };
+  const toks = base.split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const isId = t => /^[2-9A-HJ-NP-Z]{8}$/.test(t);
+  for (let i = toks.length - 1; i >= 0; i--){
+    if (isId(toks[i]) && /\d/.test(toks[i]) && /[A-Z]/.test(toks[i])) return { id: toks[i], order: null, item: null, via: 'token' };
+  }
+  const last = toks[toks.length - 1];
+  if (last && isId(last) && /^[A-Z]+$/.test(last)) return { id: last, order: null, item: null, via: 'token' };
+  return null;
+};
 if (typeof JSZip === 'undefined') return;
 
 let obBoxes = [];           // [{boxNum, orders: [...]}, ...]
@@ -9622,9 +9648,11 @@ async function obParseDocx(file){
 // ── 새 오더 양식(2026-09~) ──
 // 파일명 "S151703-1-P8XHC8RY.pdf" = 오더 S151703 · 글러브 순번 1 · Glove ID P8XHC8RY
 // ("S151703-1-P8XHC8RY (1).pdf" 처럼 브라우저 중복 다운로드 접미사 허용). 예전 양식 파일명이면 null.
+// 2026-10-29: 이름 앞에 "4EA " 등이 붙어도 인식(k44GloveId). S번호 없이 Glove ID 만 있는 이름("44pro-P8XHC8RY.pdf",
+//   "16. 4EA 44pro-P8XHC8RY.pdf")은 order/item 이 null — Glove ID 로만 찾을 수 있다.
 function obNewName(name){
-  const m = name.match(/^(S\d{4,})-(\d+)-([A-Z0-9]{4,})(?:\s*\(\d+\))?\.pdf$/i);
-  return m ? { order: m[1].toUpperCase(), item: m[2], design: m[3].toUpperCase() } : null;
+  const g = window.k44GloveId(name);
+  return g ? { order: g.order, item: g.item, design: g.id } : null;
 }
 // 패킹리스트 한 줄에서 새 양식 번호 추출. S번호는 줄 어디에 있어도 인식 ("AMBI S151703-1" 등).
 // Glove ID (2026-09-28~ 패킹리스트 오더번호로 사용, 예 "94JGKCTK"): 8자리, 44 Pro 가 쓰는 문자(2-9 · I/O 뺀 영문)만, 숫자 6개 이하.
@@ -9818,8 +9846,14 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
       //     → 그런 번호는 임의로 고르지 않고 {ambiguous} 로 표시해 "확인 필요" 로 남긴다
       const nf = obNewName(f.name);
       if (!nf) continue;
-      f.glove = `${nf.order}-${nf.item}-${nf.design}`;
-      f.keys = [f.glove, `${nf.order}-${nf.item}`, nf.design, nf.order];
+      if (nf.order){
+        f.glove = `${nf.order}-${nf.item}-${nf.design}`;
+        f.keys = [f.glove, `${nf.order}-${nf.item}`, nf.design, nf.order];
+      } else {
+        // 파일명에 S번호가 없음 → Glove ID 로만. 같은 ID 의 S-파일이 같이 있으면 어느 쪽인지 모르므로 {ambiguous} 로 "확인 필요"
+        f.glove = nf.design;
+        f.keys = [nf.design];
+      }
       for (const k of f.keys){
         const prev = fileMap.get(k);
         if (!prev || (!prev.ambiguous && prev.glove === f.glove)) fileMap.set(k, f);   // 같은 글러브의 사본이면 예전처럼 마지막 파일
@@ -10004,8 +10038,9 @@ function ocPathCategory(relPath){
 function ocExtractOrderNum(filename){
   const m = filename.match(/#\s*(\d{6,8})/);
   if (m) return m[1];
-  const n = filename.match(/(?:^|\/)S\d{4,}-\d+-([A-Z0-9]{4,})[^\/]*\.pdf$/i);
-  return n ? n[1].toUpperCase() : '';
+  // 2026-10-29: 이름 앞에 "4EA " 등이 붙어도, "44pro-ID.pdf" 도 Glove ID 를 찾는다 (출고 자동화 블록의 공용 k44GloveId)
+  const g = window.k44GloveId ? window.k44GloveId(filename) : null;
+  return g ? g.id : '';
 }
 // 테스트/다른 모듈용 노출
 window.ocClassifyHelpers = { ocFolderCategory, ocModelCategory, ocPathCategory, ocExtractOrderNum };
@@ -10415,32 +10450,34 @@ async function* dcWalk(dirHandle, prefix = ''){
 //   "S151703-1-P8XHC8RY (1).pdf"
 //   "44pro-LRP2J8VD.pdf"                       ← 44pro 사이트에서 한 장씩 받은 같은 오더 시트 (Glove ID 만 파일명에 있음)
 //   "44pro-LRP2J8VD (1).pdf"
+//   "4EA S161733-11-MCQHUTGB.pdf"              ← 2026-10-29: 이름 앞뒤에 수량·메모가 붙어도 8자리 Glove ID 가 있으면 인식 (k44GloveId)
+//   "16. 4EA 44pro-MCQHUTGB.pdf"                  → 이름이 서로 달라도 Glove ID 가 같으면 중복
 // 그 외 (mockup, 디자인 도안 등) 자동 제외.
 // 비교 기준은 두 양식 모두 Glove ID — 예전 #NNNNNNN 도 PDF의 Glove ID 와 같은 번호였다.
 // 새 양식은 같은 디자인을 재주문하면 Glove ID 는 같고 S번호만 달라진다 (예전 REORDER 폴더가 중복으로 잡히던 것과 같은 동작).
+const dcGid = name => (window.k44GloveId ? window.k44GloveId(name) : null);   // 출고 자동화 블록에서 정의한 공용 함수
 function dcNewName(name){
-  const m = name.match(/^(S\d{4,})-(\d+)-([A-Z0-9]{4,})(?:\s*\(\d+\))?\.pdf$/i);
-  return m ? { order: m[1].toUpperCase(), item: m[2], design: m[3].toUpperCase() } : null;
+  const g = dcGid(name);
+  return (g && g.order) ? { order: g.order, item: g.item, design: g.id } : null;
 }
 function dcMatchFilename(name){
   const m = name.match(/^Custom\s+(?:Glove\s+Design\s+v\d+|Design)\s+#(\d{4,10})(?:\s+\(\d+\))?\.pdf$/i);
   if (m) return m[1];
-  const n = dcNewName(name);
-  if (n) return n.design;
-  // "44pro-LRP2J8VD.pdf" — S번호 없이 Glove ID 만 있는 이름. 같은 Glove ID 의 "S160875-1-LRP2J8VD.pdf" 와 중복으로 잡힌다
-  const p = name.match(/^44\s*pro[-_ ]+([A-Z0-9]{4,})(?:\s*\(\d+\))?\.pdf$/i);
-  return p ? p[1].toUpperCase() : null;
+  const g = dcGid(name);   // 새 양식: "S…-ID" / "44pro-ID" / 8자리 ID 가 이름 어디에 있든 → Glove ID 가 키
+  return g ? g.id : null;
 }
 // 새 양식끼리 중복일 때: 같은 오더가 다시 온 것인지, S번호가 다른 재주문인지 표시 (예전 양식 파일이면 빈 문자열)
 function dcOrderTag(newName, otherName){
   const a = dcNewName(newName), b = dcNewName(otherName);
-  // 한쪽이 "44pro-ID.pdf" 면 파일명에 S번호가 없어 같은 오더인지는 알 수 없음 → 무엇으로 묶였는지만 표시
-  if ((!a || !b) && (/^44\s*pro[-_ ]/i.test(newName) || /^44\s*pro[-_ ]/i.test(otherName)))
-    return ` <span style="color:#6b7280;font-weight:600">· Glove ID 같음 (44pro 파일 — 오더번호는 PDF 안에서 확인)</span>`;
-  if (!a || !b) return '';
-  return (a.order === b.order && a.item === b.item)
-    ? ` <span style="color:#991b1b;font-weight:600">· 같은 오더 ${dcEsc(b.order)}-${dcEsc(b.item)}</span>`
-    : ` <span style="color:#1d4ed8;font-weight:600">· 다른 오더 ${dcEsc(b.order)}-${dcEsc(b.item)} (재주문 가능)</span>`;
+  if (a && b){
+    return (a.order === b.order && a.item === b.item)
+      ? ` <span style="color:#991b1b;font-weight:600">· 같은 오더 ${dcEsc(b.order)}-${dcEsc(b.item)}</span>`
+      : ` <span style="color:#1d4ed8;font-weight:600">· 다른 오더 ${dcEsc(b.order)}-${dcEsc(b.item)} (재주문 가능)</span>`;
+  }
+  // 한쪽이라도 파일명에 S번호가 없으면("44pro-ID.pdf", "16. 4EA 44pro-ID.pdf") 같은 오더인지는 알 수 없음 → 무엇으로 묶였는지만 표시
+  if (dcGid(newName) && dcGid(otherName))
+    return ` <span style="color:#6b7280;font-weight:600">· Glove ID 같음 (파일명에 오더번호 없음 — 오더번호는 PDF 안에서 확인)</span>`;
+  return '';
 }
 // 맥 iCloud('Mac 저장 공간 최적화')에서 아직 내려받지 않은 파일은 폴더 안에 ".원래이름.pdf.icloud" 로 보인다.
 // Finder 에서는 구름 아이콘의 PDF 로 보이지만 브라우저는 이 이름을 받으므로, 원래 이름을 꺼내 그대로 검사한다
@@ -10609,7 +10646,7 @@ function dcShowResults(){
   // 패턴 불일치로 검사 제외된 파일
   for (const s of skippedNew){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf / S151703-1-P8XHC8RY.pdf(새 양식) / 44pro-P8XHC8RY.pdf 등 인식 패턴이 아니라서 검사에서 제외">⊘ 제외</span></td>
+    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf / S151703-1-P8XHC8RY.pdf(새 양식) / 44pro-P8XHC8RY.pdf / 이름 어딘가에 8자리 Glove ID 가 있는 파일(4EA S…-P8XHC8RY.pdf 등) 어느 것도 아니라서 검사에서 제외">⊘ 제외</span></td>
       <td style="color:var(--text2);font-size:11px">-</td>
       <td style="font-family:ui-monospace,monospace;font-size:12px;color:var(--text2)">${dcEsc(s.relPath)}</td>
       <td style="color:var(--text2);font-size:11px">-</td>`;
