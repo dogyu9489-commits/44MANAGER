@@ -5245,7 +5245,7 @@ window.schSelectColor = schSelectColor;
   <div class="container">
     <div style="margin-bottom:16px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">파일 중복검사</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), <code>44pro-P8XHC8RY.pdf</code> (같은 Glove ID 면 <code>S…-P8XHC8RY.pdf</code> 와 중복), 앞에 수량·메모가 붙은 이름(<code>4EA S161733-11-MCQHUTGB.pdf</code>, <code>16. 4EA 44pro-MCQHUTGB.pdf</code> — 이름이 달라도 8자리 Glove ID 가 같으면 중복), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>신규 폴더가 기준</b> — 신규 폴더 안에 같은 번호가 또 있으면 <b>내부 중복</b>, 기존 폴더에 있으면 <b>외부 중복</b>(둘 다면 둘 다 표시). <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), <code>44pro-P8XHC8RY.pdf</code> (같은 Glove ID 면 <code>S…-P8XHC8RY.pdf</code> 와 중복), 앞에 수량·메모가 붙은 이름(<code>4EA S161733-11-MCQHUTGB.pdf</code>, <code>16. 4EA 44pro-MCQHUTGB.pdf</code> — 이름이 달라도 8자리 Glove ID 가 같으면 중복), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
     </div>
 
     <!-- 신규 폴더 -->
@@ -10569,28 +10569,26 @@ dcQ('dc-checkBtn').addEventListener('click', async () => {
     return;
   }
 
-  // 3) 신규 파일 각각 분류
+  // 3) 신규 파일 각각 분류 — 신규 폴더가 기준. 두 조건은 따로 판정한다:
+  //    내부중복 = 신규 폴더 안에 같은 번호 파일이 또 있음 / 외부중복 = 기존 폴더에 같은 번호가 있음
+  //    → 둘 다면 둘 다 표시 (두 목록 모두에 들어감; 예전엔 외부중복으로만 나와 내부중복 정보가 묻혔음)
   const dupExt = [];      // 기존 폴더와 중복
   const dupInt = [];      // 신규 폴더 내부 중복
   const uniques = [];
   for (const f of newFiles){
     const internalDups = internalCount.get(f.order) || [];
     const isInternalDup = internalDups.length > 1;
-    const externalMatches = existingMap.get(f.order);
+    const externalMatches = existingMap.get(f.order) || [];
     const row = {
       order: f.order,
       relPath: f.relPath,
       name: f.name,
-      existing: externalMatches || [],
+      existing: externalMatches,
       internalDups: isInternalDup ? internalDups.filter(d => d.relPath !== f.relPath) : [],
     };
-    if (externalMatches && externalMatches.length){
-      dupExt.push(row);
-    } else if (isInternalDup){
-      dupInt.push(row);
-    } else {
-      uniques.push(row);
-    }
+    if (externalMatches.length) dupExt.push(row);
+    if (isInternalDup) dupInt.push(row);
+    if (!externalMatches.length && !isInternalDup) uniques.push(row);
   }
   dcQ('dc-progressBar').style.width = '100%';
 
@@ -10615,8 +10613,8 @@ function dcShowResults(){
   const cloudN = (dcResults.newCloud || 0) + (dcResults.existingCloud || 0);
   const newOther = dcResults.newOther || [];
   dcQ('dc-summary').innerHTML =
-    (hasExisting ? `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="기존 폴더에 이미 존재">⚠ 외부 중복 ${dupExt.length}</div>` : '') +
-    `<div style="background:#fde68a;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="신규 폴더 내부에 같은 오더# 파일이 2개 이상 존재">⚠ 내부 중복 ${dupInt.length}</div>` +
+    (hasExisting ? `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="기존 폴더에 이미 존재하는 신규 파일 수 (신규 폴더 안에서도 중복인 파일 포함)">⚠ 외부 중복 ${dupExt.length}</div>` : '') +
+    `<div style="background:#fde68a;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="신규 폴더 안에 같은 오더# 파일이 2개 이상인 파일 수 (기존 폴더와도 중복인 파일 포함 — 그 파일은 외부 중복에도 세어짐)">⚠ 내부 중복 ${dupInt.length}</div>` +
     `<div style="background:#dcfce7;color:#166534;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✓ 신규 ${uniques.length}</div>` +
     `<div style="background:var(--bg);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border)">신규 ${newMatched}/${newTotal}${hasExisting ? ` · 기존 ${existingMatched}/${existingTotal}` : ''}</div>` +
     (skippedNew.length ? `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="패턴 불일치로 검사 제외">⊘ 제외 ${skippedNew.length}</div>` : '') +
@@ -10626,20 +10624,24 @@ function dcShowResults(){
   const body = dcQ('dc-resultBody');
   body.innerHTML = '';
 
-  // 외부 중복 먼저 (기존 폴더와 중복)
+  // 외부 중복 먼저 (기존 폴더와 중복) — 신규 폴더 안에도 같은 번호가 있으면 내부중복 표시를 같이 붙인다
   for (const d of dupExt){
     const tr = document.createElement('tr');
     const existingDisp = d.existing.map(e =>
       `<div style="font-size:11px;color:var(--text2)"><b>[${dcEsc(e.folder)}]</b> ${dcEsc(e.relPath)}${dcOrderTag(d.name, e.name)}</div>`
     ).join('');
-    tr.innerHTML = `<td><span style="color:#dc2626;font-weight:600">⚠ 외부중복</span></td>
+    const intDisp = d.internalDups.map(x =>
+      `<div style="font-size:11px;color:#b45309">↳ 신규 폴더 안: ${dcEsc(x.relPath)}${dcOrderTag(d.name, x.name)}</div>`
+    ).join('');
+    tr.innerHTML = `<td><span style="color:#dc2626;font-weight:600">⚠ 외부중복</span>${d.internalDups.length ? '<br><span style="color:#b45309;font-weight:600" title="같은 신규 폴더 안에도 같은 오더# PDF가 더 있음">⚠ 내부중복</span>' : ''}</td>
       <td><span style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.order)}</span></td>
       <td style="font-family:ui-monospace,monospace;font-size:12px">${dcEsc(d.relPath)}</td>
-      <td>${existingDisp}</td>`;
+      <td>${existingDisp}${intDisp}</td>`;
     body.appendChild(tr);
   }
-  // 내부 중복 (같은 폴더 안에 여러 개)
+  // 내부 중복만 (같은 신규 폴더 안에 여러 개, 기존 폴더에는 없음 — 외부중복이기도 한 파일은 위에 이미 표시)
   for (const d of dupInt){
+    if (d.existing.length) continue;
     const tr = document.createElement('tr');
     const dupDisp = d.internalDups.map(x =>
       `<div style="font-size:11px;color:var(--text2)">↳ ${dcEsc(x.relPath)}${dcOrderTag(d.name, x.name)}</div>`
