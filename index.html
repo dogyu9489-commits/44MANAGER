@@ -5259,7 +5259,7 @@ window.schSelectColor = schSelectColor;
 
     <!-- 기존 폴더 (선택사항, 여러 개 가능) -->
     <div style="margin-top:14px">
-      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">② 기존 보관 폴더 <span style="font-weight:400;font-size:12px;color:var(--text2)">(선택사항 — 안 추가하면 신규 폴더 내부 중복만 검사)</span></div>
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">② 기존 보관 폴더 <span style="font-weight:400;font-size:12px;color:var(--text2)">(선택사항 — 안 추가하면 신규 폴더 내부 중복만 검사. 신규 폴더와 같은 폴더나 그 상위 폴더를 넣어도 됨 — 신규 파일 자신과는 비교하지 않음)</span></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
           <button id="dc-addExistingBtn" class="pa-btn">+ 기존 폴더 추가</button>
@@ -10503,10 +10503,25 @@ dcQ('dc-checkBtn').addEventListener('click', async () => {
   // 1) 기존 폴더 인덱싱 (선택사항)
   const existingMap = new Map();
   let existingTotal = 0, existingMatched = 0, existingCloud = 0;
+  // 기존 폴더가 신규 폴더와 같거나(같은 폴더를 두 번 고름) 신규 폴더를 포함하면 신규 파일이 "기존"에도 보여 자기 자신과 외부중복이 되므로
+  // 그 부분(신규 폴더 subtree)은 기존 인덱싱에서 뺀다. 기존 폴더가 신규 폴더 안에 있으면 그 파일은 전부 신규 파일이라 통째로 건너뜀(내부 중복으로 잡힘).
+  const selfNotes = [];   // 화면 안내용
   if (dcExistingHandles.length){
     try {
       for (const ent of dcExistingHandles){
+        let skipPrefix = null;   // null = 정상 / '' = 전부 건너뜀 / 'a/b/' = 그 subtree 만 건너뜀
+        try {
+          if (typeof ent.handle.resolve === 'function'){
+            const down = await ent.handle.resolve(dcNewHandle);              // 기존 ⊇ 신규 → 기존 안에서 신규까지의 경로 ([] = 같은 폴더)
+            const up = down ? null : await dcNewHandle.resolve(ent.handle);  // 신규 ⊃ 기존 → 경로
+            if (down && !down.length){ skipPrefix = ''; selfNotes.push(`'${ent.name}' 은 신규 폴더와 같은 폴더 — 신규 파일 자신과는 비교하지 않음 (같은 번호끼리는 내부 중복으로 표시)`); }
+            else if (down){ skipPrefix = down.join('/') + '/'; selfNotes.push(`'${ent.name}' 이 신규 폴더(${down.join('/')})를 포함 — 그 안의 신규 파일은 기존에서 제외`); }
+            else if (up){ skipPrefix = ''; selfNotes.push(`'${ent.name}' 은 신규 폴더 안에 있음 — 전부 신규 파일이므로 건너뜀 (내부 중복으로 검사됨)`); }
+          }
+        } catch(_){ skipPrefix = null; }
+        if (skipPrefix === '') continue;
         for await (const f of dcWalk(ent.handle)){
+          if (skipPrefix && f.relPath.startsWith(skipPrefix)) continue;   // 신규 폴더 subtree = 신규 파일 자신
           const pn = dcPdfName(f.name);
           if (!pn) continue;
           existingTotal++;
@@ -10584,7 +10599,7 @@ dcQ('dc-checkBtn').addEventListener('click', async () => {
     newTotal, newMatched: newFiles.length,
     existingTotal, existingMatched,
     hasExisting: dcExistingHandles.length > 0,
-    newCloud, existingCloud, newOther, newFolderName: dcNewHandle.name,
+    newCloud, existingCloud, newOther, newFolderName: dcNewHandle.name, selfNotes,
   };
   dcShowResults();
   const parts = [`신규 ${newFiles.length}`];
@@ -10605,7 +10620,8 @@ function dcShowResults(){
     `<div style="background:#dcfce7;color:#166534;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✓ 신규 ${uniques.length}</div>` +
     `<div style="background:var(--bg);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border)">신규 ${newMatched}/${newTotal}${hasExisting ? ` · 기존 ${existingMatched}/${existingTotal}` : ''}</div>` +
     (skippedNew.length ? `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="패턴 불일치로 검사 제외">⊘ 제외 ${skippedNew.length}</div>` : '') +
-    (cloudN ? `<div style="background:#e0f2fe;color:#075985;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="iCloud 에서 아직 이 컴퓨터로 내려받지 않은 파일 (Finder 에 구름 아이콘). 파일명으로 검사에 포함했습니다. 열거나 옮기려면 Finder 에서 폴더 우클릭 → 지금 다운로드.">☁ iCloud 미다운로드 ${cloudN} (이름으로 검사함)</div>` : '');
+    (cloudN ? `<div style="background:#e0f2fe;color:#075985;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="iCloud 에서 아직 이 컴퓨터로 내려받지 않은 파일 (Finder 에 구름 아이콘). 파일명으로 검사에 포함했습니다. 열거나 옮기려면 Finder 에서 폴더 우클릭 → 지금 다운로드.">☁ iCloud 미다운로드 ${cloudN} (이름으로 검사함)</div>` : '') +
+    (dcResults.selfNotes || []).map(n => `<div style="background:#ede9fe;color:#5b21b6;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="${dcEsc(n)}">⚠ 기존 폴더 ${dcEsc(n)}</div>`).join('');
 
   const body = dcQ('dc-resultBody');
   body.innerHTML = '';
