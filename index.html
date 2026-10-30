@@ -5245,7 +5245,7 @@ window.schSelectColor = schSelectColor;
   <div class="container">
     <div style="margin-bottom:16px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">파일 중복검사</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>신규 폴더가 기준</b> — 신규 폴더 안에 같은 번호가 또 있으면 <b>내부 중복</b>, 기존 폴더에 있으면 <b>외부 중복</b>(둘 다면 둘 다 표시). <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), <code>44pro-P8XHC8RY.pdf</code> (같은 Glove ID 면 <code>S…-P8XHC8RY.pdf</code> 와 중복), 앞에 수량·메모가 붙은 이름(<code>4EA S161733-11-MCQHUTGB.pdf</code>, <code>16. 4EA 44pro-MCQHUTGB.pdf</code> — 이름이 달라도 8자리 Glove ID 가 같으면 중복), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">신규 오더 폴더와 기존 보관 폴더(들)를 지정하면 같은 오더번호(<code>#NNNNNNN</code>)가 양쪽에 있는지 자동 검사. <b>신규 폴더가 기준</b> — 신규 폴더 안에 같은 번호가 또 있으면 <b>내부 중복</b>, 기존 폴더에 있으면 <b>외부 중복</b>(둘 다면 둘 다 표시). <b>파일명만 빠르게 비교.</b> 대상: <code>Custom Glove Design v3 #NNNNNNN.pdf</code>, <code>Custom Design #NNNNNNN.pdf</code> (AMBI), 새 양식 <code>S151703-1-P8XHC8RY.pdf</code> (Glove ID <code>P8XHC8RY</code> 로 비교 — S번호가 다르면 재주문으로 표시), <code>44pro-P8XHC8RY.pdf</code> (같은 Glove ID 면 <code>S…-P8XHC8RY.pdf</code> 와 중복), 앞에 수량·메모가 붙은 이름(<code>4EA S161733-11-MCQHUTGB.pdf</code>, <code>16. 4EA 44pro-MCQHUTGB.pdf</code> — 이름이 달라도 8자리 Glove ID 가 같으면 중복), 배팅장갑 <code>162452-7-batting_v3.pdf</code> (<code>162452-7</code> 로 비교 — 한 순번에 여러 개면 <code>163722-1-2</code>), 그리고 <code>(1)</code> <code>(2)</code> 접미사 포함된 변형. mockup/스크린샷/디자인 도안 등 다른 파일명은 자동 제외. <b>Chrome 또는 Edge 필요</b>.</div>
     </div>
 
     <!-- 신규 폴더 -->
@@ -10452,6 +10452,7 @@ async function* dcWalk(dirHandle, prefix = ''){
 //   "44pro-LRP2J8VD (1).pdf"
 //   "4EA S161733-11-MCQHUTGB.pdf"              ← 2026-10-29: 이름 앞뒤에 수량·메모가 붙어도 8자리 Glove ID 가 있으면 인식 (k44GloveId)
 //   "16. 4EA 44pro-MCQHUTGB.pdf"                  → 이름이 서로 달라도 Glove ID 가 같으면 중복
+//   "162452-7-batting_v3.pdf"                  ← 배팅장갑(2026-10-30~): 키 = 162452-7 (3단이면 163722-1-2). 예전 "design_977618.pdf" 는 미지원
 // 그 외 (mockup, 디자인 도안 등) 자동 제외.
 // 비교 기준은 두 양식 모두 Glove ID — 예전 #NNNNNNN 도 PDF의 Glove ID 와 같은 번호였다.
 // 새 양식은 같은 디자인을 재주문하면 Glove ID 는 같고 S번호만 달라진다 (예전 REORDER 폴더가 중복으로 잡히던 것과 같은 동작).
@@ -10463,6 +10464,11 @@ function dcNewName(name){
 function dcMatchFilename(name){
   const m = name.match(/^Custom\s+(?:Glove\s+Design\s+v\d+|Design)\s+#(\d{4,10})(?:\s+\(\d+\))?\.pdf$/i);
   if (m) return m[1];
+  // 배팅장갑(2026-10-30~): "162452-7-batting_v3.pdf" → 키 "162452-7" (오더-순번; 한 순번에 여러 개면 "163722-1-2" 처럼 3단).
+  //   PDF 안의 "Design: 162452-7" 과 같고 패킹리스트도 이 번호를 쓴다. 앞에 "4EA " 등 붙어도, "(1)" 사본도, "S162452-7-batting" 처럼 S 를 붙여도 같은 키.
+  //   (Glove ID 규칙보다 먼저 봐야 함 — "S162452-7-batting" 은 S-패턴에 "BATTING" 이 ID 로 잡힐 수 있음)
+  const b = name.match(/(?:^|[^0-9A-Za-z])S?(\d{5,7}-\d{1,2}(?:-\d{1,2})?)-batting\w*(?:\s*\(\d+\))?\.pdf$/i);
+  if (b) return b[1];
   const g = dcGid(name);   // 새 양식: "S…-ID" / "44pro-ID" / 8자리 ID 가 이름 어디에 있든 → Glove ID 가 키
   return g ? g.id : null;
 }
@@ -10664,7 +10670,7 @@ function dcShowResults(){
   // 패턴 불일치로 검사 제외된 파일
   for (const s of skippedNew){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf / S151703-1-P8XHC8RY.pdf(새 양식) / 44pro-P8XHC8RY.pdf / 이름 어딘가에 8자리 Glove ID 가 있는 파일(4EA S…-P8XHC8RY.pdf 등) 어느 것도 아니라서 검사에서 제외">⊘ 제외</span></td>
+    tr.innerHTML = `<td><span style="color:#92400e;font-weight:600" title="Custom Glove Design v3 #NNNNNNN.pdf / Custom Design #NNNNNNN.pdf / S151703-1-P8XHC8RY.pdf(새 양식) / 44pro-P8XHC8RY.pdf / 이름 어딘가에 8자리 Glove ID 가 있는 파일(4EA S…-P8XHC8RY.pdf 등) / 162452-7-batting_v3.pdf(배팅장갑) 어느 것도 아니라서 검사에서 제외">⊘ 제외</span></td>
       <td style="color:var(--text2);font-size:11px">-</td>
       <td style="font-family:ui-monospace,monospace;font-size:12px;color:var(--text2)">${dcEsc(s.relPath)}</td>
       <td style="color:var(--text2);font-size:11px">-</td>`;
