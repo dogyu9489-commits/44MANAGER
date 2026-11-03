@@ -1155,6 +1155,8 @@ tbody tr:hover { background: #f7f9fc; }
   <button class="page-tab" data-page="order-classify">오더유형 분류</button>
   <button class="page-tab" data-page="outbound">출고 자동화</button>
   <button class="page-tab" data-page="dupcheck">파일 중복검사</button>
+  <button class="page-tab" data-page="order-card">오더 카드</button>
+  <button class="page-tab" data-page="order-revise">오더 변경</button>
   <button class="page-tab" data-page="order-mrp">기성 오더 분석</button>
   <button class="page-tab" data-page="pdf-edit">PDF 사진넣기</button>
   <button class="page-tab admin-only" data-page="budget" style="display:none">💰 예산 보고서 <span style="font-size:10px;opacity:0.7;margin-left:2px">🔒</span></button>
@@ -2045,10 +2047,13 @@ tbody tr:hover { background: #f7f9fc; }
   #page-purchase-master .pm-filters{display:flex;flex-wrap:wrap;gap:8px 18px;background:#eef1f6;padding:10px 14px;border-bottom:1px solid var(--border);align-items:center}
   #page-purchase-master .pm-filters label{display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;font-weight:600;white-space:nowrap}
   #page-purchase-master .pm-filters input,#page-purchase-master .pm-filters select{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:#fff;font-family:inherit;min-width:100px}
-  #page-purchase-master .pm-gridwrap{overflow-x:auto}
-  #page-purchase-master .pm-grid{width:100%;border-collapse:collapse;font-size:12px}
-  #page-purchase-master .pm-grid th,#page-purchase-master .pm-grid td{border:1px solid #e2e8f0}
-  #page-purchase-master .pm-grid thead th{background:#dde5f5;color:#1e3a8a;font-size:12px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:left;position:relative}
+  /* 표가 길어도 제목 줄·도구줄이 보이도록 표 안에서 스크롤 (제목 줄 고정) */
+  #page-purchase-master .pm-gridwrap{overflow:auto;max-height:max(340px,calc(100vh - 300px))}
+  #page-purchase-master .pm-grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+  #page-purchase-master .pm-grid th,#page-purchase-master .pm-grid td{border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
+  #page-purchase-master .pm-grid td{padding:0;height:30px} /* 전역 td 여백(11px 14px) 제거 → 한 화면에 2배 많은 행, 숫자 잘림 해소 */
+  #page-purchase-master .pm-grid td.c{padding:0 6px}
+  #page-purchase-master .pm-grid thead th{background:#dde5f5;color:#1e3a8a;font-size:12px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:left;position:sticky;top:0;z-index:2}
   /* 컬럼 너비 조절 핸들 (헤더 오른쪽 경계 드래그 · 더블클릭 = 초기화) */
   #page-purchase-master .pm-rsz{position:absolute;top:0;right:-5px;width:10px;height:100%;cursor:col-resize;z-index:3}
   #page-purchase-master .pm-rsz::after{content:'';position:absolute;top:20%;bottom:20%;left:4px;width:2px;border-radius:2px;background:transparent;transition:background .12s}
@@ -2106,26 +2111,143 @@ tbody tr:hover { background: #f7f9fc; }
   #page-purchase-master .pm-grid tbody tr.dirty:hover{background:#fff3c9}
   #page-purchase-master .pm-grid td.num{color:var(--text3);text-align:center;font-size:11px;padding:0 6px;font-variant-numeric:tabular-nums}
   #page-purchase-master .pm-empty td{text-align:center;color:#9ca3af;padding:18px;font-size:12px}
+  /* ── 2026-10-30 개선: 탭 · 정렬 · 계산 칸 · 상세 창 · 가져오기 ── */
+  #page-purchase-master .pm-grid th:first-child,#page-purchase-master .pm-grid td:first-child{border-left:1px solid #e2e8f0}
+  #page-purchase-master .pm-grid thead th{border-top:1px solid #c7d2e6;border-bottom:1px solid #c7d2e6}
+  #page-purchase-master .pm-tabs{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin:0 0 -1px;padding-left:4px}
+  #page-purchase-master .pm-tabs button{border:1px solid var(--border);border-bottom:none;background:#eef1f6;color:var(--text2);font-family:inherit;font-size:13px;font-weight:700;padding:10px 18px;border-radius:12px 12px 0 0;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  #page-purchase-master .pm-tabs button:hover{background:#e3e8f0;color:var(--text)}
+  #page-purchase-master .pm-tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  #page-purchase-master .pm-tabn{font-size:11px;font-weight:700;background:rgba(15,23,42,.08);border-radius:10px;padding:1px 8px}
+  #page-purchase-master .pm-tabs button.on .pm-tabn{background:rgba(255,255,255,.22)}
+  #page-purchase-master .pm-tabdirty{color:#d97706;font-weight:800;margin-left:2px}
+  #page-purchase-master .pm-tabs button.on .pm-tabdirty{color:#fde68a}
+  #page-purchase-master .pm-tabhint{margin-left:auto;font-size:11px;color:var(--text3);padding:0 4px 8px;white-space:nowrap}
+  #page-purchase-master .pm-panel[data-pmpanel]{border-top-left-radius:0}
+  #page-purchase-master .pm-panel[data-pmpanel]:not(.on){display:none}
+  #page-purchase-master .pm-panel[data-pmpanel] .pm-title{display:none}
+  #page-purchase-master .pm-btn-lite{background:transparent;border-color:#4a5568;color:#cbd5e1}
+  #page-purchase-master .pm-sep{width:1px;height:22px;background:#4a5568;margin:0 2px}
+  #page-purchase-master .pm-q{min-width:200px!important}
+  #page-purchase-master .pm-sortlab{cursor:pointer;user-select:none}
+  #page-purchase-master .pm-sortlab:hover{text-decoration:underline}
+  #page-purchase-master .pm-arrow{font-size:10px;margin-left:3px;color:#2563eb}
+  #page-purchase-master .pm-grid thead th.calc{background:#e8edf5;color:#475569;font-weight:600}
+  #page-purchase-master .pm-grid td.calc{background:#fafbfd;color:var(--text2);font-size:11.5px;padding:0 8px;white-space:nowrap}
+  #page-purchase-master .pm-grid tr.dirty td.calc{background:transparent}
+  #page-purchase-master .pm-mute{color:#94a3b8}
+  #page-purchase-master .pm-up{color:#dc2626;font-weight:700}
+  #page-purchase-master .pm-dn{color:#16a34a;font-weight:700}
+  #page-purchase-master .pm-best{display:inline-block;background:#dcfce7;color:#15803d;border-radius:4px;padding:0 5px;font-weight:700;font-size:10.5px;margin-left:4px}
+  #page-purchase-master .pm-link{border:none;background:none;padding:0;font:inherit;color:#2563eb;cursor:pointer;text-align:left}
+  #page-purchase-master .pm-link:hover{text-decoration:underline}
+  #page-purchase-master .pm-open{border:1px solid #cbd5e1;background:#fff;border-radius:6px;width:26px;height:22px;cursor:pointer;color:#2563eb;font-size:12px;line-height:1;padding:0}
+  #page-purchase-master .pm-open:hover{background:#eff6ff;border-color:#93c5fd}
+  #pmToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2937;color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:700;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+  #pmToast.on{opacity:1}
+  /* 거래처 상세 창 (오른쪽) */
+  #page-purchase-master .pm-drawer-bg{position:fixed;inset:0;z-index:590;background:rgba(15,23,42,.35);display:flex;justify-content:flex-end}
+  #page-purchase-master .pm-drawer{width:min(620px,100vw);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(15,23,42,.25)}
+  #page-purchase-master .pm-dr-head{display:flex;align-items:flex-start;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--border)}
+  #page-purchase-master .pm-dr-title{flex:1;font-size:17px;font-weight:800;color:var(--text);word-break:break-word}
+  #page-purchase-master .pm-dr-chip{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:2px 7px;margin-left:6px;vertical-align:middle;background:#eef2f7;color:#475569}
+  #page-purchase-master .pm-dr-chip.off{background:#fee2e2;color:#b91c1c}
+  #page-purchase-master .pm-dr-x{border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;color:#475569;flex:none}
+  #page-purchase-master .pm-dr-x:hover{background:#e2e8f0}
+  #page-purchase-master .pm-dr-scroll{flex:1;overflow:auto;padding:4px 18px 18px}
+  #page-purchase-master .pm-dr-sec{margin-top:16px}
+  #page-purchase-master .pm-dr-sech{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px}
+  #page-purchase-master .pm-dr-sech .sub{font-weight:600;font-size:11.5px;color:var(--text3)}
+  #page-purchase-master .pm-dr-sech .act{margin-left:auto;display:flex;gap:6px}
+  #page-purchase-master .pm-dr-btn{border:1px solid var(--border);background:#fff;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--text);white-space:nowrap}
+  #page-purchase-master .pm-dr-btn:hover{background:#f8fafc;border-color:#94a3b8}
+  #page-purchase-master .pm-dr-form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+  #page-purchase-master .pm-dr-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+  #page-purchase-master .pm-dr-f.wide{grid-column:1/-1}
+  #page-purchase-master .pm-dr-f>span{font-size:11px;font-weight:700;color:var(--text2);display:flex;align-items:center;gap:6px}
+  #page-purchase-master .pm-dr-f>span a,#page-purchase-master .pm-dr-f>span button{font-size:11px;font-weight:600;color:#2563eb;text-decoration:none;border:none;background:none;padding:0;cursor:pointer;font-family:inherit}
+  #page-purchase-master .pm-dr-f input,#page-purchase-master .pm-dr-f select,#page-purchase-master .pm-dr-f textarea{border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:13px;font-family:inherit;background:#fff;width:100%;box-sizing:border-box;color:var(--text)}
+  #page-purchase-master .pm-dr-f textarea{resize:vertical;min-height:38px;line-height:1.45}
+  #page-purchase-master .pm-dr-f input:focus,#page-purchase-master .pm-dr-f select:focus,#page-purchase-master .pm-dr-f textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  #page-purchase-master .pm-dr-f.chk{flex-direction:row;align-items:center;gap:8px;font-size:13px;font-weight:600}
+  #page-purchase-master .pm-dr-f.chk input{width:18px;height:18px;accent-color:var(--accent)}
+  #page-purchase-master .pm-dr-t{width:100%;border-collapse:collapse;font-size:12px}
+  #page-purchase-master .pm-dr-t th{background:#f1f5f9;color:#475569;font-weight:700;font-size:11px;padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+  #page-purchase-master .pm-dr-t td{padding:6px 8px;border-bottom:1px solid #eef2f7;vertical-align:top;font-size:12px}
+  #page-purchase-master .pm-dr-t td.r,#page-purchase-master .pm-dr-t th.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  #page-purchase-master .pm-dr-t tr.go{cursor:pointer}
+  #page-purchase-master .pm-dr-t tr.go:hover td{background:#f8fafc}
+  #page-purchase-master .pm-dr-empty{font-size:12px;color:var(--text3);background:#f8fafc;border:1px dashed var(--border);border-radius:8px;padding:12px;text-align:center}
+  #page-purchase-master .pm-dr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  #page-purchase-master .pm-dr-chips span{font-size:11.5px;background:#f1f5f9;border-radius:6px;padding:3px 8px;color:var(--text2)}
+  #page-purchase-master .pm-dr-chips b{color:var(--text)}
+  #page-purchase-master .pm-dr-pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:5px;padding:1px 6px;white-space:nowrap}
+  #page-purchase-master .pm-dr-note{font-size:11px;color:var(--text3);margin-top:6px}
+  #page-purchase-master .pm-dr-foot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--border);background:#f8fafc}
+  #page-purchase-master .pm-dr-foot .st{flex:1;font-size:12px;color:var(--text3)}
+  #page-purchase-master .pm-dr-foot .st.dirty{color:#b45309;font-weight:700}
+  #page-purchase-master .pm-solid{background:#2563eb;border:1px solid #2563eb;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  #page-purchase-master .pm-solid:hover{background:#1d4ed8}
+  #page-purchase-master .pm-solid:disabled{opacity:.45;cursor:default}
+  #page-purchase-master .pm-ghost{background:#fff;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  #page-purchase-master .pm-ghost:hover{background:#f8fafc}
+  /* 엑셀 가져오기 창 */
+  #page-purchase-master .pm-modal-bg{position:fixed;inset:0;z-index:595;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+  #page-purchase-master .pm-modal{background:#fff;border-radius:14px;width:min(880px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(15,23,42,.3)}
+  #page-purchase-master .pm-modal-head{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);font-size:15px;font-weight:800;color:var(--text)}
+  #page-purchase-master .pm-modal-body{padding:14px 18px;overflow:auto;flex:1}
+  #page-purchase-master .pm-modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 14px 14px}
+  #page-purchase-master .pm-imp-help{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+  #page-purchase-master .pm-imp-help code{background:#f1f5f9;border-radius:4px;padding:0 5px;font-size:11.5px}
+  #page-purchase-master #pmImpText{width:100%;box-sizing:border-box;min-height:110px;border:1.5px dashed #94a3b8;border-radius:9px;padding:10px;font-size:12px;font-family:ui-monospace,Menlo,monospace;resize:vertical}
+  #page-purchase-master #pmImpText:focus{outline:none;border-color:#2563eb;border-style:solid}
+  #page-purchase-master .pm-imp-file{display:inline-flex;align-items:center;gap:6px;margin:8px 0 4px;font-size:12px;font-weight:700;color:#2563eb;cursor:pointer;border:1px solid #bfdbfe;background:#eff6ff;border-radius:7px;padding:6px 11px}
+  #page-purchase-master .pm-imp-sum{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 8px}
+  #page-purchase-master .pm-imp-sum span{font-size:12px;font-weight:700;border-radius:6px;padding:4px 10px}
+  #page-purchase-master .pm-imp-map{font-size:11.5px;color:var(--text2);margin-bottom:8px;line-height:1.6}
+  #page-purchase-master .pm-imp-t{width:100%;border-collapse:collapse;font-size:11.5px}
+  #page-purchase-master .pm-imp-t th{background:#f1f5f9;padding:5px 7px;text-align:left;border:1px solid #e2e8f0;white-space:nowrap}
+  #page-purchase-master .pm-imp-t td{padding:4px 7px;border:1px solid #eef2f7;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #page-purchase-master .pm-imp-t td.chg{background:#fff8e1;font-weight:700}
+  #page-purchase-master .pm-imp-err{color:#b91c1c;font-size:12.5px;font-weight:600;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 12px;margin-top:10px}
+  @media (max-width:640px){
+    #page-purchase-master .pm-tabs button{padding:8px 11px;font-size:12px}
+    #page-purchase-master .pm-tabhint{display:none}
+    #page-purchase-master .pm-dr-form{grid-template-columns:1fr}
+    #page-purchase-master .pm-q{min-width:140px!important}
+  }
 </style>
 <div id="page-purchase-master" class="page-content">
   <div class="pm-wrap">
     <div class="purchase-subnav" data-cur="purchase-master"></div>
     <div style="margin-bottom:14px">
       <div style="font-size:18px;font-weight:700;color:var(--text)">거래처·단가 관리 <span id="pmCloudBadge" style="font-size:11px;font-weight:600;margin-left:8px"></span></div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px">거래처 기준정보와 품목별 구매 단가를 등록·관리합니다. 셀을 직접 수정하고 <b>💾 저장</b>을 누르면 반영되며, 기록은 <b>팀원 모두에게 공유</b>됩니다. 노란 행 = 저장 안 된 변경. <b>칸 너비는 제목 칸의 오른쪽 경계를 드래그</b>해서 조절할 수 있어요 (더블클릭 = 초기화).</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">셀을 고치면 <b style="background:#fff8e1;padding:0 4px;border-radius:3px">노란 행</b>으로 표시되고, <b>💾 저장</b>(⌘S / Ctrl+S)을 눌러야 <b>팀원 모두에게 공유</b>됩니다. 거래처 행의 <b>▸</b> 버튼 = 상세 보기(연락처·단가·구매 이력). 제목을 클릭하면 정렬, 제목 오른쪽 경계를 드래그하면 칸 너비 조절(더블클릭 = 초기화).</div>
+    </div>
+
+    <div class="pm-tabs" id="pmTabs">
+      <button type="button" data-pmtab="v" class="on">🏢 거래처 <span class="pm-tabn" id="pmTabNv"></span></button>
+      <button type="button" data-pmtab="p">💲 구매 단가 <span class="pm-tabn" id="pmTabNp"></span></button>
+      <button type="button" data-pmtab="i">📦 물품 라이브러리 <span class="pm-tabn" id="pmTabNi"></span></button>
+      <span class="pm-tabhint">Enter·↑↓ = 위아래 행으로 이동 · ⌘S = 전체 저장</span>
     </div>
 
     <!-- 거래처 마스터 -->
-    <div class="pm-panel">
+    <div class="pm-panel on" data-pmpanel="v">
       <div class="pm-title">거래처 관리 (Vendor Master)</div>
       <div class="pm-toolbar">
         <button class="pm-btn" data-pmact="query" data-g="v">🔍 조회</button>
         <button class="pm-btn pm-btn-save" data-pmact="save" data-g="v">💾 저장</button>
         <button class="pm-btn" data-pmact="del" data-g="v">🗑 행 삭제</button>
         <button class="pm-btn" data-pmact="add" data-g="v">＋ 행 추가</button>
+        <button class="pm-btn pm-btn-lite" data-pmact="revert" data-g="v" title="저장 안 한 변경을 버리고 저장된 내용으로 되돌립니다">↺ 되돌리기</button>
+        <span class="pm-sep"></span>
+        <button class="pm-btn pm-btn-lite" data-pmact="export" data-g="v" title="지금 보이는(필터 적용) 목록을 엑셀로 저장">⬇ 엑셀 저장</button>
+        <button class="pm-btn pm-btn-lite" data-pmact="import" data-g="v" title="엑셀에서 복사해 붙여넣거나 파일로 한꺼번에 등록·수정">⬆ 엑셀로 등록</button>
         <span class="pm-count" id="pmCountV">0건</span>
       </div>
       <div class="pm-filters">
+        <label>🔎 <input id="pmFvQ" class="pm-q" data-pmfilter="v" placeholder="전체 검색 (이름·담당자·전화·비고…)"></label>
         <label>코드 <input id="pmFvCode" data-pmfilter="v"></label>
         <label>거래처명 <input id="pmFvName" data-pmfilter="v"></label>
         <label>담당자 <input id="pmFvContact" data-pmfilter="v"></label>
@@ -2135,16 +2257,22 @@ tbody tr:hover { background: #f7f9fc; }
     </div>
 
     <!-- 구매 단가 등록 -->
-    <div class="pm-panel">
+    <div class="pm-panel" data-pmpanel="p">
       <div class="pm-title">구매 단가 등록 (Purchase Unit Price)</div>
       <div class="pm-toolbar">
         <button class="pm-btn" data-pmact="query" data-g="p">🔍 조회</button>
         <button class="pm-btn pm-btn-save" data-pmact="save" data-g="p">💾 저장</button>
         <button class="pm-btn" data-pmact="del" data-g="p">🗑 행 삭제</button>
         <button class="pm-btn" data-pmact="add" data-g="p">＋ 행 추가</button>
+        <button class="pm-btn" data-pmact="dup" data-g="p" title="선택한 단가 행을 오늘 날짜의 새 행으로 복사 — 단가만 고쳐 저장하면 이전 단가는 이력으로 남아요">⧉ 새 단가로 복사</button>
+        <button class="pm-btn pm-btn-lite" data-pmact="revert" data-g="p" title="저장 안 한 변경을 버리고 저장된 내용으로 되돌립니다">↺ 되돌리기</button>
+        <span class="pm-sep"></span>
+        <button class="pm-btn pm-btn-lite" data-pmact="export" data-g="p" title="지금 보이는(필터 적용) 목록을 엑셀로 저장">⬇ 엑셀 저장</button>
+        <button class="pm-btn pm-btn-lite" data-pmact="import" data-g="p" title="견적서 등 엑셀 표를 붙여넣어 단가를 한꺼번에 등록">⬆ 엑셀로 등록</button>
         <span class="pm-count" id="pmCountP">0건</span>
       </div>
       <div class="pm-filters">
+        <label>🔎 <input id="pmFpQ" class="pm-q" data-pmfilter="p" placeholder="전체 검색 (거래처·품명·코드·스펙…)"></label>
         <label>시작일 <input type="date" id="pmFpFrom" data-pmfilter="p"> ~ <input type="date" id="pmFpTo" data-pmfilter="p"></label>
         <label>거래처 <input id="pmFpVendor" data-pmfilter="p"></label>
         <label>품명 <input id="pmFpItem" data-pmfilter="p"></label>
@@ -2155,16 +2283,21 @@ tbody tr:hover { background: #f7f9fc; }
     </div>
 
     <!-- 물품 라이브러리 (구매요청서에서 불러다 쓰는 품목 카탈로그) -->
-    <div class="pm-panel">
+    <div class="pm-panel" data-pmpanel="i">
       <div class="pm-title">물품 라이브러리 (Product Library)</div>
       <div class="pm-toolbar">
         <button class="pm-btn" data-pmact="query" data-g="i">🔍 조회</button>
         <button class="pm-btn pm-btn-save" data-pmact="save" data-g="i">💾 저장</button>
         <button class="pm-btn" data-pmact="del" data-g="i">🗑 행 삭제</button>
         <button class="pm-btn" data-pmact="add" data-g="i">＋ 행 추가</button>
+        <button class="pm-btn pm-btn-lite" data-pmact="revert" data-g="i" title="저장 안 한 변경을 버리고 저장된 내용으로 되돌립니다">↺ 되돌리기</button>
+        <span class="pm-sep"></span>
+        <button class="pm-btn pm-btn-lite" data-pmact="export" data-g="i" title="지금 보이는(필터 적용) 목록을 엑셀로 저장">⬇ 엑셀 저장</button>
+        <button class="pm-btn pm-btn-lite" data-pmact="import" data-g="i" title="엑셀에서 복사해 붙여넣거나 파일로 한꺼번에 등록·수정 (사진 제외)">⬆ 엑셀로 등록</button>
         <span class="pm-count" id="pmCountI">0건</span>
       </div>
       <div class="pm-filters">
+        <label>🔎 <input id="pmFiQ" class="pm-q" data-pmfilter="i" placeholder="전체 검색 (품명·코드·스펙·비고…)"></label>
         <label>품명 <input id="pmFiName" data-pmfilter="i"></label>
         <label>코드/스펙 <input id="pmFiCode" data-pmfilter="i"></label>
         <label>통화 <select id="pmFiCur" data-pmfilter="i"><option value="">전체</option><option>PHP</option><option>USD</option><option>KRW</option><option>CNY</option><option>JPY</option></select></label>
@@ -2174,6 +2307,34 @@ tbody tr:hover { background: #f7f9fc; }
       <div class="pm-pager" id="pmPagerI" style="display:none"></div>
     </div>
   </div>
+
+  <!-- 거래처 상세 창 (오른쪽): 기본정보 편집 + 이 거래처 단가 + 구매 진행 이력 -->
+  <div id="pmDrawer" class="pm-drawer-bg" style="display:none">
+    <aside class="pm-drawer" role="dialog" aria-label="거래처 상세">
+      <div class="pm-dr-head"><div class="pm-dr-title" id="pmDrTitle"></div><button type="button" class="pm-dr-x" data-pmdr="close" title="닫기 (Esc)">✕</button></div>
+      <div class="pm-dr-scroll">
+        <div class="pm-dr-sec"><div class="pm-dr-sech">기본 정보</div><div id="pmDrForm"></div></div>
+        <div class="pm-dr-sec" id="pmDrPrices"></div>
+        <div class="pm-dr-sec" id="pmDrBuys"></div>
+      </div>
+      <div class="pm-dr-foot"><span class="st" id="pmDrState"></span><button type="button" class="pm-ghost" data-pmdr="close">닫기</button><button type="button" class="pm-solid" data-pmdr="save">💾 저장</button></div>
+    </aside>
+  </div>
+
+  <!-- 엑셀 붙여넣기·파일로 한꺼번에 등록 -->
+  <div id="pmImp" class="pm-modal-bg" style="display:none">
+    <div class="pm-modal" role="dialog" aria-label="엑셀로 등록">
+      <div class="pm-modal-head"><span id="pmImpTitle" style="flex:1">엑셀로 등록</span><button type="button" class="pm-dr-x" data-pmimp="close" title="닫기">✕</button></div>
+      <div class="pm-modal-body">
+        <div class="pm-imp-help">엑셀에서 <b>제목 줄까지 포함해</b> 표를 복사(⌘C)한 뒤 아래 칸에 붙여넣기(⌘V) 하거나, 엑셀·CSV 파일을 선택하세요. 제목 이름을 보고 칸을 자동으로 맞춥니다.<br><span id="pmImpCols"></span></div>
+        <textarea id="pmImpText" placeholder="여기에 붙여넣기 (⌘V)"></textarea>
+        <label class="pm-imp-file">📂 파일 선택 (.xlsx · .csv)<input type="file" id="pmImpFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="display:none"></label> <span id="pmImpFileName" style="font-size:12px;color:var(--text3)"></span>
+        <div id="pmImpPreview"></div>
+      </div>
+      <div class="pm-modal-foot"><button type="button" class="pm-ghost" data-pmimp="close">취소</button><button type="button" class="pm-solid" data-pmimp="apply" id="pmImpApply" disabled>표에 넣기</button></div>
+    </div>
+  </div>
+  <div id="pmToast"></div>
 
   <!-- 물품 사진 등록/보기 팝업 -->
   <div id="pmPhotoPop" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:20px">
@@ -3550,6 +3711,7 @@ function purchaseGo(name){
   document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
   const hubTab=document.querySelector('.page-tab[data-page="purchase-hub"]');if(hubTab)hubTab.classList.add('active');
   purchaseRenderSubnav(name);
+  if(name==='purchase-master'&&typeof pmOnShow==='function'){try{pmOnShow();}catch(e){}} // 거래처 표의 「최근 구매」 갱신
   window.scrollTo(0,0);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('.purchase-subnav button[data-go]');if(b)purchaseGo(b.dataset.go);});
@@ -5231,7 +5393,7 @@ window.schSelectColor = schSelectColor;
     <!-- 결과 -->
     <div id="ob-results" class="pa-results">
       <div style="font-size:16px;font-weight:700;margin:22px 0 10px">결과</div>
-      <div id="ob-summary" style="display:flex;gap:14px;margin-bottom:14px"></div>
+      <div id="ob-summary" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px"></div>
       <table class="pa-table">
         <thead><tr><th>Box</th><th style="width:100px">오더 #</th><th>파일명</th><th style="width:110px">상태</th></tr></thead>
         <tbody id="ob-resultBody"></tbody>
@@ -5290,6 +5452,208 @@ window.schSelectColor = schSelectColor;
     </div>
   </div>
 </div><!-- /page-dupcheck -->
+
+<!-- PAGE: 오더 카드 — 오더 번호 목록 → 각 오더 PDF의 사진·Style 부분을 잘라 카드 이미지로 한꺼번에 (2026-11-03) -->
+<style>
+  #page-order-card .occ-wrap{max-width:1280px}
+  #page-order-card .occ-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+  #page-order-card .occ-step{font-size:14px;font-weight:600;color:var(--text);margin:16px 0 8px}
+  #page-order-card .occ-step small{font-weight:400;font-size:12px;color:var(--text2)}
+  #page-order-card textarea#occ-ids{width:100%;box-sizing:border-box;min-height:150px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:14px;line-height:1.6;resize:vertical;background:var(--surface);color:var(--text)}
+  #page-order-card textarea#occ-ids:focus{outline:none;border-color:var(--accent)}
+  #page-order-card .occ-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12px;color:var(--text2);align-items:center}
+  #page-order-card .occ-chip{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:2px 9px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--text)}
+  #page-order-card .occ-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #page-order-card .occ-opt{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--text)}
+  #page-order-card .occ-opt label{display:flex;gap:6px;align-items:center;cursor:pointer}
+  #page-order-card .occ-opt input[type=text]{border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:13px;width:160px;background:var(--surface);color:var(--text)}
+  #page-order-card .occ-drop{border:2px dashed var(--border2,#cbd5e1);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text2);text-align:center;margin-top:10px}
+  #page-order-card .occ-drop.on{border-color:var(--accent);background:rgba(37,99,235,.05);color:var(--accent)}
+  #page-order-card .occ-bulk{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:20px 0 12px}
+  #page-order-card .occ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px}
+  @media(max-width:520px){#page-order-card .occ-grid{grid-template-columns:1fr}}
+  #page-order-card .occ-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+  #page-order-card .occ-card.miss{border-color:#fecaca;background:#fef2f2}
+  #page-order-card .occ-ch{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px}
+  #page-order-card .occ-no{font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums}
+  #page-order-card .occ-id{font-weight:800;font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--text)}
+  #page-order-card .occ-path{color:var(--text3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;direction:rtl;text-align:left}
+  #page-order-card .occ-imgw{background:#fff;display:flex;align-items:center;justify-content:center;min-height:120px}
+  #page-order-card .occ-imgw img{display:block;width:100%;height:auto}
+  #page-order-card .occ-msg{padding:22px 14px;font-size:13px;color:#b91c1c;text-align:center}
+  #page-order-card .occ-msg.wait{color:var(--text3)}
+  #page-order-card .occ-cap{display:flex;gap:6px;padding:10px 12px 4px}
+  #page-order-card .occ-cap input{flex:1;min-width:0;border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:13px;font-weight:600;background:var(--surface);color:var(--text)}
+  #page-order-card .occ-acts{display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px 12px}
+  #page-order-card .occ-acts button,#page-order-card .occ-cap button{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  #page-order-card .occ-acts button:hover,#page-order-card .occ-cap button:hover{background:var(--bg)}
+  #page-order-card .occ-acts select{border:1px solid var(--border);border-radius:7px;padding:5px 6px;font-size:11px;max-width:100%;background:var(--surface);color:var(--text)}
+  #page-order-card .occ-sheetbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:13px;color:var(--text)}
+  #page-order-card .occ-sheetbar>span{color:var(--text2);font-size:12px;flex:1;min-width:200px}
+  #page-order-card .occ-sheetbar label{display:flex;align-items:center;gap:5px;white-space:nowrap}
+  #page-order-card .occ-sheetbar select{border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-size:13px;background:var(--surface);color:var(--text)}
+  #page-order-card .occ-sheet{background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:12px;margin-bottom:14px}
+  #page-order-card .occ-sheet-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;font-weight:700;color:var(--text)}
+  #page-order-card .occ-sheet-h span{font-weight:500;color:var(--text3);font-size:12px}
+  #page-order-card .occ-sheet-h button{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:7px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  #page-order-card .occ-sheet-h button:hover{background:var(--bg)}
+  #page-order-card .occ-sheet img{display:block;width:100%;height:auto;border:1px solid var(--border);border-radius:6px;background:#fff}
+  #page-order-card .occ-sum{font-size:13px;color:var(--text2)}
+  #page-order-card .occ-sum b{color:var(--text)}
+  #occ-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2937;color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:700;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+  #occ-toast.on{opacity:1}
+</style>
+<div id="page-order-card" class="page-content">
+  <div class="container occ-wrap">
+    <div style="margin-bottom:6px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">오더 카드 만들기</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">오더 번호를 여러 개 붙여넣고 오더 폴더를 고르면, 각 오더 PDF에서 <b>제목·주문번호·글러브 사진 4장·Style 정보</b> 부분을 잘라 카드 이미지로 한 번에 만들어요. 카드마다 <b>이미지 복사</b> → 채팅에 붙여넣기, 캡션 복사, PNG 저장이 됩니다. 새 양식 Glove ID(<code>WZCWYRVA</code>)와 예전 번호(<code>4594659</code>) 모두 됩니다.</div>
+    </div>
+
+    <div class="occ-step">① 오더 번호 <small>한 줄에 하나씩 (파일 이름이나 캡션 줄을 그대로 붙여넣어도 번호만 골라냄)</small></div>
+    <textarea id="occ-ids" placeholder="WZCWYRVA&#10;XBHTCXLY&#10;4594659" spellcheck="false"></textarea>
+    <div class="occ-chips" id="occ-idChips"></div>
+
+    <div class="occ-step">② 오더 폴더 <small>예: <code>_ORDER/2026</code> 또는 월 폴더(<code>09SEP</code>) — 하위 폴더까지 모두 찾음. 폴더가 작을수록 빠름</small></div>
+    <div class="occ-box">
+      <div class="occ-row">
+        <button id="occ-dirBtn" class="pa-btn">📂 폴더 선택</button>
+        <button id="occ-recentBtn" class="pa-btn" style="display:none"></button>
+        <button id="occ-rescanBtn" class="pa-btn" style="display:none" title="폴더에 새 파일이 생겼으면 다시 읽기">🔄 다시 읽기</button>
+        <span id="occ-dirName" style="font-size:13px;color:var(--text);word-break:break-all">— 미선택 —</span>
+        <input type="file" id="occ-dirInput" webkitdirectory multiple style="display:none">
+      </div>
+      <div class="occ-drop" id="occ-drop">또는 오더 PDF 파일을 여기로 끌어다 놓기</div>
+    </div>
+
+    <div class="occ-step">③ 옵션</div>
+    <div class="occ-box occ-opt">
+      <span style="font-weight:600">카드 범위</span>
+      <label><input type="radio" name="occ-mode" value="style" checked> 사진 + Style</label>
+      <label><input type="radio" name="occ-mode" value="all"> 사진 + 전체 정보 (Colors · Personalization 포함)</label>
+      <label style="margin-left:auto">캡션 끝에 붙일 말 <input type="text" id="occ-suffix" placeholder="예: / TARGET"></label>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button id="occ-runBtn" class="pa-btn pa-btn-primary">🖼 카드 만들기</button>
+      <span id="occ-status" style="color:var(--text2);font-size:13px;margin-left:auto"></span>
+    </div>
+    <div id="occ-progress" class="pa-progress"><div id="occ-progressBar" class="pa-progress-bar"></div></div>
+
+    <div id="occ-out" style="display:none">
+      <div class="occ-bulk">
+        <span class="occ-sum" id="occ-sum"></span>
+        <span style="margin-left:auto"></span>
+        <button id="occ-capAllBtn" class="pa-btn">📋 캡션 전체 복사</button>
+        <button id="occ-zipBtn" class="pa-btn" title="카드마다 따로 된 PNG 파일을 ZIP 하나로">⬇ 개별 이미지 (ZIP)</button>
+      </div>
+      <div class="occ-sheetbar">
+        <b>🧩 한 장으로 합치기</b>
+        <span>카드 이미지 + 아래 캡션을 한 묶음으로, 여러 묶음을 한 장에</span>
+        <label>한 줄에 <select id="occ-perRow"><option>2</option><option selected>3</option><option>4</option></select>개</label>
+        <label>한 장에 <select id="occ-perSheet"><option>6</option><option>9</option><option selected>12</option><option>16</option><option>20</option><option value="all">전부</option></select></label>
+        <button id="occ-sheetBtn" class="pa-btn pa-btn-primary">🧩 한 장으로 합쳐 저장</button>
+      </div>
+      <div id="occ-sheets"></div>
+      <div class="occ-grid" id="occ-grid"></div>
+    </div>
+  </div>
+  <div id="occ-toast"></div>
+</div><!-- /page-order-card -->
+
+<!-- PAGE: 오더 변경 — 오더번호 / 변경 내용 → 원본 오더 PDF에 바뀐 값을 표시한 수정본 (인쇄용) (2026-11-03) -->
+<style>
+  #page-order-revise .orv-wrap{max-width:1380px}
+  #page-order-revise .orv-step{font-size:14px;font-weight:600;color:var(--text);margin:16px 0 8px}
+  #page-order-revise .orv-step small{font-weight:400;font-size:12px;color:var(--text2)}
+  #page-order-revise .orv-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+  #page-order-revise textarea#orv-input{width:100%;box-sizing:border-box;min-height:150px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:13.5px;line-height:1.65;resize:vertical;background:var(--surface);color:var(--text)}
+  #page-order-revise textarea#orv-input:focus{outline:none;border-color:var(--accent)}
+  #page-order-revise .orv-help{font-size:12px;color:var(--text2);line-height:1.7;margin-top:8px}
+  #page-order-revise .orv-help code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:0 5px;font-size:11.5px}
+  #page-order-revise .orv-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #page-order-revise .orv-bulk{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:20px 0 12px}
+  #page-order-revise .orv-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
+  #page-order-revise .orv-card.miss{border-color:#fecaca;background:#fef2f2}
+  #page-order-revise .orv-ch{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap}
+  #page-order-revise .orv-no{font-weight:800;color:var(--text3)}
+  #page-order-revise .orv-id{font-weight:800;font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--text)}
+  #page-order-revise .orv-path{color:var(--text3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:120px;direction:rtl;text-align:left}
+  #page-order-revise .orv-chip{font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px;white-space:nowrap}
+  #page-order-revise .orv-chip.ok{background:#dcfce7;color:#166534}
+  #page-order-revise .orv-chip.warn{background:#fef3c7;color:#92400e}
+  #page-order-revise .orv-chip.note{background:#e0e7ff;color:#3730a3}
+  #page-order-revise .orv-body{display:grid;grid-template-columns:minmax(380px,5fr) 7fr;gap:16px;padding:14px}
+  @media(max-width:900px){#page-order-revise .orv-body{grid-template-columns:1fr}}
+  #page-order-revise table.orv-t{width:100%;border-collapse:collapse;font-size:12.5px}
+  #page-order-revise table.orv-t th{background:var(--bg);color:var(--text2);font-size:11px;font-weight:700;text-align:left;padding:6px 7px;border-bottom:1px solid var(--border)}
+  #page-order-revise table.orv-t td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
+  #page-order-revise table.orv-t tr.need td{background:#fffbeb}
+  #page-order-revise table.orv-t select,#page-order-revise table.orv-t input{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:6px;padding:6px 7px;font-size:12.5px;background:var(--surface);color:var(--text);font-family:inherit}
+  #page-order-revise table.orv-t input.new{font-weight:700;color:#b91c1c}
+  #page-order-revise .orv-old{color:var(--text2);font-size:12px;word-break:break-word}
+  #page-order-revise .orv-prevtag{display:inline-block;margin-top:3px;font-size:10.5px;font-weight:700;color:#3730a3;background:#e0e7ff;border-radius:5px;padding:1px 6px}
+  #page-order-revise .orv-x{border:none;background:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px}
+  #page-order-revise .orv-x:hover{color:#dc2626}
+  #page-order-revise .orv-warn{font-size:11px;color:#b45309;margin-top:3px}
+  #page-order-revise .orv-small{border:1px dashed var(--border2,#cbd5e1);background:transparent;color:var(--text2);border-radius:7px;padding:6px 11px;font-size:12px;cursor:pointer;font-family:inherit;margin-top:8px}
+  #page-order-revise .orv-small:hover{border-color:var(--accent);color:var(--accent)}
+  #page-order-revise textarea.orv-note{width:100%;box-sizing:border-box;min-height:46px;border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:12.5px;font-family:inherit;margin-top:10px;resize:vertical;background:var(--surface);color:var(--text)}
+  #page-order-revise .orv-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  #page-order-revise .orv-acts button{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:7px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  #page-order-revise .orv-acts button:hover{background:var(--bg)}
+  #page-order-revise .orv-acts button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  #page-order-revise .orv-prev{background:#f1f5f9;border:1px solid var(--border);border-radius:8px;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #page-order-revise .orv-prev img{display:block;width:100%;height:auto;cursor:zoom-in;background:#fff}
+  #page-order-revise .orv-msg{padding:20px;font-size:13px;color:var(--text3);text-align:center}
+  #page-order-revise .orv-msg.err{color:#b91c1c}
+  #orv-zoom{position:fixed;inset:0;z-index:650;background:rgba(15,23,42,.75);display:none;overflow:auto;padding:24px;cursor:zoom-out}
+  #orv-zoom img{display:block;max-width:none;width:min(1600px,96vw);margin:0 auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  #orv-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2937;color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:700;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+  #orv-toast.on{opacity:1}
+</style>
+<div id="page-order-revise" class="page-content">
+  <div class="container orv-wrap">
+    <div style="margin-bottom:6px">
+      <div style="font-size:18px;font-weight:700;color:var(--text)">오더 변경 (수정본 인쇄)</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">변경 요청이 온 오더의 <b>번호와 바꿀 내용</b>을 적으면, 폴더에서 그 오더 PDF를 찾아 해당 칸의 값을 새 값으로 바꾼 <b>수정본</b>을 만들어요. 바뀐 칸은 <b style="background:#fde68a;color:#b91c1c;padding:0 4px">노란 형광 + 빨간 글씨</b>, 오른쪽 위에 <b style="color:#b91c1c">REVISED</b> 도장, 빈 곳에 <b>변경 내역(기존 값 → 새 값)</b> 상자가 들어가서 무엇이 바뀌었는지 바로 보여요. <b>💾 폴더에 저장</b>을 누르면 원본이 있던 폴더에 <code>원래이름-changed.pdf</code> 로 저장돼요(원본은 그대로). 같은 오더를 나중에 또 고치면 그 <code>-changed</code> 파일에 적힌 이전 변경을 자동으로 불러와 이번 변경과 합쳐서 다시 만들어요.</div>
+    </div>
+
+    <div class="orv-step">① 변경 요청 <small>오더번호 / 항목: 새 값 — 여러 오더를 한 번에 적어도 됨</small></div>
+    <textarea id="orv-input" spellcheck="false" placeholder="WZCWYRVA / Laces: Black, Web: Red&#10;4473663 / Pinky Finger Text: JACKSON F.&#10;XBHTCXLY&#10;Thumb Text: J. SMITH&#10;손바닥 로고 크게 (항목 없이 적으면 메모로 표시)"></textarea>
+    <div class="orv-help">적는 법: <code>오더번호 / 항목: 새 값, 항목: 새 값</code> 또는 오더번호를 한 줄 적고 그 아래 줄마다 <code>항목: 새 값</code>. 항목 이름은 PDF에 적힌 이름(<code>Laces</code>, <code>Palm</code>, <code>Thumb Text</code>, <code>Web Style</code> …)으로 적으면 자동으로 찾아요(한글 <code>끈</code> <code>웹</code> <code>손바닥</code> <code>엄지 텍스트</code> 도 일부 인식). <code>:</code> 없이 적은 줄은 <b>메모</b>로 변경 내역 상자에 들어가요. 못 찾은 항목은 아래 표에서 직접 고르면 됩니다.</div>
+
+    <div class="orv-step">② 오더 폴더 <small>「오더 카드」 페이지와 같은 폴더를 함께 씀</small></div>
+    <div class="orv-box">
+      <div class="orv-row">
+        <button id="orv-dirBtn" class="pa-btn">📂 폴더 선택</button>
+        <button id="orv-recentBtn" class="pa-btn" style="display:none"></button>
+        <button id="orv-rescanBtn" class="pa-btn" style="display:none" title="폴더에 새 파일이 생겼으면 다시 읽기">🔄 다시 읽기</button>
+        <span id="orv-dirName" style="font-size:13px;color:var(--text);word-break:break-all">— 미선택 —</span>
+      </div>
+      <div class="occ-drop" id="orv-drop" style="border:2px dashed var(--border2,#cbd5e1);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text2);text-align:center;margin-top:10px">또는 오더 PDF 파일을 여기로 끌어다 놓기</div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button id="orv-runBtn" class="pa-btn pa-btn-primary">✏️ 수정본 만들기</button>
+      <span id="orv-status" style="color:var(--text2);font-size:13px;margin-left:auto"></span>
+    </div>
+
+    <div id="orv-out" style="display:none">
+      <div class="orv-bulk">
+        <span id="orv-sum" style="font-size:13px;color:var(--text2)"></span>
+        <span style="margin-left:auto"></span>
+        <button id="orv-saveAll" class="pa-btn pa-btn-primary" title="각 원본이 있던 폴더에 「원래이름-changed.pdf」 로 저장">💾 전체 폴더에 저장</button>
+        <button id="orv-printAll" class="pa-btn">🖨 전체 인쇄</button>
+        <button id="orv-mergeAll" class="pa-btn" title="모든 수정본을 PDF 한 파일로">⬇ 한 파일로 저장</button>
+        <button id="orv-zipAll" class="pa-btn" title="오더마다 따로 된 PDF를 ZIP 하나로">⬇ 오더별 파일 (ZIP)</button>
+      </div>
+      <div id="orv-list"></div>
+    </div>
+  </div>
+  <div id="orv-zoom"></div>
+  <div id="orv-toast"></div>
+</div><!-- /page-order-revise -->
 
 <!-- PAGE: 기성 오더 소재 분석 (MRP) -->
 <style>
@@ -6151,7 +6515,7 @@ function piGetPhoto(id){
     .then(res=>{const ph=prSafeImg((res&&res.data&&res.data.photo)||'');piPhotoCache[id]=ph;return ph;})
     .catch(()=>'');
 }
-function prGoMaster(){if(typeof purchaseGo==='function')purchaseGo('purchase-master');}
+function prGoMaster(){if(typeof purchaseGo==='function')purchaseGo('purchase-master');if(typeof pmTabSet==='function')pmTabSet('i');} // 물품 관리 → 물품 라이브러리 탭
 // 이미지 다운스케일(최대 변 1600px, JPEG) — 화질 유지 + 용량 절약
 function prDownscale(dataURL,maxDim,cb){
   const img=new Image();
@@ -6681,6 +7045,8 @@ function ptRender(){
       +'<span class="pt-meta">요청 '+prEsc(d.requested||'-')+(d.received?' → 수령 '+prEsc(d.received):'')+'</span>'
       +'</div>'+body+'</div>';
   }).join('');
+  // 거래처·단가 페이지의 「최근 구매」 칸·상세 창 구매 이력도 함께 갱신 (계산 칸만 — 입력 중인 칸은 그대로)
+  if(typeof pmRefreshCalc==='function'){try{pmRefreshCalc('v');if(pmDrawerId)pmDrawerRender(false);}catch(e){}}
 }
 (function ptInit(){
   const list=document.getElementById('ptList');if(!list)return;
@@ -6731,6 +7097,8 @@ const PM_CURS=['PHP','USD','KRW','CNY','JPY'];
 const PM_VCOLS=[
   {k:'code',label:'코드',w:64},
   {k:'name',label:'거래처명',w:190,req:1},
+  {k:'_prices',label:'단가',w:58,type:'calc',tip:'이 거래처의 품목별 최신 단가 수 — 클릭하면 상세'},
+  {k:'_lastBuy',label:'최근 구매',w:118,type:'calc',tip:'「구매 진행」에서 이 거래처 이름이 들어간 요청 중 가장 최근 요청일 (괄호 = 건수, 취소 제외)'},
   {k:'contact',label:'담당자',w:100},
   {k:'phone',label:'전화',w:120},
   {k:'email',label:'이메일',w:190},
@@ -6749,7 +7117,8 @@ const PM_PCOLS=[
   {k:'unit',label:'단위',w:64},
   {k:'origin',label:'원산지',w:90},
   {k:'currency',label:'통화',w:88,type:'cur'},
-  {k:'price',label:'단가',w:94,type:'num',req:1},
+  {k:'price',label:'단가',w:100,type:'num',req:1},
+  {k:'_chg',label:'변동',w:104,type:'calc',tip:'같은 거래처·품목의 직전 단가 대비 · 최저 = 최신 단가 중 같은 품목(같은 통화·단위)에서 가장 싼 거래처'},
   {k:'minQty',label:'최소수량',w:74,type:'num'},
   {k:'start',label:'시작일',w:112,type:'date'},
   {k:'end',label:'종료일',w:112,type:'date'}
@@ -6781,6 +7150,116 @@ function pmVisibleRows(g){ // 현재 화면(페이지)에 실제 보이는 행
 // 자연(숫자) 정렬 — "#1, #2, … #10" 순서 (사전순 1,10,11,2 방지)
 function pmNatCmp(a,b){return String(a==null?'':a).localeCompare(String(b==null?'':b),'ko',{numeric:true,sensitivity:'base'});}
 function pmCols(g){return g==='v'?PM_VCOLS:(g==='p'?PM_PCOLS:PM_ICOLS);}
+// ── 계산 칸(화면 표시 전용 — 저장 안 됨) · 제목 클릭 정렬 · 전체 검색 (2026-10-30) ──
+const pmSort={v:null,p:null,i:null}; // {k, dir: 1 오름 / -1 내림}
+let _pmCx=null;                      // pmRender 중 계산 칸 인덱스 캐시
+function pmNorm(s){return String(s==null?'':s).toLowerCase().replace(/[^0-9a-zㄱ-ㆎ가-힣一-鿿]+/g,'');}
+function pmVKey(s){return String(s==null?'':s).trim().toUpperCase();}
+function pmPKey(r){return [r.vendor,r.item,r.itemCode,r.spec].map(x=>String(x||'').trim().toUpperCase()).join('|');} // 「최신 단가만」과 같은 키
+function pmNewer(a,b){const sa=String(a.start||''),sb=String(b.start||'');return sa>sb||(sa===sb&&(a.createdTs||0)>(b.createdTs||0));}
+function pmNum(v){if(v===''||v==null)return null;const n=parseFloat(v);return isFinite(n)?n:null;}
+// 저장 전 이름을 바꾼 거래처는 단가 행이 아직 옛 이름을 쓰므로 옛 이름으로 찾음
+function pmVendorPriceName(v){return (pmS.v.dirty[v.id]&&_pmOrigName[v.id]!==undefined)?_pmOrigName[v.id]:v.name;}
+// 「구매 진행」 기록 → 거래처: 요청서 「추천 거래처」 글에 거래처명이 들어 있으면 연결 (여럿이면 가장 긴 이름)
+function pmBuyIdx(){
+  const recs=(typeof ptRecords!=='undefined'&&Array.isArray(ptRecords))?ptRecords:[];
+  const ok=n=>n.length>=3||(n.length>=2&&/[^0-9a-z]/.test(n)); // 영문 2글자 이름은 오연결 위험 → 제외
+  const vs=pmS.v.rows.map(v=>{const ns=[pmNorm(v.name)];const o=pmNorm(pmVendorPriceName(v));if(o!==ns[0])ns.push(o);return {id:v.id,ns:ns.filter(ok)};}).filter(x=>x.ns.length);
+  const out={};
+  recs.forEach(rec=>{
+    const t=pmNorm(rec&&rec.vendor);if(!t)return;
+    let best=null,bl=0;
+    vs.forEach(x=>x.ns.forEach(n=>{if(n.length>bl&&t.indexOf(n)>=0){best=x;bl=n.length;}}));
+    if(!best&&t.length>=4){const c=vs.filter(x=>x.ns.some(n=>n.indexOf(t)>=0));if(c.length===1)best=c[0];} // "Tandem Leather" → "Tandem Leather Trading"
+    if(best)(out[best.id]=out[best.id]||[]).push(rec);
+  });
+  return out;
+}
+function pmCalcIdx(withBuy){
+  const P=pmS.p.rows;const byKey={};
+  P.forEach(r=>{const k=pmPKey(r);(byKey[k]=byKey[k]||[]).push(r);});
+  const prev={},latest={},vendLatest={},vendAll={};
+  Object.keys(byKey).forEach(k=>{
+    const arr=byKey[k].slice().sort((a,b)=>pmNewer(a,b)?1:(pmNewer(b,a)?-1:0)); // 오래된 → 최신
+    for(let i=1;i<arr.length;i++)prev[arr[i].id]=arr[i-1];
+    const L=arr[arr.length-1];latest[L.id]=1;
+    const vk=pmVKey(L.vendor);(vendLatest[vk]=vendLatest[vk]||[]).push(L);
+  });
+  P.forEach(r=>{const vk=pmVKey(r.vendor);vendAll[vk]=(vendAll[vk]||0)+1;});
+  // 최저가: 최신 단가끼리 같은 품명·스펙·단위·통화로 묶어 거래처가 2곳 이상일 때 가장 싼 행
+  const grp={};
+  P.forEach(r=>{
+    if(!latest[r.id]||!pmVKey(r.vendor))return;const n=pmNum(r.price);if(n===null)return;
+    const gk=[pmNorm(r.item),pmNorm(r.spec),pmNorm(r.unit),String(r.currency||'PHP').toUpperCase()].join('|');
+    (grp[gk]=grp[gk]||[]).push({r:r,n:n});
+  });
+  const best={};
+  Object.keys(grp).forEach(gk=>{
+    const a=grp[gk];const vset={};a.forEach(x=>{vset[pmVKey(x.r.vendor)]=1;});const nv=Object.keys(vset).length;if(nv<2)return;
+    const mn=Math.min.apply(null,a.map(x=>x.n));a.forEach(x=>{if(x.n===mn)best[x.r.id]=nv;});
+  });
+  return {prev:prev,latest:latest,vendLatest:vendLatest,vendAll:vendAll,best:best,buy:withBuy?pmBuyIdx():null};
+}
+// 계산 칸 값: s = 정렬값, t = 엑셀용 글, h = 화면 HTML
+function pmCalcInfo(g,r,k,cx){
+  const M='<span class="pm-mute">—</span>';
+  if(k==='_prices'){
+    const vk=pmVKey(pmVendorPriceName(r));const n=vk?(cx.vendLatest[vk]||[]).length:0;const all=vk?(cx.vendAll[vk]||0):0;
+    return {s:n||null,t:n?String(n):'',h:n?'<button type="button" class="pm-link" data-pmopen="'+prEsc(r.id)+'" title="품목 '+n+'개 · 단가 이력 '+all+'건 — 클릭하면 상세">'+n+'개</button>':M};
+  }
+  if(k==='_lastBuy'){
+    const recs=((cx.buy&&cx.buy[r.id])||[]).filter(x=>!x.cancelled);
+    if(!recs.length)return {s:null,t:'',h:M};
+    let last='';recs.forEach(x=>{const d=String((x.dates||{}).requested||'');if(d>last)last=d;});
+    return {s:last||null,t:(last||'날짜 없음')+' ('+recs.length+'건)',h:'<button type="button" class="pm-link" data-pmopen="'+prEsc(r.id)+'" title="구매 요청 '+recs.length+'건 — 클릭하면 이력">'+prEsc(last||'날짜 없음')+' <span class="pm-mute">('+recs.length+')</span></button>'};
+  }
+  if(k==='_chg'){
+    const pv=cx.prev[r.id];const cur=pmNum(r.price);const p0=pv?pmNum(pv.price):null;
+    let s=null,t='',h=M;
+    if(pv&&cur!==null&&p0!==null&&p0>0){
+      const pct=(cur-p0)/p0*100;const a=Math.abs(pct);const zero=a<0.05;s=pct;
+      t=zero?'0%':(pct>0?'+':'-')+a.toFixed(1)+'%';
+      h='<span class="'+(zero?'pm-mute':(pct>0?'pm-up':'pm-dn'))+'" title="직전 단가 '+prEsc(pv.price)+' ('+prEsc(pv.start||'시작일 없음')+')">'+(zero?'±0%':(pct>0?'▲':'▼')+(a>=100?a.toFixed(0):a.toFixed(1))+'%')+'</span>';
+    }else if(!pv)h='<span class="pm-mute" title="이 거래처·품목의 직전 단가 없음">—</span>';
+    if(cx.best[r.id]){h+='<span class="pm-best" title="같은 품목 최신 단가 '+cx.best[r.id]+'곳 중 최저가">최저</span>';t+=(t?' ':'')+'최저';}
+    return {s:s,t:t,h:h};
+  }
+  return {s:null,t:'',h:''};
+}
+function pmQMatch(g,r,q){
+  const terms=String(q||'').toLowerCase().split(/\s+/).filter(Boolean);if(!terms.length)return true;
+  const hay=pmCols(g).filter(c=>c.type!=='calc'&&c.type!=='photo'&&c.type!=='chk').map(c=>String(r[c.k]==null?'':r[c.k])).join(' \u0001 ').toLowerCase();
+  return terms.every(t=>hay.indexOf(t)>=0);
+}
+function pmSortRows(g,rows){
+  const so=pmSort[g];if(!so)return rows;
+  const c=pmCols(g).find(x=>x.k===so.k);if(!c)return rows;
+  const cx=c.type==='calc'?pmCalcIdx(c.k==='_lastBuy'):null;
+  const val=r=>{
+    if(c.type==='calc')return pmCalcInfo(g,r,c.k,cx).s;
+    if(c.type==='num')return pmNum(r[c.k]);
+    if(c.type==='chk')return r[c.k]!==false?1:0;
+    if(c.type==='photo')return r.hasPhoto?1:0;
+    const v=r[c.k];return v==null?'':String(v).trim();
+  };
+  const dec=rows.map((r,i)=>({r:r,i:i,v:val(r)}));
+  dec.sort((a,b)=>{
+    const ea=(a.v===null||a.v===''),eb=(b.v===null||b.v==='');
+    if(ea||eb)return ea===eb?a.i-b.i:(ea?1:-1); // 빈 값은 항상 맨 아래
+    const d=(typeof a.v==='number'&&typeof b.v==='number')?(a.v-b.v):pmNatCmp(a.v,b.v);
+    return d?d*so.dir:a.i-b.i;
+  });
+  return dec.map(x=>x.r);
+}
+// 입력 중에도 포커스를 건드리지 않고 계산 칸만 다시 계산
+function pmRefreshCalc(g){
+  const t=pmGridEl(g);if(!t)return;const cells=t.querySelectorAll('td[data-calc]');if(!cells.length)return;
+  const cx=pmCalcIdx(g==='v');const by={};pmS[g].rows.forEach(r=>{by[r.id]=r;});
+  cells.forEach(td=>{const r=by[td.dataset.cid];if(r)td.innerHTML=pmCalcInfo(g,r,td.dataset.calc,cx).h;});
+}
+let _pmToastT=null;
+function pmToast(msg,ms){const el=document.getElementById('pmToast');if(!el)return;el.textContent=msg;el.classList.add('on');clearTimeout(_pmToastT);_pmToastT=setTimeout(()=>el.classList.remove('on'),ms||2400);}
+function pmDirtyN(g){return Object.keys(pmS[g].dirty).length;}
 // ── 컬럼 너비 사용자 조절 (헤더 경계 드래그, localStorage 저장) ──
 const PM_COLW_KEY='pm_colw_v1';
 let pmColW={v:{},p:{},i:{}};
@@ -6814,12 +7293,15 @@ function pmFiltered(g){
     if(latest){const best={};rows.forEach(r=>{const k=[r.vendor,r.item,r.itemCode,r.spec].map(x=>String(x||'').trim().toUpperCase()).join('|');const b=best[k];if(!b||String(r.start||'')>String(b.start||'')||(String(r.start||'')===String(b.start||'')&&(r.createdTs||0)>(b.createdTs||0)))best[k]=r;});rows=Object.values(best);}
     rows.sort((a,b)=>String(b.start||'').localeCompare(String(a.start||''))||(b.createdTs||0)-(a.createdTs||0));
   }
+  const q=pmVal('pmF'+g+'Q');if(q)rows=rows.filter(r=>pmQMatch(g,r,q)); // 전체 검색 (띄어쓰기 = 모두 포함)
+  rows=pmSortRows(g,rows);                                                // 제목 클릭 정렬 (없으면 기존 기본 순서)
   const shown={};rows.forEach(r=>{shown[r.id]=1;});
   Object.keys(st.dirty).forEach(id=>{if(!shown[id]){const r=st.rows.find(x=>x.id===id);if(r)rows.unshift(r);}});
   return rows;
 }
 function pmCellHtml(g,r,c){
   const v=r[c.k];const base='data-g="'+g+'" data-id="'+prEsc(r.id)+'" data-k="'+c.k+'"';
+  if(c.type==='calc')return '<td class="calc" data-calc="'+c.k+'" data-cid="'+prEsc(r.id)+'">'+pmCalcInfo(g,r,c.k,_pmCx||pmCalcIdx(g==='v')).h+'</td>'; // 읽기 전용
   if(c.type==='photo')return '<td class="c"><button type="button" data-pmphoto="'+prEsc(r.id)+'" title="사진 등록/보기" style="border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;font-family:inherit">'+(r.hasPhoto?'🖼':'📷+')+'</button></td>';
   if(c.type==='chk')return '<td class="c"><input type="checkbox" '+base+(v!==false?' checked':'')+'></td>';
   if(c.type==='cur')return '<td><select '+base+'>'+PM_CURS.map(x=>'<option'+(x===(v||'PHP')?' selected':'')+'>'+x+'</option>').join('')+'</select></td>';
@@ -6837,18 +7319,30 @@ function pmCount(g){
   const el=pmCountEl(g);if(!el)return;
   const st=pmS[g];const dn=Object.keys(st.dirty).length;
   el.textContent='표시 '+pmFiltered(g).length+' / 전체 '+st.rows.length+'건'+(dn?' · 미저장 '+dn:'');
+  const tn=document.getElementById('pmTabN'+g); // 탭 배지: 전체 건수 + 저장 안 된 변경
+  if(tn)tn.innerHTML=st.rows.length+(dn?' <b class="pm-tabdirty" title="저장 안 된 변경 '+dn+'건">●'+dn+'</b>':'');
+  if(g==='v'&&typeof pmDrawerState==='function')pmDrawerState();
 }
 function pmRender(g){
   const table=pmGridEl(g);if(!table)return;
+  _pmCx=pmCalcIdx(g==='v');
+  try{
   const st=pmS[g];const cols=pmCols(g);const rows=pmVisibleRows(g);
   const base=(pmPage[g]!=null)?(pmPage[g]-1)*PM_PAGE_SIZE:0; // № = 전체 기준 번호
+  const so=pmSort[g];const isV=g==='v';
   let h='<thead><tr><th class="c" style="width:34px"><input type="checkbox" data-pmall="'+g+'"'+(rows.length&&rows.every(r=>st.sel[r.id])?' checked':'')+'></th><th class="c" style="width:40px">№</th>'
-    +cols.map(c=>{const W=pmColWEff(g,c);return '<th'+(c.req?' class="req"':'')+' style="min-width:'+W+'px;width:'+W+'px">'+c.label+'<span class="pm-rsz" data-g="'+g+'" data-k="'+c.k+'" title="드래그로 너비 조절 · 더블클릭 = 초기화"></span></th>';}).join('')+'</tr></thead><tbody>';
-  if(!rows.length)h+='<tr class="pm-empty"><td colspan="'+(cols.length+2)+'">'+(g==='v'?'등록된 거래처가 없습니다. 「＋ 행 추가」로 등록하세요.':(g==='i'?'등록된 물품이 없습니다. 「＋ 행 추가」로 등록하세요.':'등록된 단가가 없습니다. 「＋ 행 추가」로 등록하세요.'))+'</td></tr>';
+    +(isV?'<th class="c" style="width:36px" title="상세 보기 (연락처·단가·구매 이력)">상세</th>':'')
+    +cols.map(c=>{const W=pmColWEff(g,c);const cls=[c.req?'req':'',c.type==='calc'?'calc':''].filter(Boolean).join(' ');
+      const ar=(so&&so.k===c.k)?(so.dir>0?'▲':'▼'):'';
+      return '<th'+(cls?' class="'+cls+'"':'')+' style="min-width:'+W+'px;width:'+W+'px"'+(c.tip?' title="'+prEsc(c.tip)+'"':'')+'><span class="pm-sortlab" data-pmsort="'+g+'|'+c.k+'" title="클릭 = 정렬 (오름 → 내림 → 기본)">'+c.label+(ar?'<b class="pm-arrow">'+ar+'</b>':'')+'</span><span class="pm-rsz" data-g="'+g+'" data-k="'+c.k+'" title="드래그로 너비 조절 · 더블클릭 = 초기화"></span></th>';}).join('')+'</tr></thead><tbody>';
+  if(!rows.length)h+='<tr class="pm-empty"><td colspan="'+(cols.length+(isV?3:2))+'">'+(st.rows.length?'조건에 맞는 행이 없습니다. 검색어·필터를 확인하세요.':(g==='v'?'등록된 거래처가 없습니다. 「＋ 행 추가」로 등록하세요.':(g==='i'?'등록된 물품이 없습니다. 「＋ 행 추가」로 등록하세요.':'등록된 단가가 없습니다. 「＋ 행 추가」로 등록하세요.')))+'</td></tr>';
   else rows.forEach((r,i)=>{
-    h+='<tr'+(st.dirty[r.id]?' class="dirty"':'')+'><td class="c"><input type="checkbox" data-pmsel="'+g+'" data-id="'+prEsc(r.id)+'"'+(st.sel[r.id]?' checked':'')+'></td><td class="num">'+(base+i+1)+'</td>'+cols.map(c=>pmCellHtml(g,r,c)).join('')+'</tr>';
+    h+='<tr'+(st.dirty[r.id]?' class="dirty"':'')+'><td class="c"><input type="checkbox" data-pmsel="'+g+'" data-id="'+prEsc(r.id)+'"'+(st.sel[r.id]?' checked':'')+'></td><td class="num">'+(base+i+1)+'</td>'
+      +(isV?'<td class="c"><button type="button" class="pm-open" data-pmopen="'+prEsc(r.id)+'" title="상세 보기 (연락처·단가·구매 이력)">▸</button></td>':'')
+      +cols.map(c=>pmCellHtml(g,r,c)).join('')+'</tr>';
   });
   table.innerHTML=h+'</tbody>';
+  }finally{_pmCx=null;}
   // 페이저 (페이지 적용 그리드만)
   if(pmPage[g]!=null){
     const pager=document.getElementById('pmPager'+g.toUpperCase());
@@ -6885,23 +7379,33 @@ function pmApply(g,rows){
   Object.keys(st.dirty).forEach(id=>{const r=st.rows.find(x=>x.id===id);if(r)byId[id]=r;});
   st.rows=Object.keys(byId).map(k=>byId[k]);
   pmRender(g);if(g==='v')pmRender('p'); // 거래처명이 단가 셀렉트에 반영
+  if(g==='p')pmRefreshCalc('v');        // 거래처 표의 「단가 n개」 갱신
   if(g==='i')prRenderLib(); // 물품 변경 → 구매요청서 목록 갱신 (사진 캐시는 변경 행만 개별 무효화)
+  if(g!=='i'&&typeof pmDrawerRender==='function')pmDrawerRender(false);
 }
+// 반환: true = 저장됨, false = 막힘/실패 (⌘S 전체 저장이 다음 표로 넘어갈지 판단)
 async function pmSave(g){
   const st=pmS[g];const ids=Object.keys(st.dirty);
-  if(!ids.length){alert('변경된 내용이 없습니다.');return;}
+  if(!ids.length){alert('변경된 내용이 없습니다.');return false;}
   const cols=pmCols(g);
   for(const id of ids){
     const r=st.rows.find(x=>x.id===id);if(!r)continue;
-    for(const c of cols){if(c.type==='photo')continue;if(c.req&&!String(r[c.k]==null?'':r[c.k]).trim()){alert((g==='v'?'거래처':(g==='i'?'물품':'단가'))+' 행에 「'+c.label+'」이(가) 비어 있습니다.');return;}}
-    if(g==='p'){const n=parseFloat(r.price);if(!isFinite(n)){alert('단가는 숫자여야 합니다.');return;}r.price=String(n);}
-    if(g==='i'&&String(r.price==null?'':r.price).trim()!==''){const n=parseFloat(r.price);if(!isFinite(n)){alert('기본단가는 숫자여야 합니다.');return;}r.price=String(n);}
+    for(const c of cols){if(c.type==='photo'||c.type==='calc')continue;if(c.req&&!String(r[c.k]==null?'':r[c.k]).trim()){if(typeof pmTabSet==='function')pmTabSet(g);alert((g==='v'?'거래처':(g==='i'?'물품':'단가'))+' 행에 「'+c.label+'」이(가) 비어 있습니다.');return false;}}
+    if(g==='p'){const n=parseFloat(r.price);if(!isFinite(n)){if(typeof pmTabSet==='function')pmTabSet(g);alert('단가는 숫자여야 합니다.');return false;}r.price=String(n);}
+    if(g==='i'&&String(r.price==null?'':r.price).trim()!==''){const n=parseFloat(r.price);if(!isFinite(n)){if(typeof pmTabSet==='function')pmTabSet(g);alert('기본단가는 숫자여야 합니다.');return false;}r.price=String(n);}
   }
-  if(!pmCloud){alert('공유 저장에 연결되지 않았습니다.\npurchase-master.sql 실행 여부와 네트워크를 확인하세요.');return;}
+  // 같은 이름의 거래처가 이미 있으면 확인 (단가 표의 거래처 선택이 이름 기준이라 헷갈림)
+  if(g==='v'){
+    const nn=s=>String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase();
+    const dup=[];
+    ids.forEach(id=>{const r=st.rows.find(x=>x.id===id);if(!r)return;const n=nn(r.name);if(n&&st.rows.some(x=>x.id!==id&&nn(x.name)===n)&&dup.indexOf(r.name)<0)dup.push(r.name);});
+    if(dup.length&&!confirm('같은 이름의 거래처가 이미 있어요:\n· '+dup.join('\n· ')+'\n\n단가 표에서 거래처를 고를 때 구분이 안 됩니다. 그래도 저장할까요?'))return false;
+  }
+  if(!pmCloud){alert('공유 저장에 연결되지 않았습니다.\npurchase-master.sql 실행 여부와 네트워크를 확인하세요.');return false;}
   const c=ptSupa();
   const payload=ids.map(id=>{const r=st.rows.find(x=>x.id===id);return r?{id:id,data:r,updated_at:new Date().toISOString()}:null;}).filter(Boolean);
   const{error}=await c.from(PM_TABLES[g]).upsert(payload);
-  if(error){alert('저장 실패: '+(error.message||error));return;}
+  if(error){alert('저장 실패: '+(error.message||error));return false;}
   ids.forEach(id=>{delete st.dirty[id];}); // 저장된 행만 해제 (전송 중 편집한 다른 행 보존)
   delete _pmPend[g];                       // 저장 전 상태의 보류 스냅샷 폐기 (되돌림 방지)
   // 거래처명이 바뀌었으면 단가 행의 거래처명도 자동 동기화
@@ -6918,22 +7422,32 @@ async function pmSave(g){
     }
   }
   pmRender(g);if(g==='v')pmRender('p');
+  if(g==='p')pmRefreshCalc('v');
   if(g==='i')prRenderLib(); // 구매요청서 목록 갱신
+  if(g!=='i'&&typeof pmDrawerRender==='function')pmDrawerRender(false);
   const btn=document.querySelector('#page-purchase-master [data-pmact="save"][data-g="'+g+'"]');
   if(btn){const old=btn.textContent;btn.textContent='✔ 저장됨';setTimeout(()=>{btn.textContent=old;},1200);}
+  return true;
 }
 async function pmDelete(g){
   const st=pmS[g];
   const vis={};pmVisibleRows(g).forEach(r=>{vis[r.id]=1;}); // 현재 페이지에 보이는 행만
   const ids=Object.keys(st.sel).filter(id=>st.sel[id]&&vis[id]); // 화면에 보이는 선택 행만 삭제 (숨은 행 오삭제 방지)
   if(!ids.length){alert('삭제할 행을 왼쪽 체크박스로 선택하세요.');return;}
-  const msg=pmCloud?(ids.length+'개 행을 삭제할까요?\n(팀 전체에서 삭제됩니다)'):(ids.length+'개 행을 삭제할까요?\n(오프라인 — 이 화면에서만 제거됩니다)');
+  let msg=pmCloud?(ids.length+'개 행을 삭제할까요?\n(팀 전체에서 삭제됩니다)'):(ids.length+'개 행을 삭제할까요?\n(오프라인 — 이 화면에서만 제거됩니다)');
+  if(g==='v'){ // 이 거래처를 쓰는 단가가 있으면 알려줌 (단가는 지워지지 않음)
+    const names=ids.map(id=>{const r=st.rows.find(x=>x.id===id);return r?pmVKey(pmVendorPriceName(r)):'';}).filter(Boolean);
+    const linked=pmS.p.rows.filter(p=>names.indexOf(pmVKey(p.vendor))>=0).length;
+    if(linked)msg+='\n\n⚠ 이 거래처를 쓰는 단가 '+linked+'건은 그대로 남습니다.\n거래를 잠시 쉬는 거래처라면 삭제 대신 「사용」 체크를 해제하세요.';
+  }
   if(!confirm(msg))return;
   if(pmCloud){const c=ptSupa();const{error}=await c.from(PM_TABLES[g]).delete().in('id',ids);if(error){alert('삭제 실패: '+(error.message||error));return;}}
   st.rows=st.rows.filter(r=>ids.indexOf(r.id)<0);
-  ids.forEach(id=>{delete st.sel[id];delete st.dirty[id];if(g==='i')delete piPhotoCache[id];});
+  ids.forEach(id=>{delete st.sel[id];delete st.dirty[id];if(g==='i')delete piPhotoCache[id];if(g==='v')delete _pmOrigName[id];});
   pmRender(g);if(g==='v')pmRender('p');
+  if(g==='p')pmRefreshCalc('v');
   if(g==='i')prRenderLib();
+  if(g!=='i'&&typeof pmDrawerRender==='function')pmDrawerRender(false);
 }
 // ── 물품 사진 등록/보기 팝업 ──
 let pmPhotoId=null;
@@ -6983,6 +7497,373 @@ function pmPhotoDel(){
   });
 }
 function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.test(f.type||''))return;const rd=new FileReader();rd.onload=e=>{prDownscale(e.target.result,1600,d=>pmPhotoSet(id,d));};rd.readAsDataURL(f);}
+// ── 탭: 거래처 / 구매 단가 / 물품 (마지막으로 본 탭 기억) ──
+const PM_TAB_KEY='pm_tab_v1';
+let pmTab='v';try{const _t=localStorage.getItem(PM_TAB_KEY);if(_t==='v'||_t==='p'||_t==='i')pmTab=_t;}catch(e){}
+function pmTabSet(g){
+  if(g!=='v'&&g!=='p'&&g!=='i')return;pmTab=g;try{localStorage.setItem(PM_TAB_KEY,g);}catch(e){}
+  document.querySelectorAll('#page-purchase-master [data-pmpanel]').forEach(p=>p.classList.toggle('on',p.dataset.pmpanel===g));
+  document.querySelectorAll('#page-purchase-master [data-pmtab]').forEach(b=>b.classList.toggle('on',b.dataset.pmtab===g));
+  pmRender(g);
+}
+// 페이지를 열 때 — 그사이 「구매 진행」 기록이 바뀌었을 수 있으니 계산 칸만 새로 (입력 중인 칸은 건드리지 않음)
+function pmOnShow(){pmRefreshCalc('v');pmRefreshCalc('p');}
+// ── 거래처 상세 창: 기본정보 편집 + 단가 + 구매 이력 ──
+let pmDrawerId=null,_pmDrT=null;
+function pmDrawerOpen(id){
+  const r=pmS.v.rows.find(x=>x.id===id);if(!r)return;
+  pmDrawerId=id;document.getElementById('pmDrawer').style.display='flex';
+  pmDrawerRender(true);
+  const sc=document.querySelector('#pmDrawer .pm-dr-scroll');if(sc)sc.scrollTop=0;
+}
+function pmDrawerClose(){const d=document.getElementById('pmDrawer');if(!d||!pmDrawerId)return;d.style.display='none';pmDrawerId=null;clearTimeout(_pmDrT);pmRender('v');}
+function pmDrawerState(){
+  const el=document.getElementById('pmDrState');if(!el||!pmDrawerId)return;
+  const d=!!pmS.v.dirty[pmDrawerId];
+  el.className='st'+(d?' dirty':'');
+  el.textContent=d?'● 저장 안 된 변경이 있어요':(pmCloud?'✓ 저장됨 · 팀 공유':'⚠ 오프라인 — 저장할 수 없음');
+}
+function pmDrawerTitle(r){
+  const el=document.getElementById('pmDrTitle');if(!el)return;
+  el.innerHTML=prEsc(String(r.name||'').trim()||'(이름 없음)')+(String(r.code||'').trim()?'<span class="pm-dr-chip">'+prEsc(r.code)+'</span>':'')+'<span class="pm-dr-chip">'+prEsc(r.currency||'PHP')+'</span>'+(r.active===false?'<span class="pm-dr-chip off">사용 안 함</span>':'');
+}
+function pmTelHref(r){const t=String(r.phone||'').replace(/[^0-9+]/g,'');return t?'tel:'+t:'';}
+function pmMailHref(r){const m=String(r.email||'').trim();return /^[^\s@]+@[^\s@]+$/.test(m)?'mailto:'+m:'';}
+function pmDrawerFormHtml(r){
+  const b=k=>'data-g="v" data-id="'+prEsc(r.id)+'" data-k="'+k+'"';
+  const v=k=>prEsc(r[k]==null?'':r[k]);
+  const cp=k=>'<button type="button" data-pmcopy="'+k+'" title="복사">📋 복사</button>';
+  const inp=(k,label,extra,cls)=>'<div class="pm-dr-f'+(cls?' '+cls:'')+'"><span>'+label+(extra||'')+'</span><input type="text" '+b(k)+' value="'+v(k)+'"></div>';
+  const ta=(k,label,rows,extra)=>'<div class="pm-dr-f wide"><span>'+label+(extra||'')+'</span><textarea rows="'+rows+'" '+b(k)+'>'+v(k)+'</textarea></div>';
+  const tel=pmTelHref(r),mail=pmMailHref(r);
+  return '<div class="pm-dr-form">'
+    +inp('name','거래처명 <b style="color:#b3261e">*</b>','','wide')
+    +inp('code','코드')
+    +'<div class="pm-dr-f"><span>기본통화</span><select '+b('currency')+'>'+PM_CURS.map(x=>'<option'+(x===(r.currency||'PHP')?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'
+    +inp('contact','담당자')
+    +inp('phone','전화',' <a data-pmlink="tel" href="'+prEsc(tel||'#')+'"'+(tel?'':' style="display:none"')+'>📞 걸기</a>'+cp('phone'))
+    +inp('email','이메일',' <a data-pmlink="mail" href="'+prEsc(mail||'#')+'"'+(mail?'':' style="display:none"')+'>✉ 메일</a>'+cp('email'))
+    +inp('taxid','Tax ID',cp('taxid'))
+    +ta('addr','주소',2,cp('addr'))
+    +ta('bank','계좌',2,cp('bank'))
+    +ta('notes','비고',3)
+    +'<label class="pm-dr-f chk wide"><input type="checkbox" '+b('active')+(r.active!==false?' checked':'')+'> 사용 중 <span style="font-weight:500;color:var(--text3);font-size:11.5px">(해제하면 단가 표의 거래처 선택 목록에서 빠짐 · 기록은 유지)</span></label>'
+    +'</div>';
+}
+function pmDrawerPricesHtml(r,cx){
+  const vk=pmVKey(pmVendorPriceName(r));
+  const all=vk?pmS.p.rows.filter(p=>pmVKey(p.vendor)===vk):[];
+  const latest=all.filter(p=>cx.latest[p.id]).sort((a,b)=>pmNatCmp(a.item||'',b.item||'')||pmNatCmp(a.spec||'',b.spec||''));
+  let h='<div class="pm-dr-sech">💲 단가 <span class="sub">품목 '+latest.length+'개 · 이력 '+all.length+'건</span><span class="act"><button type="button" class="pm-dr-btn" data-pmdr="addprice">＋ 단가 추가</button>'+(all.length?'<button type="button" class="pm-dr-btn" data-pmdr="showprices">단가 표에서 보기 ›</button>':'')+'</span></div>';
+  if(!latest.length)return h+'<div class="pm-dr-empty">등록된 단가가 없습니다. 「＋ 단가 추가」로 등록하세요.</div>';
+  h+='<table class="pm-dr-t"><thead><tr><th>품명</th><th>코드 · 스펙</th><th class="r">최신 단가</th><th>변동</th><th>시작일</th></tr></thead><tbody>';
+  latest.forEach(p=>{
+    const ci=pmCalcInfo('p',p,'_chg',cx);const n=pmNum(p.price);
+    h+='<tr><td>'+prEsc(p.item||'')+'</td><td>'+prEsc([p.itemCode,p.spec].filter(x=>String(x||'').trim()).join(' · '))+'</td><td class="r">'+(n===null?'':ptFmtMoney(n,p.currency))+(p.unit?' <span class="pm-mute">/ '+prEsc(p.unit)+'</span>':'')+'</td><td style="white-space:nowrap">'+ci.h+'</td><td style="white-space:nowrap">'+prEsc(p.start||'')+'</td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+function pmDrawerBuysHtml(r,cx){
+  const recs=((cx.buy&&cx.buy[r.id])||[]).slice().sort((a,b)=>String((b.dates||{}).requested||'').localeCompare(String((a.dates||{}).requested||''))||(b.createdTs||0)-(a.createdTs||0));
+  let h='<div class="pm-dr-sech">📨 구매 이력 <span class="sub">「구매 진행」 기록</span></div>';
+  const note='<div class="pm-dr-note">구매 요청서의 「추천 거래처」에 이 거래처 이름이 들어간 요청을 자동으로 모았어요.'+(recs.length?' 줄을 누르면 「구매 진행」에서 열립니다.':'')+'</div>';
+  if(!recs.length)return h+'<div class="pm-dr-empty">이 거래처 이름이 들어간 구매 요청이 없습니다.</div>'+note;
+  const live=recs.filter(x=>!x.cancelled);
+  const appr=live.filter(x=>x.appr&&x.appr.status==='approved');
+  const sums={};appr.forEach(x=>{const c=x.currency||'PHP';sums[c]=(sums[c]||0)+(Number(x.total)||0);});
+  const last=live.length?String((live[0].dates||{}).requested||''):'';
+  h+='<div class="pm-dr-chips"><span>요청 <b>'+recs.length+'</b>건</span>'+(recs.length>live.length?'<span>취소 '+(recs.length-live.length)+'</span>':'')+'<span>승인 <b>'+appr.length+'</b></span>'+(last?'<span>최근 요청 <b>'+prEsc(last)+'</b></span>':'')
+    +Object.keys(sums).map(c=>'<span>승인 금액 <b>'+ptFmtMoney(sums[c],c)+'</b></span>').join('')+'</div>';
+  h+='<table class="pm-dr-t"><thead><tr><th>요청일</th><th>내용</th><th class="r">금액</th><th>상태</th></tr></thead><tbody>';
+  recs.slice(0,60).forEach(x=>{
+    const st=ptStatus(x);const a=x.appr?x.appr.status:'';
+    const ab=x.cancelled||!a?'':(a==='approved'?'<span class="pm-dr-pill" style="background:#dcfce7;color:#15803d">승인</span>':(a==='rejected'?'<span class="pm-dr-pill" style="background:#fee2e2;color:#b91c1c">반려</span>':'<span class="pm-dr-pill" style="background:#fef3c7;color:#b45309">결재 대기</span>'));
+    h+='<tr class="go" data-pmgo="'+prEsc(x.id)+'" title="「구매 진행」에서 열기"><td style="white-space:nowrap">'+prEsc((x.dates||{}).requested||'')+'</td><td>'+prEsc(x.title||'')+(x.requestor?' <span class="pm-mute">· '+prEsc(x.requestor)+'</span>':'')+'</td><td class="r">'+ptFmtMoney(x.total,x.currency)+'</td><td style="white-space:nowrap"><span class="pm-dr-pill" style="background:'+st.bg+';color:'+st.fg+'">'+st.label+'</span> '+ab+'</td></tr>';
+  });
+  h+='</tbody></table>'+(recs.length>60?'<div class="pm-dr-note">최근 60건만 표시 (전체 '+recs.length+'건)</div>':'');
+  return h+note;
+}
+// full = 입력칸까지 다시 그림 (열 때). 아니면 입력 중인 칸은 그대로 두고 단가·이력만 갱신
+function pmDrawerRender(full){
+  const id=pmDrawerId;if(!id)return;
+  const r=pmS.v.rows.find(x=>x.id===id);
+  if(!r){pmDrawerClose();pmToast('이 거래처는 삭제되었습니다.');return;}
+  pmDrawerTitle(r);
+  const form=document.getElementById('pmDrForm');
+  if(full||!form.contains(document.activeElement))form.innerHTML=pmDrawerFormHtml(r);
+  const cx=pmCalcIdx(true);
+  document.getElementById('pmDrPrices').innerHTML=pmDrawerPricesHtml(r,cx);
+  document.getElementById('pmDrBuys').innerHTML=pmDrawerBuysHtml(r,cx);
+  pmDrawerState();
+}
+function pmDrawerEdited(){
+  const r=pmS.v.rows.find(x=>x.id===pmDrawerId);if(!r)return;
+  pmDrawerTitle(r);pmDrawerState();
+  const tel=pmTelHref(r),mail=pmMailHref(r);
+  document.querySelectorAll('#pmDrawer [data-pmlink]').forEach(a=>{const h=a.dataset.pmlink==='tel'?tel:mail;a.href=h||'#';a.style.display=h?'':'none';});
+  clearTimeout(_pmDrT);_pmDrT=setTimeout(()=>pmRender('v'),250); // 뒤의 표도 노란 행으로
+}
+function pmDrawerAddPrice(){
+  const r=pmS.v.rows.find(x=>x.id===pmDrawerId);if(!r)return;
+  if(!String(r.name||'').trim()){alert('거래처명을 먼저 입력하세요.');return;}
+  if(pmS.v.dirty[r.id]){alert('거래처 정보를 먼저 💾 저장한 뒤 단가를 추가하세요.');return;}
+  const nr=pmBlank('p');nr.vendor=r.name;nr.currency=r.currency||'PHP';
+  pmDrawerClose();pmTabSet('p');
+  pmS.p.rows.unshift(nr);pmS.p.dirty[nr.id]=1;pmRender('p');
+  const el=pmGridEl('p').querySelector('[data-id="'+nr.id+'"][data-k="item"]');if(el){el.focus();try{el.scrollIntoView({block:'nearest'});}catch(e){}}
+  pmToast('「'+r.name+'」 단가 행을 추가했어요 — 품명·단가를 입력하고 💾 저장',3500);
+}
+function pmDrawerShowPrices(){
+  const r=pmS.v.rows.find(x=>x.id===pmDrawerId);if(!r)return;
+  const nm=pmVendorPriceName(r);
+  pmDrawerClose();
+  ['pmFpQ','pmFpItem','pmFpFrom','pmFpTo','pmFpCur'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  const fv=document.getElementById('pmFpVendor');if(fv)fv.value=nm||'';
+  pmS.p.sel={};pmTabSet('p');
+}
+function pmGoTrack(id){
+  pmDrawerClose();
+  try{ptOpenIds[id]=true;}catch(e){}
+  if(typeof purchaseGo==='function')purchaseGo('purchase-track');
+  if(typeof ptRender==='function')ptRender();
+  setTimeout(()=>{const el=[...document.querySelectorAll('#ptList [data-pthead]')].find(x=>x.dataset.pthead===id);if(el)el.scrollIntoView({block:'center',behavior:'smooth'});},80);
+}
+function pmCopyText(s){
+  s=String(s==null?'':s).trim();if(!s){pmToast('복사할 내용이 없어요');return;}
+  const done=()=>pmToast('복사했어요: '+(s.length>40?s.slice(0,40)+'…':s));
+  const fb=()=>{const ta=document.createElement('textarea');ta.value=s;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done,fb);else fb();
+}
+// ── 일괄 작업: 저장 안 한 변경 되돌리기 · 새 단가로 복사 · ⌘S 전체 저장 ──
+async function pmRevert(g){
+  const st=pmS[g];const n=pmDirtyN(g);
+  if(!n){alert('되돌릴 변경이 없습니다.');return;}
+  if(!pmCloud){alert('공유 저장에 연결되지 않아 되돌릴 수 없습니다.');return;}
+  if(!confirm('저장 안 한 변경 '+n+'건을 버리고 저장된 내용으로 되돌릴까요?\n(새로 추가하고 저장 안 한 행은 사라집니다)'))return;
+  let rows;try{rows=await pmFetch(g);}catch(e){alert('불러오기 실패: '+(e.message||e));return;}
+  st.dirty={};st.sel={};delete _pmPend[g];
+  if(g==='v')Object.keys(_pmOrigName).forEach(k=>{delete _pmOrigName[k];});
+  st.rows=rows;
+  pmRender(g);if(g==='v')pmRender('p');if(g==='p')pmRefreshCalc('v');if(g==='i')prRenderLib();
+  if(g==='v')pmDrawerRender(true);else if(g==='p')pmDrawerRender(false);
+  pmToast(n+'건을 되돌렸어요');
+}
+function pmDupPrice(){
+  const st=pmS.p;
+  const src=pmVisibleRows('p').filter(r=>st.sel[r.id]);
+  if(!src.length){alert('복사할 단가 행을 왼쪽 체크박스로 선택하세요.\n\n선택한 행이 오늘 날짜의 새 행으로 복사됩니다. 단가만 고쳐 저장하면 이전 단가는 이력으로 남고, 「최신 단가만」 보기에는 새 단가가 나와요.');return;}
+  const today=ptToday(),now=Date.now();
+  const clones=src.map((r,i)=>Object.assign({},r,{id:pmNewId()+'d'+i,start:today,end:'',createdTs:now+i}));
+  for(let i=clones.length-1;i>=0;i--){st.rows.unshift(clones[i]);st.dirty[clones[i].id]=1;}
+  st.sel={};pmRender('p');pmRefreshCalc('v');
+  const el=pmGridEl('p').querySelector('[data-id="'+clones[0].id+'"][data-k="price"]');if(el){el.focus();try{el.select();}catch(e){}}
+  pmToast(clones.length+'행을 오늘 날짜로 복사했어요 — 새 단가를 입력하고 💾 저장',3500);
+}
+let _pmSaving=false;
+async function pmSaveAll(){
+  if(_pmSaving)return;
+  const gs=['v','p','i'].filter(g=>pmDirtyN(g));
+  if(!gs.length){pmToast('저장할 변경이 없어요');return;}
+  _pmSaving=true;
+  try{
+    let n=0;
+    for(const g of gs){const c=pmDirtyN(g);const ok=await pmSave(g);if(ok!==true)return;n+=c;}
+    pmToast('✔ '+n+'건 저장했어요 (팀 공유)');
+  }finally{_pmSaving=false;}
+}
+// ── 엑셀 저장 (지금 보이는 필터·정렬 그대로) ──
+function pmExport(g){
+  if(typeof XLSX==='undefined'){alert('엑셀 모듈이 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요.');return;}
+  const cols=pmCols(g).filter(c=>c.type!=='photo');
+  const rows=pmFiltered(g);
+  if(!rows.length){alert('내보낼 행이 없습니다.');return;}
+  const cx=pmCalcIdx(g==='v');
+  const aoa=[cols.map(c=>c.label)].concat(rows.map(r=>cols.map(c=>{
+    if(c.type==='calc')return pmCalcInfo(g,r,c.k,cx).t;
+    if(c.type==='num'){const n=pmNum(r[c.k]);return n===null?'':n;}
+    if(c.type==='chk')return r[c.k]!==false?'Y':'N';
+    return r[c.k]==null?'':String(r[c.k]);
+  })));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=cols.map(c=>({wch:Math.max(6,Math.min(48,Math.round(pmColWEff(g,c)/7)))}));
+  const nm={v:'거래처',p:'구매단가',i:'물품라이브러리'}[g];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,nm);
+  XLSX.writeFile(wb,nm+'_'+ptToday().replace(/-/g,'')+'.xlsx');
+  pmToast(rows.length+'행을 엑셀로 저장했어요'+(pmDirtyN(g)?' (저장 안 한 변경 포함)':''));
+}
+// ── 엑셀 붙여넣기·파일로 한꺼번에 등록 (표에 노란 행으로 넣기만 — 💾 저장해야 반영) ──
+const PM_IMP_ALIAS={
+  v:{code:['코드','거래처코드','code','vendorcode'],name:['거래처명','거래처','업체명','업체','상호','회사명','name','vendor','vendorname','supplier','company'],contact:['담당자','담당','contact','contactperson','person'],phone:['전화','전화번호','연락처','휴대폰','phone','tel','telephone','mobile','contactno'],email:['이메일','메일','email','mail'],addr:['주소','address','addr'],taxid:['taxid','tin','사업자번호','사업자등록번호','세금번호'],bank:['계좌','계좌번호','은행','bank','bankaccount','account'],currency:['기본통화','통화','currency','cur'],active:['사용','사용여부','active','status'],notes:['비고','메모','notes','note','remarks','memo']},
+  p:{vendor:['거래처','거래처명','업체','업체명','vendor','supplier'],item:['품명','품목','품목명','물품명','item','itemname','description','product','name'],itemCode:['품목코드','코드','itemcode','code','sku','partno','partnumber'],spec:['스펙','규격','사양','spec','specs','specification','size'],unit:['단위','unit','uom'],origin:['원산지','origin','madein','country'],currency:['통화','currency','cur'],price:['단가','가격','price','unitprice','cost'],minQty:['최소수량','moq','minqty','minimum','minorder'],start:['시작일','적용일','적용시작일','start','startdate','from','date','날짜','effectivedate'],end:['종료일','end','enddate','to','until','validuntil']},
+  i:{name:['품명','품목','물품명','name','item','itemname','product','description'],itemCode:['품목코드','코드','itemcode','code','sku'],spec:['스펙','규격','사양','spec','specification'],currency:['통화','currency','cur'],price:['기본단가','단가','가격','price','unitprice'],note:['비고','메모','note','notes','remarks','memo']}
+};
+function pmImpNormHead(s){return String(s==null?'':s).toLowerCase().replace(/[\s_\-.()\/*:#]+/g,'');}
+function pmImpHeadKey(g,s){const n=pmImpNormHead(s);if(!n)return null;const al=PM_IMP_ALIAS[g];for(const k of Object.keys(al)){if(al[k].some(a=>pmImpNormHead(a)===n))return k;}return null;}
+function pmImpParseText(txt){ // 엑셀 복사(탭 구분, 따옴표 셀 포함) · CSV
+  txt=String(txt||'').replace(/^﻿/,'').replace(/\r\n?/g,'\n');
+  if(!txt.trim())return [];
+  const first=txt.split('\n',1)[0];
+  const sep=first.indexOf('\t')>=0?'\t':(first.indexOf(',')>=0?',':(first.indexOf(';')>=0?';':'\t'));
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<txt.length;i++){
+    const ch=txt[i];
+    if(q){if(ch==='"'){if(txt[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=ch;continue;}
+    if(ch==='"'&&cell===''){q=true;continue;}
+    if(ch===sep){row.push(cell);cell='';continue;}
+    if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';continue;}
+    cell+=ch;
+  }
+  row.push(cell);rows.push(row);
+  return rows.filter(r=>r.some(c=>String(c).trim()!==''));
+}
+function pmYmdOk(y,mo,d){if(mo<1||mo>12||d<1||d>31||y<1990||y>2100)return null;return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+function pmImpYmd(v){ // null = 날짜로 못 읽음
+  if(v instanceof Date&&!isNaN(v))return pmYmdOk(v.getFullYear(),v.getMonth()+1,v.getDate());
+  if(typeof v==='number'){if(v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return pmYmdOk(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());}return null;}
+  const s=String(v==null?'':v).trim();if(!s)return '';
+  let m=s.match(/^(\d{4})\s*[-.\/년]\s*(\d{1,2})\s*[-.\/월]\s*(\d{1,2})/);if(m)return pmYmdOk(+m[1],+m[2],+m[3]);
+  m=s.match(/^(\d{4})(\d{2})(\d{2})$/);if(m)return pmYmdOk(+m[1],+m[2],+m[3]);
+  m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/); // 필리핀·미국식 월/일/연
+  if(m){let y=+m[3];if(y<100)y+=2000;return pmYmdOk(y,+m[1],+m[2]);}
+  return null;
+}
+function pmImpNum(v){ // '' = 비어 있음, null = 숫자 아님
+  if(typeof v==='number')return isFinite(v)?String(v):null;
+  const s=String(v==null?'':v).replace(/PHP|USD|KRW|CNY|JPY|RMB|원/gi,'').replace(/[,\s₱$₩¥]/g,'');
+  if(!s)return '';
+  return /^-?\d*\.?\d+$/.test(s)?String(parseFloat(s)):null;
+}
+function pmImpCur(v){const s=String(v==null?'':v).trim().toUpperCase();if(!s)return '';if(PM_CURS.indexOf(s)>=0)return s;const m={'₱':'PHP','PESO':'PHP','페소':'PHP','$':'USD','달러':'USD','₩':'KRW','원':'KRW','WON':'KRW','RMB':'CNY','위안':'CNY','엔':'JPY','YEN':'JPY'};return m[s]||null;}
+function pmImpBool(v){const s=String(v==null?'':v).trim().toLowerCase();if(!s)return '';return /^(n|no|x|×|0|false|off|미사용|사용안함|사용 안 함|중지|inactive)$/.test(s)?false:true;}
+let pmImpG=null,pmImpPlanV=null,_pmImpT=null;
+function pmImpOpen(g){
+  pmImpG=g;pmImpPlanV=null;
+  document.getElementById('pmImpTitle').textContent='⬆ 엑셀로 등록 — '+({v:'거래처',p:'구매 단가',i:'물품 라이브러리'}[g]);
+  const cols=pmCols(g).filter(c=>c.type!=='calc'&&c.type!=='photo');
+  document.getElementById('pmImpCols').innerHTML='알아보는 제목: '+cols.map(c=>'<code>'+prEsc(c.label)+(c.req?' *':'')+'</code>').join(' ')+' <span style="color:var(--text3)">(* 필수 · Vendor / Item / Price 같은 영어 제목도 인식)</span><br>'
+    +(g==='p'?'시작일이 없으면 오늘 날짜로 들어갑니다. 같은 거래처·품목·시작일 행이 이미 있으면 그 행을 고치고, 아니면 새 단가 이력으로 추가돼요.'
+      :(g==='v'?'코드(없으면 거래처명)가 같은 거래처는 새로 만들지 않고 그 행을 고칩니다. 엑셀의 빈 칸은 기존 값을 지우지 않아요.'
+      :'품목코드(없으면 품명+스펙)가 같은 물품은 그 행을 고칩니다. 엑셀의 빈 칸은 기존 값을 지우지 않아요. 사진은 가져오지 않아요.'));
+  document.getElementById('pmImpText').value='';document.getElementById('pmImpFileName').textContent='';
+  pmImpRender(null);
+  document.getElementById('pmImp').style.display='flex';
+  setTimeout(()=>{const t=document.getElementById('pmImpText');if(t)t.focus();},30);
+}
+function pmImpClose(){const m=document.getElementById('pmImp');if(m)m.style.display='none';pmImpG=null;pmImpPlanV=null;clearTimeout(_pmImpT);}
+function pmImpPlan(g,aoa){
+  if(!aoa||!aoa.length)return {g:g,err:'붙여넣은 내용이 없습니다.'};
+  const cols=pmCols(g);const colBy={};cols.forEach(c=>{colBy[c.k]=c;});
+  let hi=-1,best=0; // 제목 줄: 처음 5줄 중 알아보는 제목이 가장 많은 줄
+  for(let i=0;i<Math.min(5,aoa.length);i++){const n=aoa[i].filter(c=>pmImpHeadKey(g,c)).length;if(n>best){best=n;hi=i;}}
+  if(hi<0)return {g:g,err:'제목 줄을 찾지 못했어요. 첫 줄에 「'+cols.filter(c=>c.req).map(c=>c.label).join('」「')+'」 같은 제목을 넣어 함께 복사하세요.'};
+  const map=[],used={},ignored=[];
+  aoa[hi].forEach((c,j)=>{const k=pmImpHeadKey(g,c);if(k&&!used[k]){used[k]=1;map[j]=k;}else{map[j]=null;if(String(c==null?'':c).trim())ignored.push(String(c).trim());}});
+  const missReq=cols.filter(c=>c.req&&!used[c.k]);
+  if(missReq.length)return {g:g,err:'필수 칸 「'+missReq.map(c=>c.label).join('」「')+'」의 제목이 없습니다. 제목 이름을 확인하세요.'};
+  const nn=s=>String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase();
+  const st=pmS[g];const pool=st.rows.slice();
+  const vnames={};pmS.v.rows.forEach(v=>{const n=nn(v.name);if(n&&!vnames[n])vnames[n]=v;});
+  function findExisting(rec){
+    if(g==='v'||g==='i'){
+      const ck=g==='v'?'code':'itemCode';const code=nn(rec[ck]);
+      if(code){const m=pool.find(r=>nn(r[ck])===code);if(m)return m;}
+      const n=nn(rec.name),sp=nn(rec.spec);if(!n)return null;
+      // 코드가 서로 다르게 적힌 행은 이름이 같아도 다른 것으로 봄
+      return pool.find(r=>nn(r.name)===n&&(g==='v'||nn(r.spec)===sp)&&(!code||!nn(r[ck])))||null;
+    }
+    const k=[rec.vendor,rec.item,rec.itemCode,rec.spec,rec.start].map(nn).join('|');
+    return pool.find(r=>[r.vendor,r.item,r.itemCode,r.spec,r.start].map(nn).join('|')===k)||null;
+  }
+  const today=ptToday(),now=Date.now();const items=[];let nNew=0,nUpd=0,nSame=0,nSkip=0,newVendors=0;
+  for(let i=hi+1;i<aoa.length;i++){
+    const src=aoa[i];if(!src||!src.some(c=>String(c==null?'':c).trim()!==''))continue;
+    const rec={};const bad=[];
+    map.forEach((k,j)=>{
+      if(!k)return;const c=colBy[k];const raw=src[j];
+      if(c.type==='num'){const v=pmImpNum(raw);if(v===null)bad.push(c.label);else if(v!=='')rec[k]=v;}
+      else if(c.type==='date'){const v=pmImpYmd(raw);if(v===null)bad.push(c.label);else if(v)rec[k]=v;}
+      else if(c.type==='cur'){const v=pmImpCur(raw);if(v===null)bad.push(c.label);else if(v)rec[k]=v;}
+      else if(c.type==='chk'){const v=pmImpBool(raw);if(v!=='')rec[k]=v;}
+      else{const v=String(raw==null?'':raw).trim();if(v)rec[k]=v;}
+    });
+    let nv=false;
+    if(g==='p'&&rec.vendor){const m=vnames[nn(rec.vendor)];if(m)rec.vendor=m.name;else nv=true;}
+    if(g==='p'&&!rec.start)rec.start=today;
+    const missing=cols.filter(c=>c.req&&!String(rec[c.k]==null?'':rec[c.k]).trim()&&bad.indexOf(c.label)<0).map(c=>c.label);
+    if(missing.length||bad.length){nSkip++;items.push({line:i+1,act:'skip',rec:rec,why:(missing.length?'「'+missing.join('」「')+'」 비어 있음':'')+(bad.length?(missing.length?' · ':'')+'「'+bad.join('」「')+'」 형식 확인':'')});continue;}
+    const ex=findExisting(rec);
+    if(ex){
+      const ch={};
+      const keyK={v:['name','code'],p:['vendor','item','itemCode','spec','start'],i:['name','itemCode','spec']}[g]; // 행을 찾는 기준 칸: 대소문자·띄어쓰기만 다르면 그대로 둠
+      Object.keys(rec).forEach(k=>{const c=colBy[k];const same=(c&&c.type==='chk')?((ex[k]!==false)===rec[k]):((c&&c.type==='num')?pmNum(ex[k])===pmNum(rec[k]):(keyK.indexOf(k)>=0?nn(ex[k])===nn(rec[k]):String(ex[k]==null?'':ex[k])===String(rec[k])));if(!same)ch[k]=rec[k];});
+      if(Object.keys(ch).length){nUpd++;items.push({line:i+1,act:'upd',rec:rec,target:ex,ch:ch});}
+      else{nSame++;items.push({line:i+1,act:'same',rec:rec,target:ex});}
+    }else{
+      const nr=Object.assign(pmBlank(g),rec);nr.id=pmNewId()+'x'+i;nr.createdTs=now+i;
+      if(g==='p'&&!rec.currency){const vm=vnames[nn(nr.vendor)];if(vm&&vm.currency)nr.currency=vm.currency;}
+      pool.push(nr);nNew++;if(nv)newVendors++;
+      items.push({line:i+1,act:'new',rec:nr});
+    }
+  }
+  if(!items.length)return {g:g,err:'제목 줄 아래에 데이터가 없습니다.'};
+  return {g:g,used:used,ignored:ignored,items:items,nNew:nNew,nUpd:nUpd,nSame:nSame,nSkip:nSkip,newVendors:newVendors};
+}
+function pmImpRender(plan){
+  const pv=document.getElementById('pmImpPreview');const ap=document.getElementById('pmImpApply');if(!pv||!ap)return;
+  ap.textContent='표에 넣기';
+  if(!plan){pv.innerHTML='';ap.disabled=true;return;}
+  if(plan.err){pv.innerHTML='<div class="pm-imp-err">⚠ '+prEsc(plan.err)+'</div>';ap.disabled=true;return;}
+  const g=plan.g;const cols=pmCols(g).filter(c=>plan.used[c.k]);
+  let h='<div class="pm-imp-sum"><span style="background:#dbeafe;color:#1d4ed8">새로 추가 '+plan.nNew+'</span><span style="background:#fef3c7;color:#b45309">기존 행 수정 '+plan.nUpd+'</span>'
+    +(plan.nSame?'<span style="background:#f1f5f9;color:#475569">변경 없음 '+plan.nSame+'</span>':'')+(plan.nSkip?'<span style="background:#fee2e2;color:#b91c1c">건너뜀 '+plan.nSkip+'</span>':'')+'</div>';
+  h+='<div class="pm-imp-map">인식한 칸: '+cols.map(c=>'<b>'+prEsc(c.label)+'</b>').join(', ')+(plan.ignored.length?' · <span class="pm-mute">무시한 칸: '+plan.ignored.map(prEsc).join(', ')+'</span>':'')+'</div>';
+  if(plan.newVendors)h+='<div class="pm-imp-map" style="color:#b45309">⚠ 거래처 표에 없는 거래처 이름 '+plan.newVendors+'건 — 그대로 들어가지만, 거래처 표에 먼저 등록하는 걸 권장해요.</div>';
+  h+='<div style="overflow:auto;max-height:300px;border:1px solid #e2e8f0;border-radius:8px"><table class="pm-imp-t"><thead><tr><th>줄</th><th>처리</th>'+cols.map(c=>'<th>'+prEsc(c.label)+'</th>').join('')+'</tr></thead><tbody>';
+  plan.items.slice(0,200).forEach(it=>{
+    const lab=it.act==='new'?'<b style="color:#1d4ed8">새로</b>':(it.act==='upd'?'<b style="color:#b45309">수정</b>':(it.act==='same'?'<span class="pm-mute">같음</span>':'<b style="color:#b91c1c">건너뜀</b> <span style="color:#b91c1c">'+prEsc(it.why)+'</span>'));
+    h+='<tr><td class="pm-mute">'+it.line+'</td><td>'+lab+'</td>'+cols.map(c=>{
+      const v=it.rec[c.k];const txt=c.type==='chk'?(v===false?'N':(v===true?'Y':'')):(v==null?'':String(v));
+      const chg=it.act==='upd'&&(c.k in it.ch);
+      return '<td'+(chg?' class="chg" title="기존 값: '+prEsc(String(it.target[c.k]==null?'':it.target[c.k]))+'"':'')+'>'+prEsc(txt)+'</td>';
+    }).join('')+'</tr>';
+  });
+  h+='</tbody></table></div>'+(plan.items.length>200?'<div class="pm-dr-note">미리보기는 200줄까지 (전체 '+plan.items.length+'줄)</div>':'');
+  pv.innerHTML=h;
+  const n=plan.nNew+plan.nUpd;ap.disabled=!n;if(n)ap.textContent='표에 넣기 ('+n+'건)';
+}
+function pmImpFromText(){const t=document.getElementById('pmImpText');if(!t||!pmImpG)return;if(!t.value.trim()){pmImpPlanV=null;pmImpRender(null);return;}pmImpPlanV=pmImpPlan(pmImpG,pmImpParseText(t.value));pmImpRender(pmImpPlanV);}
+async function pmImpFile(f){
+  if(!f||!pmImpG)return;
+  document.getElementById('pmImpFileName').textContent=f.name;
+  try{
+    let aoa;
+    if(/\.(csv|tsv|txt)$/i.test(f.name))aoa=pmImpParseText(await f.text());
+    else{
+      if(typeof XLSX==='undefined'){alert('엑셀 모듈이 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요.');return;}
+      const wb=XLSX.read(new Uint8Array(await f.arrayBuffer()),{type:'array'}); // 날짜 셀은 일련번호로 받아 직접 변환 (시간대 밀림 방지)
+      aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+    }
+    document.getElementById('pmImpText').value='';
+    pmImpPlanV=pmImpPlan(pmImpG,aoa);pmImpRender(pmImpPlanV);
+  }catch(e){console.error('[pm] 엑셀 가져오기',e);pmImpPlanV=null;pmImpRender({err:'파일을 읽지 못했습니다: '+(e.message||e)});}
+}
+function pmImpApply(){
+  const plan=pmImpPlanV;if(!plan||plan.err)return;const g=plan.g;const st=pmS[g];
+  const news=plan.items.filter(it=>it.act==='new').map(it=>it.rec);
+  let n=news.length;
+  plan.items.forEach(it=>{
+    if(it.act!=='upd')return;
+    // 미리보기 뒤에 실시간 반영으로 행 객체가 바뀌었을 수 있으니 id로 다시 찾음
+    const t=st.rows.find(x=>x.id===it.target.id)||(news.indexOf(it.target)>=0?it.target:null);if(!t)return;
+    const inRows=st.rows.indexOf(t)>=0;
+    if(g==='v'&&('name' in it.ch)&&inRows&&!st.dirty[t.id]&&_pmOrigName[t.id]===undefined)_pmOrigName[t.id]=String(t.name||''); // 이름 변경 → 저장 시 단가 연동
+    Object.assign(t,it.ch);if(inRows){st.dirty[t.id]=1;n++;}
+  });
+  for(let i=news.length-1;i>=0;i--){st.rows.unshift(news[i]);st.dirty[news[i].id]=1;}
+  pmImpClose();st.sel={};if(pmPage[g]!=null)pmPage[g]=1;
+  pmTabSet(g);if(g==='v')pmRender('p');if(g==='p')pmRefreshCalc('v');if(g==='i')prRenderLib();
+  pmToast(n+'건을 표에 넣었어요 — 노란 행을 확인하고 💾 저장(⌘S)을 눌러야 팀에 반영됩니다',4500);
+}
 (function pmInit(){
   const page=document.getElementById('page-purchase-master');if(!page)return;
   function onEdit(e){
@@ -6995,10 +7876,30 @@ function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.
     r[k]=(t.type==='checkbox')?t.checked:t.value;
     if(!st.dirty[id]){st.dirty[id]=1;const tr=t.closest('tr');if(tr)tr.classList.add('dirty');}
     pmCount(g);
+    if(t.closest('#pmDrawer'))pmDrawerEdited();                                  // 상세 창에서 고침 → 제목·표 갱신
+    else if(e.type==='change'){if(g==='p'){pmRefreshCalc('p');pmRefreshCalc('v');}else if(g==='v'&&k==='name')pmRefreshCalc('v');} // 변동·최저 다시 계산
   }
   page.addEventListener('input',onEdit);
   page.addEventListener('change',onEdit);
   page.addEventListener('click',e=>{
+    const tb=e.target.closest('[data-pmtab]');if(tb){pmTabSet(tb.dataset.pmtab);return;}
+    const so=e.target.closest('[data-pmsort]');
+    if(so){ // 제목 클릭: 오름 → 내림 → 기본 순서
+      const p=so.dataset.pmsort.split('|');const sg=p[0],sk=p[1];const cur=pmSort[sg];
+      pmSort[sg]=(!cur||cur.k!==sk)?{k:sk,dir:1}:(cur.dir===1?{k:sk,dir:-1}:null);
+      pmS[sg].sel={};if(pmPage[sg]!=null)pmPage[sg]=1;pmRender(sg);return;}
+    const op=e.target.closest('[data-pmopen]');if(op){pmDrawerOpen(op.dataset.pmopen);return;}
+    if(e.target.id==='pmDrawer'){pmDrawerClose();return;} // 바깥(어두운 곳) 클릭 = 닫기
+    const dr=e.target.closest('[data-pmdr]');
+    if(dr){const a=dr.dataset.pmdr;
+      if(a==='close')pmDrawerClose();
+      else if(a==='save'){if(pmS.v.dirty[pmDrawerId])pmSave('v');else pmToast('저장할 변경이 없어요');}
+      else if(a==='addprice')pmDrawerAddPrice();
+      else if(a==='showprices')pmDrawerShowPrices();
+      return;}
+    const go=e.target.closest('[data-pmgo]');if(go){pmGoTrack(go.dataset.pmgo);return;}
+    const cp=e.target.closest('[data-pmcopy]');if(cp){const r=pmS.v.rows.find(x=>x.id===pmDrawerId);if(r)pmCopyText(r[cp.dataset.pmcopy]);return;}
+    const im=e.target.closest('[data-pmimp]');if(im){if(im.dataset.pmimp==='apply')pmImpApply();else pmImpClose();return;}
     const all=e.target.closest('input[data-pmall]');
     if(all){const g=all.dataset.pmall;const st=pmS[g];const rows=pmVisibleRows(g);rows.forEach(r=>{st.sel[r.id]=all.checked;});pmRender(g);return;}
     const sel=e.target.closest('input[data-pmsel]');
@@ -7023,7 +7924,46 @@ function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.
     if(a==='save'){pmSave(g);return;}
     if(a==='del'){pmDelete(g);return;}
     if(a==='query'){if(pmCloud){pmFetch(g).then(rows=>pmApply(g,rows)).catch(()=>pmRender(g));}else pmRender(g);return;}
+    if(a==='revert'){pmRevert(g);return;}
+    if(a==='export'){pmExport(g);return;}
+    if(a==='import'){pmImpOpen(g);return;}
+    if(a==='dup'){pmDupPrice();return;}
   });
+  // 엑셀 붙여넣기 → 미리보기 (입력 멈추면)
+  (function(){
+    const ta=document.getElementById('pmImpText'),fi=document.getElementById('pmImpFile');
+    if(ta)ta.addEventListener('input',()=>{clearTimeout(_pmImpT);_pmImpT=setTimeout(pmImpFromText,200);});
+    if(fi)fi.addEventListener('change',()=>{const f=fi.files&&fi.files[0];fi.value='';pmImpFile(f);});
+  })();
+  // 표 안 키보드: Enter / Shift+Enter / ↑↓ = 같은 칸의 아래·위 행으로 (숫자칸 ↑↓로 값이 바뀌는 사고 방지)
+  page.addEventListener('keydown',e=>{
+    const t=e.target;if(!t||!t.dataset||!t.dataset.k||!t.dataset.id||!t.closest||!t.closest('.pm-grid'))return;
+    if(e.isComposing||e.keyCode===229||e.altKey||e.metaKey||e.ctrlKey)return; // 한글 입력 조합 중에는 건드리지 않음
+    const isTxt=t.tagName==='INPUT'&&(t.type==='text'||t.type==='number');
+    let dir=0;
+    if(e.key==='Enter'&&t.type!=='checkbox')dir=e.shiftKey?-1:1;
+    else if(isTxt&&!e.shiftKey&&(e.key==='ArrowDown'||e.key==='ArrowUp'))dir=e.key==='ArrowDown'?1:-1;
+    if(!dir)return;
+    e.preventDefault();
+    const sel='[data-k="'+t.dataset.k+'"]';let tr=t.closest('tr');
+    do{tr=dir>0?tr.nextElementSibling:tr.previousElementSibling;}while(tr&&!tr.querySelector(sel));
+    if(!tr)return;
+    const nx=tr.querySelector(sel);nx.focus();
+    if(nx.tagName==='INPUT'&&(nx.type==='text'||nx.type==='number')){try{nx.select();}catch(_){}}
+  });
+  // ⌘S / Ctrl+S = 이 페이지의 저장 안 된 변경 전체 저장 · Esc = 창 닫기
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!pmPhotoId){
+      if(document.getElementById('pmImp').style.display!=='none'){pmImpClose();return;}
+      if(pmDrawerId){pmDrawerClose();return;}
+    }
+    if(!(e.metaKey||e.ctrlKey)||e.altKey||e.shiftKey)return;
+    if(!(e.code==='KeyS'||String(e.key).toLowerCase()==='s'))return;
+    if(!page.classList.contains('active'))return;
+    e.preventDefault();pmSaveAll();
+  });
+  // 저장 안 한 변경이 있으면 창 닫기·새로고침 전에 경고
+  window.addEventListener('beforeunload',e=>{if(['v','p','i'].some(g=>pmDirtyN(g))){e.preventDefault();e.returnValue='';return '';}});
   // 편집 중 보류된 실시간 반영을 포커스 해제 시 적용
   page.addEventListener('focusout',()=>{setTimeout(()=>{const act=document.activeElement;if(act&&act.closest&&act.closest('#page-purchase-master .pm-grid'))return;['v','p','i'].forEach(g=>{if(_pmPend[g]){const rows=_pmPend[g];delete _pmPend[g];pmApply(g,rows);}});},80);});
   // ── 컬럼 너비 드래그 조절 ──
@@ -7074,6 +8014,7 @@ function pmPhotoFilePick(f){const id=pmPhotoId;if(!id)return;if(!f||!/^image\//.
   })();
   _pmSref=pmS; // 구매요청서 물품 라이브러리가 이 데이터를 읽음
   pmRender('v');pmRender('p');pmRender('i');prRenderLib();
+  pmTabSet(pmTab); // 마지막으로 본 탭
   function badge(ok,msg){const el=document.getElementById('pmCloudBadge');if(el){el.textContent=msg;el.style.color=ok?'#15803d':'#b45309';}}
   const c=ptSupa();
   if(!c){badge(false,'⚠ 오프라인 — 저장 불가');return;}
@@ -9744,12 +10685,19 @@ obQ('ob-destBtn').addEventListener('click', async () => {
 });
 
 // ── 재귀 폴더 워크 ──
-async function* obWalk(dirHandle){
+// dir = 원본 폴더 기준 하위 경로 (결과 화면의 「읽은 폴더」 목록용).
+// 맥 iCloud 에서 아직 내려받지 않은 파일은 ".원래이름.pdf.icloud" 로 보인다 → 원래 이름으로 찾아 주되 cloud 표시 (옮기지는 않음)
+async function* obWalk(dirHandle, prefix = ''){
   for await (const [name, entry] of dirHandle.entries()){
-    if (entry.kind === 'file' && name.toLowerCase().endsWith('.pdf')){
-      yield { handle: entry, parent: dirHandle, name };
+    if (entry.kind === 'file'){
+      if (name.toLowerCase().endsWith('.pdf')){
+        yield { handle: entry, parent: dirHandle, name, dir: prefix };
+      } else {
+        const ic = name.match(/^\.(.+\.pdf)\.icloud$/i);
+        if (ic) yield { handle: entry, parent: dirHandle, name: ic[1], dir: prefix, cloud: true };
+      }
     } else if (entry.kind === 'directory'){
-      yield* obWalk(entry);
+      yield* obWalk(entry, prefix + name + '/');
     }
   }
 }
@@ -9835,17 +10783,40 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   obQ('ob-status').textContent = '원본 폴더 인덱싱 중...';
   // 원본 폴더 안의 모든 PDF 매핑: orderNum -> {handle, parent, name}
   const fileMap = new Map();
+  // 오더 변경 수정본 「원래이름-changed.pdf」: 같은 폴더에 원본이 있으면 원본과 한 묶음(같이 이동), 원본을 지웠으면 수정본만 따로 등록
+  const OB_CHG = /-changed(?:\s*\(\d+\))?(\.pdf)$/i;
+  const obChanged = [], obByDir = new Map();   // obByDir: 폴더 → (파일명 → 파일)
+  // 원본에서 실제로 읽은 것 — 「못 찾음」 원인(폴더를 잘못 골랐는지, iCloud 미다운로드인지)을 결과 화면에서 바로 보이게
+  const obScan = { dirs: new Map(), pdf: 0, cloud: 0 };
   try {
     for await (const f of obWalk(obSrcHandle)){
+      obScan.pdf++; if (f.cloud) obScan.cloud++;
+      obScan.dirs.set(f.dir, (obScan.dirs.get(f.dir) || 0) + 1);
+      if (OB_CHG.test(f.name)){ obChanged.push(f); continue; }
+      let dm = obByDir.get(f.parent); if (!dm){ dm = new Map(); obByDir.set(f.parent, dm); } dm.set(f.name, f);
+      obIndexFile(f);
+    }
+    for (const c of obChanged){
+      const base = c.name.replace(OB_CHG, '$1');
+      const orig = obByDir.get(c.parent) && obByDir.get(c.parent).get(base);
+      if (orig) (orig.companions = orig.companions || []).push(c);   // 원본과 같이 이동
+      else obIndexFile(c);                                              // 원본 없음 → 수정본만
+    }
+  } catch(e){
+    alert('원본 폴더 인덱싱 실패: ' + e.message);
+    obQ('ob-moveBtn').disabled = false;
+    return;
+  }
+  function obIndexFile(f){
       // 파일명에서 #뒤의 숫자 추출
       const m = f.name.match(/#\s*(\d{4,10})/);
-      if (m){ fileMap.set(m[1], f); continue; }
+      if (m){ const p0 = fileMap.get(m[1]); if (!(p0 && !p0.cloud && f.cloud)) fileMap.set(m[1], f); return; }   // 내려받은 사본이 있으면 iCloud 자리표시자보다 우선
       // 새 오더 양식: 패킹리스트에 어떤 번호로 적든 찾도록 한 파일을 여러 키로 등록
       //   "S151703-1-P8XHC8RY" / "S151703-1" = 글러브 1개를 정확히 가리킴
       //   "P8XHC8RY"(Glove ID) / "S151703"(오더) = 서로 다른 글러브가 같이 걸릴 수 있음(재주문 · 한 오더에 글러브 여러 개)
       //     → 그런 번호는 임의로 고르지 않고 {ambiguous} 로 표시해 "확인 필요" 로 남긴다
       const nf = obNewName(f.name);
-      if (!nf) continue;
+      if (!nf) return;
       if (nf.order){
         f.glove = `${nf.order}-${nf.item}-${nf.design}`;
         f.keys = [f.glove, `${nf.order}-${nf.item}`, nf.design, nf.order];
@@ -9856,15 +10827,10 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
       }
       for (const k of f.keys){
         const prev = fileMap.get(k);
-        if (!prev || (!prev.ambiguous && prev.glove === f.glove)) fileMap.set(k, f);   // 같은 글러브의 사본이면 예전처럼 마지막 파일
+        if (!prev || (!prev.ambiguous && prev.glove === f.glove)){ if (!(prev && !prev.cloud && f.cloud)) fileMap.set(k, f); }   // 같은 글러브의 사본이면 예전처럼 마지막 파일 (단, 내려받은 사본이 iCloud 자리표시자보다 우선)
         else if (prev.ambiguous){ if (!prev.files.some(x => x.glove === f.glove)) prev.files.push(f); }
         else fileMap.set(k, { ambiguous: true, files: [prev, f] });
       }
-    }
-  } catch(e){
-    alert('원본 폴더 인덱싱 실패: ' + e.message);
-    obQ('ob-moveBtn').disabled = false;
-    return;
   }
   obQ('ob-progressBar').style.width = '15%';
 
@@ -9881,7 +10847,8 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   const total = obBoxes.reduce((s,b) => s + b.orders.length, 0);
   let done = 0;
   const rows = [];   // {box, order, name, status, method, error}
-  const counts = { moved: 0, copied: 0, notFound: 0, failed: 0, ambiguous: 0 };   // ambiguous = 새 양식 전용
+  const counts = { moved: 0, copied: 0, notFound: 0, failed: 0, ambiguous: 0, withChanged: 0, cloud: 0, again: 0 };   // ambiguous = 새 양식 전용 · withChanged = 원본과 같이 옮긴 수정본 · cloud = iCloud 미다운로드 · again = 패킹리스트에 두 번 적힘
+  const movedTo = new Map();   // 이번 실행에서 옮긴 파일의 모든 번호 → 박스 (같은 번호가 두 번 적혔을 때 「못 찾음」 대신 알려줌)
 
   for (const box of obBoxes){
     for (const order of box.orders){
@@ -9897,13 +10864,25 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
       // "4572655-2" 처럼 예전 번호 뒤에 "-숫자"를 붙여 적은 줄이면 앞의 번호만으로 예전 방식 그대로 찾는다
       if (!f && /^\d{6,8}-\d{1,2}$/.test(order)){ key = order.replace(/-\d{1,2}$/, ''); f = fileMap.get(key); }
       if (!f){
+        const prevBox = movedTo.get(key) || movedTo.get(order) || movedTo.get('S' + order);
+        if (prevBox){   // 이미 이번에 다른 줄로 옮김 — 패킹리스트에 같은 번호가 두 번 적힌 경우
+          rows.push({ box: box.boxNum, order, name: '', status: 'again', prevBox });
+          counts.again++;
+          continue;
+        }
         rows.push({ box: box.boxNum, order, name: '', status: 'notFound' });
         counts.notFound++;
         continue;
       }
+      if (!f.ambiguous && f.cloud){
+        // iCloud 에서 아직 내려받지 않은 파일 — 자리표시자를 옮기면 원본이 꼬일 수 있어 옮기지 않고 알려줌
+        rows.push({ box: box.boxNum, order, name: (f.dir || '') + f.name, status: 'cloud' });
+        counts.cloud++;
+        continue;
+      }
       if (f.ambiguous){
         // 새 양식: 이 번호에 서로 다른 글러브 PDF가 여러 개 → 옮기지 않고 후보만 보여줌
-        rows.push({ box: box.boxNum, order, name: f.files.map(x => x.name).join(' / '), status: 'ambiguous' });
+        rows.push({ box: box.boxNum, order, name: f.files.map(x => x.name + ((x.companions || []).length ? ' (+ ' + x.companions.map(c => c.name).join(', ') + ')' : '')).join(' / '), status: 'ambiguous' });
         counts.ambiguous++;
         continue;
       }
@@ -9914,6 +10893,19 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
         rows.push({ box: box.boxNum, order, name: f.name, status, method });
         if (status === 'moved') counts.moved++;
         else counts.copied++;
+        for (const k of [key, ...(f.keys || [])]) movedTo.set(k, box.boxNum);
+        // 같은 폴더의 수정본(-changed)도 같은 박스로
+        for (const c of (f.companions || [])){
+          if (c.cloud){ rows.push({ box: box.boxNum, order, name: c.name, status: 'cloud', companion: true }); counts.cloud++; continue; }
+          try {
+            const m2 = await obMoveFile(c.handle, c.parent, dest, c.name);
+            rows.push({ box: box.boxNum, order, name: c.name, status: m2 === 'move' ? 'moved' : 'copied', method: m2, companion: true });
+            counts.withChanged++;
+          } catch(e2){
+            rows.push({ box: box.boxNum, order, name: c.name, status: 'failed', error: String(e2 && e2.message || e2), companion: true });
+            counts.failed++;
+          }
+        }
         fileMap.delete(key);
         // 새 양식: 옮긴 파일의 나머지 키도 정리 (후보가 하나만 남은 번호는 다시 찾을 수 있게)
         for (const k of (f.keys || [])){
@@ -9931,7 +10923,16 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   }
 
   obQ('ob-progressBar').style.width = '100%';
-  obQ('ob-status').textContent = `완료! 이동 ${counts.moved} / 복사+삭제 ${counts.copied} / 못 찾음 ${counts.notFound} / 실패 ${counts.failed}${counts.ambiguous ? ` / 확인 필요 ${counts.ambiguous}` : ''}`;
+  obQ('ob-status').textContent = `완료! 이동 ${counts.moved} / 복사+삭제 ${counts.copied} / 못 찾음 ${counts.notFound} / 실패 ${counts.failed}${counts.ambiguous ? ` / 확인 필요 ${counts.ambiguous}` : ''}${counts.withChanged ? ` / 수정본 같이 이동 ${counts.withChanged}` : ''}${counts.cloud ? ` / iCloud 미다운로드 ${counts.cloud}` : ''}${counts.again ? ` / 중복 기재 ${counts.again}` : ''}`;
+  // 원본에서 읽은 폴더 목록 (폴더별 PDF 수) — 「못 찾음」이 있으면 펼쳐서 보여줌
+  const srcName = obEsc(obSrcHandle.name || '');
+  const dirRows = [...obScan.dirs.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([d, n]) => `<div style="font-family:ui-monospace,monospace;font-size:11.5px">📁 ${srcName}/${obEsc(d)} <span style="color:var(--text3)">· PDF ${n}</span></div>`).join('');
+  const scanBox = `<details style="flex-basis:100%;font-size:12.5px;color:var(--text2);margin-top:2px"${counts.notFound ? ' open' : ''}>`
+    + `<summary style="cursor:pointer">원본 「${srcName}」에서 읽은 폴더 ${obScan.dirs.size}개 · PDF ${obScan.pdf}개${obScan.cloud ? ` (그중 iCloud 미다운로드 ${obScan.cloud})` : ''}</summary>`
+    + `<div style="margin:6px 0 2px 4px;max-height:180px;overflow:auto">${dirRows || '<div>(PDF 없음)</div>'}</div>`
+    + (counts.notFound ? `<div style="color:#92400e;margin-top:4px">⚠ 「못 찾음」 번호의 PDF가 위 폴더들 안에 없습니다. 그 파일이 있는 폴더가 원본으로 고른 「${srcName}」 안에 들어 있는지 확인하세요 (다른 날짜·다른 위치 폴더면 원본을 한 단계 위 폴더로 다시 선택).</div>` : '')
+    + `</details>`;
 
   // 결과 표시
   obQ('ob-summary').innerHTML =
@@ -9939,7 +10940,11 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
     (counts.copied ? `<div style="background:#dbeafe;color:#1e40af;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">↺ 복사+삭제 ${counts.copied}</div>` : '') +
     `<div style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">⚠ 못 찾음 ${counts.notFound}</div>` +
     `<div style="background:#fee2e2;color:#991b1b;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">✕ 실패 ${counts.failed}</div>` +
-    (counts.ambiguous ? `<div style="background:#ede9fe;color:#5b21b6;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="같은 번호에 서로 다른 글러브 PDF가 여러 개 — 옮기지 않았습니다">? 확인 필요 ${counts.ambiguous}</div>` : '');
+    (counts.ambiguous ? `<div style="background:#ede9fe;color:#5b21b6;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="같은 번호에 서로 다른 글러브 PDF가 여러 개 — 옮기지 않았습니다">? 확인 필요 ${counts.ambiguous}</div>` : '') +
+    (counts.withChanged ? `<div style="background:#fef3c7;color:#b45309;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="원본과 같은 폴더에 있던 「-changed」 수정본을 같은 박스로 같이 옮김">✏️ 수정본 같이 이동 ${counts.withChanged}</div>` : '') +
+    (counts.cloud ? `<div style="background:#e0f2fe;color:#075985;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="iCloud 에서 아직 이 컴퓨터로 내려받지 않은 파일이라 옮기지 않았습니다. Finder 에서 그 폴더 우클릭 → 지금 다운로드 후 다시 실행하세요.">☁ iCloud 미다운로드 ${counts.cloud}</div>` : '') +
+    (counts.again ? `<div style="background:#f1f5f9;color:#334155;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600" title="패킹리스트에 같은 번호가 두 번 이상 적혀 있어, 처음 줄에서 이미 옮겼습니다">↻ 중복 기재 ${counts.again}</div>` : '') +
+    scanBox;
 
   const body = obQ('ob-resultBody');
   body.innerHTML = '';
@@ -9951,12 +10956,17 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
     } else if (r.status === 'copied'){
       statusCell = '<span style="color:#1e40af;font-weight:600" title="원본 폴더와 출고 폴더가 별도 root라 복사 후 삭제 방식으로 처리됨. 결과는 동일.">↺ 복사+삭제</span>';
     } else if (r.status === 'notFound'){
-      statusCell = '<span style="color:#d97706;font-weight:600">⚠ 못 찾음</span>';
+      statusCell = `<span style="color:#d97706;font-weight:600" title="원본 「${srcName}」 안의 PDF ${obScan.pdf}개 중에 이 번호의 파일이 없습니다. 위 「읽은 폴더」 목록에 그 파일의 폴더가 있는지 확인하세요.">⚠ 못 찾음</span>`;
+    } else if (r.status === 'cloud'){
+      statusCell = '<span style="color:#075985;font-weight:600" title="iCloud 에서 아직 내려받지 않은 파일이라 옮기지 않았습니다. Finder 에서 폴더 우클릭 → 지금 다운로드 후 다시 실행하세요.">☁ iCloud 미다운로드</span>';
+    } else if (r.status === 'again'){
+      statusCell = `<span style="color:#475569;font-weight:600" title="패킹리스트에 같은 번호가 두 번 이상 적혀 있습니다. 파일은 Box${String(r.prevBox).padStart(2,'0')} 로 이미 옮겼습니다.">↻ 이미 Box${String(r.prevBox).padStart(2,'0')} 로 이동</span>`;
     } else if (r.status === 'ambiguous'){
       statusCell = '<span style="color:#6d28d9;font-weight:600" title="이 번호에 서로 다른 글러브 PDF가 여러 개 있어 옮기지 않았습니다. 패킹리스트에 S151703-1 처럼 오더-순번으로 적으면 정확히 찾습니다.">? 확인 필요</span>';
     } else {
       statusCell = `<span style="color:#dc2626;font-weight:600" title="${obEsc(r.error||'')}">✕ 실패</span>`;
     }
+    if (r.companion && r.status !== 'failed') statusCell += ' <span style="font-size:11px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:5px;padding:1px 6px">수정본</span>';
     tr.innerHTML = `<td>Box${String(r.box).padStart(2,'0')}</td><td>${obEsc(r.order)}</td><td style="font-family:ui-monospace,monospace;font-size:12px">${obEsc(r.name)}</td><td>${statusCell}</td>`;
     body.appendChild(tr);
   }
@@ -10713,6 +11723,918 @@ dcQ('dc-dlBtn').addEventListener('click', () => {
   });
 });
 
+})();
+</script>
+
+<!-- ── 오더 카드: 오더 번호 목록 → 각 오더 PDF 첫 장에서 제목·사진·Style 영역을 잘라 카드 이미지로 (2026-11-03) ── -->
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+if(!$('page-order-card'))return;
+let occIndex=null;          // 폴더 색인 {map: Map(키 → [{name,path,get}]), n, label}
+const occDropped=new Map(); // 끌어놓은 PDF
+let occDirHandle=null,occScanTok=0,occScanP=null,occRunTok=0;
+let occCards=[];
+function toast(msg,ms){const el=$('occ-toast');if(!el)return;el.textContent=msg;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('on'),ms||2400);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function setStatus(s){$('occ-status').textContent=s||'';}
+function setProg(p){const w=$('occ-progress');if(p==null){w.classList.remove('show');return;}w.classList.add('show');$('occ-progressBar').style.width=Math.round(p*100)+'%';}
+
+// ── 파일 이름 → 키: 예전 #번호 · 배팅 Design 번호(162452-7) · Glove ID(출고 자동화와 같은 k44GloveId) ──
+function occKeyOfName(name){
+  if(!/\.pdf$/i.test(name))return null;
+  let m=name.match(/#\s*(\d{4,10})/);if(m)return m[1];
+  m=name.match(/(?:^|[^0-9A-Za-z])S?(\d{5,7}-\d{1,2}(?:-\d{1,2})?)-batting\w*(?:\s*\(\d+\))?\.pdf$/i);if(m)return m[1];
+  const g=window.k44GloveId?window.k44GloveId(name):null;
+  return g?g.id:null;
+}
+// 입력 글 → 번호 목록 (줄마다 번호만 골라냄: 캡션 줄·파일 이름을 그대로 붙여넣어도 됨)
+function occTokKey(t){
+  let m;
+  if((m=t.match(/^#?(\d{6,8})$/)))return m[1];                                        // 예전 번호 4594659
+  if((m=t.match(/^S?(\d{5,7}-\d{1,2}(?:-\d{1,2})?)-batting\w*$/i)))return m[1];        // 배팅 파일 이름
+  if((m=t.match(/^(\d{5,7}-\d{1,2}(?:-\d{1,2})?)$/)))return m[1];                      // 배팅 162452-7
+  if((m=t.match(/^(S\d{4,}-\d+)$/i)))return m[1].toUpperCase();                         // 주문-순번 S158826-1
+  const g=window.k44GloveId?window.k44GloveId(t+'.pdf'):null;if(g)return g.id;           // S158826-1-WZCWYRVA · 44pro-… · WZCWYRVA
+  const u=t.toUpperCase();
+  if((t===u||t===t.toLowerCase())&&/^[2-9A-HJ-NP-Z]{8}$/.test(u))return u;              // 소문자로 친 ID
+  return null;
+}
+function occParseIds(txt){
+  const out=[],seen=new Set();
+  String(txt||'').split(/\r?\n/).forEach(line=>{
+    line.split(/[^A-Za-z0-9#-]+/).filter(Boolean).forEach(t=>{const k=occTokKey(t);if(k&&!seen.has(k)){seen.add(k);out.push(k);}});
+  });
+  return out;
+}
+function occPush(map,k,ent){const a=map.get(k);if(a){if(!a.some(x=>x.path===ent.path))a.push(ent);}else map.set(k,[ent]);}
+function occAdd(map,name,path,get,dir){
+  const key=occKeyOfName(name);if(!key)return false;
+  const ent={name:name,path:path,get:get,dir:dir||null};occPush(map,key,ent); // dir = 그 파일이 있는 폴더 (오더 변경 수정본을 같은 폴더에 저장할 때)
+  const g=window.k44GloveId?window.k44GloveId(name):null;if(g&&g.order)occPush(map,g.order+'-'+g.item,ent); // S158826-1 로도 찾기
+  return true;
+}
+// 같은 번호 파일이 여러 개면: 정식 이름(S…-ID.pdf, Custom … #N.pdf) → 사본 "(1)" 아닌 것 → 최근 폴더 순
+function occRank(c){let s=0;const n=c.name;if(/-changed(?:\s*\(\d+\))?\.pdf$/i.test(n))s+=6; /* 「오더 변경」 수정본이 있으면 그게 최신 → 먼저 */ if(/^S\d{4,}-\d+-[A-Z0-9]+\.pdf$/i.test(n)||/^Custom\s.*#\s*\d+\.pdf$/i.test(n)||/^\d{5,7}-\d{1,2}(?:-\d{1,2})?-batting\w*\.pdf$/i.test(n))s+=4;if(/\(\d+\)\.pdf$/i.test(n))s-=2;return s;}
+function occCandidates(k){
+  const a=(occDropped.get(k)||[]).concat(occIndex?(occIndex.map.get(k)||[]):[]);
+  return a.slice().sort((x,y)=>occRank(y)-occRank(x)||(y.path<x.path?-1:(y.path>x.path?1:0)));
+}
+
+// ── 폴더 읽기 (하위 폴더까지, 8개씩 동시에) ──
+async function occScanHandle(h){
+  const tok=++occScanTok;const map=new Map();let n=0;
+  setStatus('폴더 읽는 중…');setProg(0.05);
+  const queue=[{d:h,path:''}];let active=0;
+  await new Promise(resolve=>{
+    const pump=()=>{
+      if(tok!==occScanTok){resolve();return;}
+      while(active<8&&queue.length){
+        const it=queue.shift();active++;
+        (async()=>{for await(const [name,e] of it.d.entries()){
+          if(tok!==occScanTok)return;
+          if(e.kind==='directory'){if(name[0]!=='.'&&name!=='__MACOSX')queue.push({d:e,path:it.path+name+'/'});}
+          else if(/\.pdf$/i.test(name)){n++;occAdd(map,name,it.path+name,()=>e.getFile(),it.d);}
+        }})().catch(err=>console.warn('[occ] 폴더 읽기',it.path,err)).then(()=>{active--;setStatus('폴더 읽는 중… PDF '+n.toLocaleString()+'개');pump();});
+      }
+      if(!active&&!queue.length)resolve();
+    };
+    pump();
+  });
+  if(tok!==occScanTok)return;
+  occIndex={map:map,n:n,label:h.name};setProg(null);
+  $('occ-dirName').textContent='📁 '+h.name+' — PDF '+n.toLocaleString()+'개';$('occ-rescanBtn').style.display='';
+  setStatus('');occNotify();
+}
+function occUseHandle(h,save){
+  occDirHandle=h;$('occ-dirName').textContent='📁 '+h.name+' — 읽는 중…';occNotify();
+  if(save)occIdbSet('dir',h).catch(()=>{});
+  occRecentBtn(h);
+  occScanP=occScanHandle(h).catch(e=>{console.error('[occ]',e);alert('폴더를 읽지 못했습니다: '+(e.message||e));setProg(null);setStatus('');});
+  return occScanP;
+}
+// 최근 폴더 기억 (Chrome/Edge — 다음에 다시 고를 필요 없이 「최근 폴더」 버튼)
+function occIdb(){return new Promise((res,rej)=>{const r=indexedDB.open('k44-order-card',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function occIdbSet(k,v){const db=await occIdb();return new Promise((res,rej)=>{const tx=db.transaction('h','readwrite');tx.objectStore('h').put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);});}
+async function occIdbGet(k){const db=await occIdb();return new Promise((res,rej)=>{const tx=db.transaction('h','readonly');const r=tx.objectStore('h').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+let occRecent=null;
+function occRecentBtn(h){occRecent=h||null;const b=$('occ-recentBtn');if(!h){b.style.display='none';return;}b.textContent='↩ 최근 폴더: '+h.name;b.style.display=(occDirHandle===h)?'none':'';occNotify();}
+try{if(window.indexedDB&&window.showDirectoryPicker)occIdbGet('dir').then(h=>{if(h&&h.kind==='directory')occRecentBtn(h);}).catch(()=>{});}catch(e){}
+
+// ── PDF 첫 장 → 카드 이미지 ──
+// 그림(사진·바코드) 위치: 그리기 명령을 따라가며 이미지가 놓이는 사각형 계산
+async function occImageBoxes(page,vp){
+  const ops=await page.getOperatorList();const O=pdfjsLib.OPS;let ctm=[1,0,0,1,0,0];const st=[];const out=[];
+  const mul=(m,t)=>(pdfjsLib.Util&&pdfjsLib.Util.transform)?pdfjsLib.Util.transform(m,t):[m[0]*t[0]+m[2]*t[1],m[1]*t[0]+m[3]*t[1],m[0]*t[2]+m[2]*t[3],m[1]*t[2]+m[3]*t[3],m[0]*t[4]+m[2]*t[5]+m[4],m[1]*t[4]+m[3]*t[5]+m[5]];
+  for(let i=0;i<ops.fnArray.length;i++){
+    const f=ops.fnArray[i],a=ops.argsArray[i];
+    if(f===O.save)st.push(ctm.slice());
+    else if(f===O.restore)ctm=st.pop()||ctm;
+    else if(f===O.transform)ctm=mul(ctm,a);
+    else if(f===O.paintFormXObjectBegin){st.push(ctm.slice());if(a&&a[0])ctm=mul(ctm,a[0]);}
+    else if(f===O.paintFormXObjectEnd)ctm=st.pop()||ctm;
+    else if(f===O.paintImageXObject||f===O.paintInlineImageXObject||f===O.paintImageMaskXObject||f===O.paintJpegXObject||f===O.paintImageXObjectRepeat){
+      const pts=[[0,0],[1,0],[0,1],[1,1]].map(p=>vp.convertToViewportPoint(ctm[0]*p[0]+ctm[2]*p[1]+ctm[4],ctm[1]*p[0]+ctm[3]*p[1]+ctm[5]));
+      const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+      out.push({x0:Math.min.apply(null,xs),y0:Math.min.apply(null,ys),x1:Math.max.apply(null,xs),y1:Math.max.apply(null,ys)});
+    }
+  }
+  return out;
+}
+// mode 'style' = 제목 + 사진 + Style 칸 (예시 캡처와 같은 범위) / 'all' = 오른쪽 정보 전부
+async function occRenderPdf(file,mode){
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  try{
+    const page=await pdf.getPage(1);
+    const vp=page.getViewport({scale:1});const W=vp.width,H=vp.height;
+    const T=[];
+    (await page.getTextContent()).items.forEach(it=>{
+      const s=String(it.str||'').trim();if(!s)return;
+      const p=vp.convertToViewportPoint(it.transform[4],it.transform[5]);const fs=Math.hypot(it.transform[2],it.transform[3])||10;
+      T.push({s:s,x:p[0],base:p[1],top:p[1]-fs,bot:p[1]+fs*0.3,r:p[0]+(it.width||0),fs:fs});
+    });
+    if(!T.length)throw new Error('PDF에 글자 정보가 없어요 (스캔 이미지 PDF)');
+    const find=s=>T.find(t=>t.s===s);
+    const styleT=find('Style'),colT=find('Colors');
+    const foot=T.filter(t=>/^Order:/i.test(t.s)).sort((a,b)=>b.base-a.base)[0];
+    const footY=foot?foot.top:H;
+    const imgs=await occImageBoxes(page,vp);
+    const big=imgs.filter(b=>(b.x1-b.x0)>20&&(b.y1-b.y0)>20);
+    const heads=T.filter(t=>t.s==='Style'||t.s==='Colors'||t.s==='Personalization');
+    const headX=heads.length?Math.min.apply(null,heads.map(h=>h.x)):W*0.46;
+    const photos=big.filter(b=>footY-b.y1>=40&&b.x0<headX-10);   // 맨 아래 「Order:」 바로 위에 붙은 그림 = 바코드 → 제외
+    const infoImgs=big.filter(b=>footY-b.y1>=40&&b.x0>=headX-10); // 정보 칸 쪽 그림 = 「오더 변경」 수정본의 변경 내역 상자
+    const masks=big.filter(b=>footY-b.y1<40);
+    const titleT=T.filter(t=>t.base<footY).sort((a,b)=>a.top-b.top||a.x-b.x)[0];
+    let px0,py0,px1,py1;
+    if(photos.length){px0=Math.min.apply(null,photos.map(b=>b.x0));py0=Math.min.apply(null,photos.map(b=>b.y0));px1=Math.max.apply(null,photos.map(b=>b.x1));py1=Math.max.apply(null,photos.map(b=>b.y1));}
+    else{px0=titleT.x;py0=titleT.bot;px1=(styleT?styleT.x:W*0.46)-8;py1=footY*0.75;}
+    // 오른쪽 정보 칸
+    let info;
+    if(mode!=='all'&&styleT&&colT&&colT.x>styleT.x)info=T.filter(t=>t.x>=styleT.x-2&&t.x<colT.x-2&&t.base>styleT.top&&t.top<footY-4);
+    else info=T.filter(t=>t.x>=px1-2&&t.base>py0-14&&t.top<footY-4);  // 전체 정보 · Style 칸 없는 양식(AMBI)
+    let infoRight=info.length?((mode!=='all'&&styleT&&colT&&colT.x>styleT.x)?colT.x-6:Math.max.apply(null,info.map(t=>t.r))+8):px1;
+    let infoBot=info.length?Math.max.apply(null,info.map(t=>t.bot)):py1;
+    if(mode==='all'&&infoImgs.length){infoRight=Math.max(infoRight,Math.max.apply(null,infoImgs.map(b=>b.x1))+6);infoBot=Math.max(infoBot,Math.max.apply(null,infoImgs.map(b=>b.y1)));} // 전체 정보면 변경 내역 상자까지
+    const L=Math.max(0,Math.min(px0,titleT.x)-8);
+    const Tp=Math.max(0,Math.min(py0,titleT.top)-8);
+    const R=Math.min(W,Math.max(px1+8,infoRight));
+    let B=Math.min(footY-6,H,Math.max(py1,infoBot)+10);
+    if(mode!=='all')infoImgs.forEach(b=>{if(b.x0<R&&b.y0>py1-2&&b.y0>Tp+20)B=Math.min(B,Math.max(py1+4,b.y0-3));}); // Style만 자를 땐 변경 내역 상자 테두리가 걸치지 않게
+    const scale=Math.max(1.5,Math.min(3,1500/(R-L)));
+    const cv=document.createElement('canvas');cv.width=Math.round((R-L)*scale);cv.height=Math.round((B-Tp)*scale);
+    const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+    await page.render({canvasContext:ctx,viewport:page.getViewport({scale:scale,offsetX:-L*scale,offsetY:-Tp*scale}),intent:'print'}).promise; // print = 다른 탭에 가 있어도 멈추지 않고 그림
+    ctx.fillStyle='#fff';masks.concat(mode!=='all'?infoImgs:[]).forEach(b=>ctx.fillRect((b.x0-L)*scale-3,(b.y0-Tp)*scale-3,(b.x1-b.x0)*scale+6,(b.y1-b.y0)*scale+6)); // 바코드 가리기 (+ Style만 자를 땐 수정본의 변경 내역 상자도)
+    const blob=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('이미지 만들기 실패')),'image/png'));
+    // 캡션용 정보
+    const after=lab=>{const i=T.findIndex(t=>t.s===lab);return i>=0&&T[i+1]?T[i+1].s:'';};
+    const ol=T.find(t=>/^Order\s+S?\d+/i.test(t.s)&&t.base<footY);
+    return {blob:blob,w:cv.width,h:cv.height,info:{title:titleT.s,model:after('Glove Model'),orderLine:ol?ol.s:''}};
+  }finally{try{pdf.destroy();}catch(e){}}
+}
+
+// ── 캡션: 「폴더날짜 번호 폴더이름」 + 끝에 붙일 말 (예: 0923 WZCWYRVA TRAVELFIT / TARGET) ──
+function occAutoCap(c){
+  const cand=c.cand[c.pick];let mmdd='',word='';
+  if(cand){
+    const segs=cand.path.split('/').slice(0,-1).reverse(); // 가까운 폴더부터
+    for(const s of segs){const m=s.match(/^(\d{4})\s+(.+?)(?:\s+\d+)?$/);if(m&&+m[1].slice(0,2)>=1&&+m[1].slice(0,2)<=12&&+m[1].slice(2)>=1&&+m[1].slice(2)<=31){mmdd=m[1];word=(m[2].split(/[_\s]+/)[0]||'').toUpperCase();break;}}
+  }
+  if((!word||/^(ORDERS?|GLOVES?|GLOVE-ORDERS.*)$/.test(word))&&c.info&&c.info.model)word=c.info.model.toUpperCase(); // 「ORDERS」 폴더면 PDF의 Glove Model
+  const sfx=($('occ-suffix').value||'').trim();
+  let id=c.key;if(/^S\d+-\d+$/i.test(id)&&cand&&window.k44GloveId){const g=window.k44GloveId(cand.name);if(g)id=g.id;} // S158826-1 로 찾아도 캡션은 Glove ID
+  return [mmdd,id,word].filter(Boolean).join(' ')+(sfx?' '+sfx:'');
+}
+function occMode(){const r=document.querySelector('input[name="occ-mode"]:checked');return r?r.value:'style';}
+function occCardHtml(c,i){
+  const cand=c.cand[c.pick];
+  let h='<div class="occ-ch"><span class="occ-no">'+(i+1)+'</span><span class="occ-id">'+esc(c.key)+'</span><span class="occ-path" title="'+esc(cand?cand.path:'')+'">'+(cand?'&lrm;'+esc(cand.path)+'&lrm;':'')+'</span></div>'; // &lrm; = 오른쪽 정렬(앞부분 … 생략)에서 「44/_GLOVE」가 「…pdf_/44」로 뒤집히지 않게
+  if(!c.cand.length)return h+'<div class="occ-msg">❌ 폴더에서 이 번호의 PDF를 찾지 못했어요<br><span style="color:var(--text3);font-size:12px">번호가 맞는지, 그 PDF가 고른 폴더 안에 있는지 확인하세요</span></div>';
+  if(c.err)h+='<div class="occ-msg">⚠ '+esc(c.err)+'</div>';
+  else if(!c.url)h+='<div class="occ-msg wait">⏳ 만드는 중…</div>';
+  else h+='<div class="occ-imgw"><img src="'+c.url+'" alt="'+esc(c.key)+'"></div>';
+  if(c.url){
+    h+='<div class="occ-cap"><input type="text" data-occcap="'+i+'" value="'+esc(c.cap)+'" title="캡션 — 직접 고쳐도 됨"><button type="button" data-occ="cap" data-i="'+i+'">📋 캡션</button></div>';
+    h+='<div class="occ-acts"><button type="button" data-occ="img" data-i="'+i+'">📋 이미지 복사</button><button type="button" data-occ="png" data-i="'+i+'">⬇ PNG</button>';
+    if(c.cand.length>1)h+='<select data-occalt="'+i+'" title="같은 번호 파일 '+c.cand.length+'개 — 다른 파일로 바꾸기">'+c.cand.map((x,j)=>'<option value="'+j+'"'+(j===c.pick?' selected':'')+'>'+esc(x.path)+'</option>').join('')+'</select>';
+    h+='</div>';
+  }
+  return h;
+}
+function occDrawCard(i){const el=document.getElementById('occ-c'+i);const c=occCards[i];if(!el||!c)return;el.className='occ-card'+(c.cand.length&&!c.err?'':' miss');el.innerHTML=occCardHtml(c,i);}
+function occSummary(){
+  const ok=occCards.filter(c=>c.url).length,miss=occCards.filter(c=>!c.cand.length).length,err=occCards.filter(c=>c.err).length,dup=occCards.filter(c=>c.cand.length>1).length;
+  $('occ-sum').innerHTML='카드 <b>'+ok+'</b>장'+(miss?' · <b style="color:#b91c1c">못 찾음 '+miss+'</b>':'')+(err?' · <b style="color:#b91c1c">오류 '+err+'</b>':'')+(dup?' · 같은 번호 파일 여러 개 '+dup+' (카드 아래에서 바꾸기)':'');
+}
+async function occMake(c,mode){
+  const cand=c.cand[c.pick];
+  try{
+    const r=await occRenderPdf(await cand.get(),mode);
+    if(c.url)URL.revokeObjectURL(c.url);
+    c.blob=r.blob;c.url=URL.createObjectURL(r.blob);c.info=r.info;c.err='';
+    if(!c.capEdited)c.cap=occAutoCap(c);
+  }catch(e){console.error('[occ] 카드',c.key,e);c.err='PDF를 읽지 못했어요: '+(e.message||e);c.blob=null;}
+}
+async function occRun(){
+  const keys=occParseIds($('occ-ids').value);
+  if(!keys.length){alert('오더 번호를 먼저 입력하세요.');return;}
+  if(occScanP){await occScanP;}
+  if(!occIndex&&!occDropped.size){alert('오더 폴더를 먼저 선택하거나, 오더 PDF를 끌어다 놓으세요.');return;}
+  if(typeof pdfjsLib==='undefined'){alert('PDF 모듈이 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요.');return;}
+  const tok=++occRunTok;const mode=occMode();
+  occClearSheets(); // 예전 카드로 만든 합본은 지움
+  occCards.forEach(c=>{if(c.url)URL.revokeObjectURL(c.url);});
+  occCards=keys.map(k=>({key:k,cand:occCandidates(k),pick:0,blob:null,url:'',cap:'',capEdited:false,err:'',info:null}));
+  $('occ-grid').innerHTML=occCards.map((c,i)=>'<div class="occ-card" id="occ-c'+i+'"></div>').join('');
+  occCards.forEach((c,i)=>occDrawCard(i));
+  $('occ-out').style.display='';occSummary();
+  const todo=occCards.filter(c=>c.cand.length);let done=0;
+  $('occ-runBtn').disabled=true;setProg(0.02);
+  try{
+    for(let i=0;i<occCards.length;i++){
+      const c=occCards[i];if(!c.cand.length)continue;
+      if(tok!==occRunTok)return;
+      setStatus('카드 만드는 중… '+(done+1)+' / '+todo.length);
+      await occMake(c,mode);
+      if(tok!==occRunTok)return;
+      occDrawCard(i);done++;setProg(done/Math.max(1,todo.length));occSummary();
+    }
+    setStatus('완료 — 카드 '+occCards.filter(c=>c.url).length+'장');
+  }finally{if(tok===occRunTok){$('occ-runBtn').disabled=false;setTimeout(()=>setProg(null),400);}}
+}
+function occDownload(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);}
+function occFileName(c,i){return String(i+1).padStart(2,'0')+'_'+c.key.replace(/[^0-9A-Za-z-]/g,'')+'.png';}
+function occCopyText(s){
+  const done=()=>toast('복사했어요');
+  const fb=()=>{const ta=document.createElement('textarea');ta.value=s;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done,fb);else fb();
+}
+
+// ── 화면 연결 ──
+let _occT=null;
+function occShowIds(){
+  const keys=occParseIds($('occ-ids').value);const box=$('occ-idChips');
+  box.innerHTML=keys.length?('<b style="color:var(--text)">'+keys.length+'개</b> '+keys.slice(0,80).map(k=>'<span class="occ-chip">'+esc(k)+'</span>').join('')+(keys.length>80?' …':'')):'';
+}
+$('occ-ids').addEventListener('input',()=>{clearTimeout(_occT);_occT=setTimeout(occShowIds,150);});
+$('occ-dirBtn').addEventListener('click',async()=>{
+  if(window.showDirectoryPicker){
+    try{occUseHandle(await window.showDirectoryPicker({mode:'read',id:'k44-order-card'}),true);}
+    catch(e){if(e.name!=='AbortError')alert('폴더 선택 실패: '+e.message);}
+  }else $('occ-dirInput').click(); // Safari 등: 폴더 업로드 방식
+});
+$('occ-recentBtn').addEventListener('click',async()=>{
+  const h=occRecent;if(!h)return;
+  try{let p=await h.queryPermission({mode:'read'});if(p!=='granted')p=await h.requestPermission({mode:'read'});if(p!=='granted')return;occUseHandle(h,false);}
+  catch(e){alert('최근 폴더를 열 수 없습니다. 「폴더 선택」으로 다시 골라주세요.\n'+(e.message||e));occRecentBtn(null);}
+});
+$('occ-rescanBtn').addEventListener('click',()=>{if(occDirHandle)occUseHandle(occDirHandle,false);else toast('폴더를 다시 선택하세요');});
+$('occ-dirInput').addEventListener('change',()=>{
+  const files=[...($('occ-dirInput').files||[])];$('occ-dirInput').value='';if(!files.length)return;
+  const map=new Map();let n=0,top='';
+  files.forEach(f=>{const rp=f.webkitRelativePath||f.name;const i=rp.indexOf('/');if(!top&&i>0)top=rp.slice(0,i);if(/\.pdf$/i.test(f.name)){n++;occAdd(map,f.name,i>0?rp.slice(i+1):rp,()=>Promise.resolve(f));}});
+  occScanTok++;occDirHandle=null;occIndex={map:map,n:n,label:top||'선택한 폴더'};occScanP=null;
+  $('occ-dirName').textContent='📁 '+occIndex.label+' — PDF '+n.toLocaleString()+'개';$('occ-rescanBtn').style.display='none';occNotify();
+});
+(function(){ // PDF 끌어다 놓기
+  const page=$('page-order-card'),zone=$('occ-drop');
+  const hasFiles=e=>e.dataTransfer&&[...(e.dataTransfer.types||[])].indexOf('Files')>=0;
+  page.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();zone.classList.add('on');});
+  page.addEventListener('dragleave',e=>{if(e.target===zone||!page.contains(e.relatedTarget))zone.classList.remove('on');});
+  page.addEventListener('drop',e=>{
+    if(!hasFiles(e))return;e.preventDefault();zone.classList.remove('on');
+    const fs=[...e.dataTransfer.files].filter(f=>/\.pdf$/i.test(f.name));let n=0,skip=0;
+    fs.forEach(f=>{if(occAdd(occDropped,f.name,'(끌어놓은 파일) '+f.name,()=>Promise.resolve(f)))n++;else skip++;});
+    zone.textContent='끌어놓은 오더 PDF '+[...new Set([...occDropped.values()].flat().map(x=>x.path))].length+'개'+(skip?' · 번호를 못 읽은 파일 '+skip+'개 제외':'')+' — 더 끌어다 놓을 수 있어요';occNotify();
+    if(n&&!occParseIds($('occ-ids').value).length){ // 번호를 안 적었으면 끌어놓은 파일 번호로 채움
+      $('occ-ids').value=fs.map(f=>occKeyOfName(f.name)).filter(Boolean).join('\n');occShowIds();
+    }
+  });
+})();
+$('occ-runBtn').addEventListener('click',occRun);
+document.querySelectorAll('input[name="occ-mode"]').forEach(r=>r.addEventListener('change',()=>{if(occCards.some(c=>c.url))occRun();}));
+$('occ-suffix').addEventListener('input',()=>{
+  try{localStorage.setItem('k44_occ_suffix',$('occ-suffix').value);}catch(e){}
+  occCards.forEach((c,i)=>{if(c.url&&!c.capEdited){c.cap=occAutoCap(c);const inp=document.querySelector('#occ-grid [data-occcap="'+i+'"]');if(inp)inp.value=c.cap;}});
+});
+try{const s=localStorage.getItem('k44_occ_suffix');if(s)$('occ-suffix').value=s;}catch(e){}
+$('occ-grid').addEventListener('input',e=>{const t=e.target;if(t.dataset.occcap==null)return;const c=occCards[+t.dataset.occcap];if(c){c.cap=t.value;c.capEdited=true;}});
+$('occ-grid').addEventListener('change',async e=>{
+  const t=e.target;if(t.dataset.occalt==null)return;const i=+t.dataset.occalt;const c=occCards[i];if(!c)return;
+  c.pick=+t.value;if(c.url){URL.revokeObjectURL(c.url);c.url='';}occDrawCard(i);
+  await occMake(c,occMode());occDrawCard(i);occSummary();
+});
+$('occ-grid').addEventListener('click',e=>{
+  const b=e.target.closest('[data-occ]');if(!b)return;const i=+b.dataset.i;const c=occCards[i];if(!c)return;
+  if(b.dataset.occ==='cap'){occCopyText(c.cap);return;}
+  if(b.dataset.occ==='png'){if(c.blob)occDownload(c.blob,occFileName(c,i));return;}
+  if(b.dataset.occ==='img'){
+    if(!c.blob)return;
+    if(!window.ClipboardItem||!navigator.clipboard||!navigator.clipboard.write){alert('이 브라우저는 이미지 복사를 지원하지 않아요. 「⬇ PNG」로 저장해서 보내주세요.');return;}
+    navigator.clipboard.write([new ClipboardItem({'image/png':c.blob})]).then(()=>toast('이미지를 복사했어요 — 채팅창에 붙여넣기(⌘V / Ctrl+V)'),err=>alert('이미지 복사 실패: '+(err.message||err)+'\n「⬇ PNG」로 저장해서 보내주세요.'));
+  }
+});
+$('occ-capAllBtn').addEventListener('click',()=>{const t=occCards.filter(c=>c.url).map(c=>c.cap).join('\n');if(!t){toast('복사할 캡션이 없어요');return;}occCopyText(t);});
+$('occ-zipBtn').addEventListener('click',async()=>{
+  const ok=occCards.map((c,i)=>({c:c,i:i})).filter(x=>x.c.blob);
+  if(!ok.length){toast('저장할 카드가 없어요');return;}
+  if(typeof JSZip==='undefined'){ok.forEach(x=>occDownload(x.c.blob,occFileName(x.c,x.i)));return;} // ZIP 모듈이 없으면 한 장씩
+  const z=new JSZip();ok.forEach(x=>z.file(occFileName(x.c,x.i),x.c.blob));
+  z.file('captions.txt',ok.map(x=>x.c.cap).join('\r\n'));
+  const d=new Date();const ymd=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  occDownload(await z.generateAsync({type:'blob'}),'오더카드_'+ymd+'.zip');
+});
+
+// ── 한 장으로 합치기: [카드 이미지 + 아래 캡션] 묶음을 한 줄에 N개씩 한 장에 ──
+const OCC_FONT="'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif";
+let occSheets=[];
+function occYmd(){const d=new Date();return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');}
+function occLoadImgEl(blob){return new Promise((res,rej)=>{const u=URL.createObjectURL(blob);const im=new Image();im.onload=()=>{res(im);setTimeout(()=>URL.revokeObjectURL(u),0);};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('카드 이미지를 읽지 못했어요'));};im.src=u;});}
+function occLoadBmp(blob){return window.createImageBitmap?createImageBitmap(blob).catch(()=>occLoadImgEl(blob)):occLoadImgEl(blob);}
+function occWrapText(ctx,text,maxW){ // 캡션이 카드 폭보다 길면 줄바꿈 (한 단어가 너무 길면 글자 단위)
+  const out=[];
+  String(text||'').split(/\n/).forEach(para=>{
+    let cur='';
+    para.split(/\s+/).filter(Boolean).forEach(w=>{
+      const t=cur?cur+' '+w:w;
+      if(ctx.measureText(t).width<=maxW){cur=t;return;}
+      if(cur)out.push(cur);
+      let piece='';for(const ch of w){if(piece&&ctx.measureText(piece+ch).width>maxW){out.push(piece);piece=ch;}else piece+=ch;}
+      cur=piece;
+    });
+    if(cur)out.push(cur);
+  });
+  return out;
+}
+function occRRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+async function occBuildSheets(items,perRow,perSheet){
+  const UW=1000,PAD=22,GAP=30,M=40,FS=40,LH=54,CG=18,MAXA=32e6,MAXH=16000; // 카드 폭 1000px · 너무 크면(브라우저 한계) 여러 장으로
+  try{if(document.fonts&&document.fonts.load)await document.fonts.load('700 '+FS+'px '+OCC_FONT);}catch(e){}
+  const meas=document.createElement('canvas').getContext('2d');meas.font='700 '+FS+'px '+OCC_FONT;
+  const units=[];
+  for(const it of items){
+    const bmp=await occLoadBmp(it.blob);
+    const ih=Math.round(bmp.height*UW/bmp.width);
+    const lines=occWrapText(meas,it.cap,UW);
+    units.push({bmp:bmp,ih:ih,lines:lines,h:PAD+ih+(lines.length?CG+lines.length*LH:0)+PAD});
+  }
+  const cellW=UW+PAD*2;
+  const size=list=>{const cols=Math.min(perRow,list.length);let H=M*2,rows=0;for(let i=0;i<list.length;i+=perRow){H+=Math.max.apply(null,list.slice(i,i+perRow).map(u=>u.h));rows++;}return {W:M*2+cols*cellW+(cols-1)*GAP,H:H+(rows-1)*GAP};};
+  const groups=[];
+  for(let i=0;i<units.length;){
+    let n=Math.min(perSheet,units.length-i);
+    while(n>perRow){const s=size(units.slice(i,i+n));if(s.W*s.H<=MAXA&&s.H<=MAXH)break;n-=perRow;}
+    groups.push(units.slice(i,i+n));i+=n;
+  }
+  const out=[];
+  for(const g of groups){
+    const s=size(g);const cv=document.createElement('canvas');cv.width=s.W;cv.height=s.H;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#eef1f6';ctx.fillRect(0,0,s.W,s.H);
+    let y=M;
+    for(let r=0;r<g.length;r+=perRow){
+      const row=g.slice(r,r+perRow);const rowH=Math.max.apply(null,row.map(u=>u.h));
+      row.forEach((u,k)=>{
+        const x=M+k*(cellW+GAP);
+        ctx.save();ctx.shadowColor='rgba(15,23,42,.12)';ctx.shadowBlur=16;ctx.shadowOffsetY=4;ctx.fillStyle='#fff';occRRect(ctx,x,y,cellW,rowH,16);ctx.fill();ctx.restore();
+        ctx.strokeStyle='#d6dce6';ctx.lineWidth=2;occRRect(ctx,x,y,cellW,rowH,16);ctx.stroke();
+        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+        ctx.drawImage(u.bmp,x+PAD,y+PAD,UW,u.ih);
+        if(u.lines.length){
+          const y0=y+PAD+u.ih+CG;
+          ctx.fillStyle='#e5e7eb';ctx.fillRect(x+PAD,y0-Math.round(CG/2)-1,UW,2); // 사진과 캡션 사이 가는 선
+          ctx.fillStyle='#111827';ctx.font='700 '+FS+'px '+OCC_FONT;ctx.textBaseline='alphabetic';
+          u.lines.forEach((ln,j)=>ctx.fillText(ln,x+PAD,y0+j*LH+Math.round(LH*0.78)));
+        }
+      });
+      y+=rowH+GAP;
+    }
+    const blob=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('합친 이미지를 만들지 못했어요 — 「한 장에」 개수를 줄여 보세요')),'image/png'));
+    out.push({blob:blob,n:g.length,w:s.W,h:s.H});
+    cv.width=cv.height=0;
+  }
+  units.forEach(u=>{try{if(u.bmp.close)u.bmp.close();}catch(e){}});
+  return out;
+}
+function occClearSheets(){occSheets.forEach(s=>{if(s.url)URL.revokeObjectURL(s.url);});occSheets=[];const b=$('occ-sheets');if(b)b.innerHTML='';}
+function occShowSheets(list){
+  occClearSheets();
+  occSheets=list.map(s=>Object.assign(s,{url:URL.createObjectURL(s.blob)}));
+  $('occ-sheets').innerHTML=occSheets.map((s,i)=>'<div class="occ-sheet"><div class="occ-sheet-h">🧩 합본'+(occSheets.length>1?' '+(i+1)+' / '+occSheets.length:'')+' <span>카드 '+s.n+'개 · '+s.w+'×'+s.h+'px</span><span style="margin-left:auto"></span>'
+    +'<button type="button" data-occsheet="copy" data-i="'+i+'">📋 이미지 복사</button><button type="button" data-occsheet="png" data-i="'+i+'">⬇ PNG</button>'+(i===0?'<button type="button" data-occsheet="close" title="합본 미리보기 닫기">✕ 닫기</button>':'')+'</div><img src="'+s.url+'" alt="합본 '+(i+1)+'"></div>').join('');
+}
+function occSheetName(i){return '오더카드_합본_'+occYmd()+(occSheets.length>1?'_'+(i+1):'')+'.png';}
+try{const o=JSON.parse(localStorage.getItem('k44_occ_sheet')||'null');if(o){if(o.r)$('occ-perRow').value=o.r;if(o.s)$('occ-perSheet').value=o.s;}}catch(e){}
+$('occ-sheetBtn').addEventListener('click',async()=>{
+  const ok=occCards.filter(c=>c.blob);
+  if(!ok.length){toast('합칠 카드가 없어요 — 먼저 「카드 만들기」를 눌러 주세요');return;}
+  const perRow=+$('occ-perRow').value||3;const ps=$('occ-perSheet').value;const perSheet=ps==='all'?ok.length:Math.max(perRow,+ps||12);
+  try{localStorage.setItem('k44_occ_sheet',JSON.stringify({r:$('occ-perRow').value,s:ps}));}catch(e){}
+  const btn=$('occ-sheetBtn');const old=btn.textContent;btn.disabled=true;btn.textContent='⏳ 합치는 중…';
+  try{
+    const list=await occBuildSheets(ok.map(c=>({blob:c.blob,cap:c.cap})),perRow,perSheet);
+    occShowSheets(list);
+    if(occSheets.length===1)occDownload(occSheets[0].blob,occSheetName(0));
+    else if(typeof JSZip!=='undefined'){const z=new JSZip();occSheets.forEach((s,i)=>z.file(occSheetName(i),s.blob));occDownload(await z.generateAsync({type:'blob'}),'오더카드_합본_'+occYmd()+'.zip');}
+    else occSheets.forEach((s,i)=>occDownload(s.blob,occSheetName(i)));
+    toast(occSheets.length===1?'카드 '+ok.length+'개를 한 장으로 저장했어요':'카드 '+ok.length+'개를 '+occSheets.length+'장으로 나눠 저장했어요 (ZIP)',3500);
+    $('occ-sheets').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){console.error('[occ] 합치기',e);alert('합치기 실패: '+(e.message||e));}
+  finally{btn.disabled=false;btn.textContent=old;}
+});
+$('occ-sheets').addEventListener('click',e=>{
+  const b=e.target.closest('[data-occsheet]');if(!b)return;const a=b.dataset.occsheet;const s=occSheets[+b.dataset.i];
+  if(a==='close'){occClearSheets();return;}
+  if(!s)return;
+  if(a==='png'){occDownload(s.blob,occSheetName(+b.dataset.i));return;}
+  if(a==='copy'){
+    if(!window.ClipboardItem||!navigator.clipboard||!navigator.clipboard.write){alert('이 브라우저는 이미지 복사를 지원하지 않아요. 「⬇ PNG」로 저장해서 보내주세요.');return;}
+    navigator.clipboard.write([new ClipboardItem({'image/png':s.blob})]).then(()=>toast('합본 이미지를 복사했어요 — 채팅창에 붙여넣기(⌘V / Ctrl+V)'),err=>alert('이미지 복사 실패: '+(err.message||err)+'\n「⬇ PNG」로 저장해서 보내주세요.'));
+  }
+});
+// ── 「오더 변경」 페이지와 폴더·파일 색인 공유 (한 번 고른 폴더를 두 페이지가 같이 씀) ──
+function occNotify(){(window.__occSubs||[]).forEach(f=>{try{f();}catch(e){console.warn(e);}});}
+window.k44Orders={
+  tokKey:occTokKey,keyOfName:occKeyOfName,candidates:occCandidates,
+  ready:()=>occScanP?occScanP.catch(()=>{}):Promise.resolve(),
+  hasSource:()=>!!(occIndex||occDropped.size),
+  status:()=>({text:$('occ-dirName').textContent,rescan:$('occ-rescanBtn').style.display!=='none',recent:(occRecent&&$('occ-recentBtn').style.display!=='none')?$('occ-recentBtn').textContent:''}),
+  pick:()=>$('occ-dirBtn').click(),recent:()=>$('occ-recentBtn').click(),rescan:()=>$('occ-rescanBtn').click(),
+  root:()=>occDirHandle, // 「폴더 선택」으로 고른 폴더 (Chrome/Edge) — 쓰기 권한은 저장할 때 따로 물어봄
+  noteSaved:(name,path,dir,fh)=>{if(occIndex){occAdd(occIndex.map,name,path,()=>fh.getFile(),dir);}}, // 방금 저장한 파일도 바로 찾히게
+  addFiles:files=>{let n=0,skip=0;files.forEach(f=>{if(occAdd(occDropped,f.name,'(끌어놓은 파일) '+f.name,()=>Promise.resolve(f)))n++;else skip++;});
+    $('occ-drop').textContent='끌어놓은 오더 PDF '+[...new Set([...occDropped.values()].flat().map(x=>x.path))].length+'개 — 더 끌어다 놓을 수 있어요';occNotify();return {n:n,skip:skip};},
+  subscribe:fn=>{(window.__occSubs=window.__occSubs||[]).push(fn);}
+};
+window.occParseIds=occParseIds;window.occRenderPdf=occRenderPdf; // 점검용
+})();
+</script>
+
+<!-- ── 오더 변경: 오더번호 / 변경 내용 → 원본 오더 PDF 위에 바뀐 값을 표시한 수정본 (2026-11-03) ── -->
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+if(!$('page-order-revise'))return;
+const K=()=>window.k44Orders;
+let orvOrders=[],orvRunTok=0;
+function toast(msg,ms){const el=$('orv-toast');if(!el)return;el.textContent=msg;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('on'),ms||2600);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function ymd(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// PDF 편집 모듈(pdf-lib) — 이 페이지를 쓸 때만 불러옴
+let _libP=null;
+function orvLib(){
+  if(window.PDFLib)return Promise.resolve(window.PDFLib);
+  if(!_libP)_libP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';s.onload=()=>window.PDFLib?res(window.PDFLib):rej(new Error('PDF 편집 모듈 로드 실패'));s.onerror=()=>{_libP=null;rej(new Error('PDF 편집 모듈을 불러오지 못했어요 — 인터넷 연결을 확인하세요'));};document.head.appendChild(s);});
+  return _libP;
+}
+
+// ── ① 입력 해석: 「오더번호 / 항목: 새 값, 항목: 새 값」 또는 오더번호 줄 + 아래 줄마다 「항목: 새 값」 ──
+function orvSplit(s){return String(s||'').split(/\s*;\s*|\s*,\s*(?=[^,:=]{1,40}(?::|=|->|→))/).map(x=>x.trim()).filter(Boolean);}
+function orvItem(s){
+  const m=s.match(/^(.{1,60}?)\s*(?::|=>|->|→|=)\s*(.*)$/);
+  if(!m||!m[1].trim())return {note:s};
+  let v=m[2].trim();const a=v.split(/\s*(?:→|->|=>)\s*/);if(a.length>1)v=a[a.length-1].trim(); // 「기존 → 새 값」으로 적어도 새 값만
+  return {raw:m[1].trim(),val:v};
+}
+function orvParse(txt){
+  const out=[],by={};let cur=null,orphan=0;
+  String(txt||'').split(/\r?\n/).forEach(line=>{
+    const L=line.trim();if(!L)return;
+    const first=L.split(/[\s\/|,;:]+/)[0]||'';
+    const key=first?K().tokKey(first):null;
+    if(key&&/^([\s\/|,;:\-–]|$)/.test(L.slice(first.length))){
+      cur=by[key]||(by[key]={key:key,items:[]});if(out.indexOf(cur)<0)out.push(cur);
+      orvSplit(L.slice(first.length).replace(/^\s*[\/|,;:\-–]?\s*/,'')).forEach(s=>cur.items.push(orvItem(s)));
+    }else if(cur)orvSplit(L).forEach(s=>cur.items.push(orvItem(s)));
+    else orphan++;
+  });
+  out.orphan=orphan;
+  return out;
+}
+
+// ── ② PDF에서 항목·값 읽기: 굵은 글꼴 = 항목 이름, 보통 글꼴 = 값, 들여쓴 항목 = 하위 항목(예: Thumb Text › Text) ──
+async function orvReadFields(bytes){
+  const pdf=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
+  try{
+    const page=await pdf.getPage(1);const vp=page.getViewport({scale:1});
+    const tc=await page.getTextContent();
+    const T=[];
+    tc.items.forEach(it=>{const s=String(it.str||'').replace(/\s+/g,' ').trim();if(!s)return;T.push({s:s,x:it.transform[4],y:it.transform[5],fs:Math.hypot(it.transform[2],it.transform[3])||7,w:it.width||0,font:it.fontName});});
+    const HN=['Style','Colors','Personalization'];
+    const heads=T.filter(t=>HN.indexOf(t.s)>=0);
+    if(!heads.length)throw new Error('이 PDF에서 Style · Colors · Personalization 칸을 찾지 못했어요');
+    const headFs=Math.min.apply(null,heads.map(h=>h.fs)),labFont=heads[0].font;
+    const foot=T.filter(t=>/^Order:/i.test(t.s)).sort((a,b)=>a.y-b.y)[0];const footY=foot?foot.y:-1;
+    const minX=Math.min.apply(null,heads.map(h=>h.x))-3;
+    const xs=[...new Set(heads.map(h=>Math.round(h.x)))].sort((a,b)=>a-b);
+    const colRight=x=>{const nx=xs.find(v=>v>x+20);return (nx!=null?nx:vp.width-8)-6;};
+    const colOf=t=>{let b=null;heads.forEach(h=>{if(h.x<=t.x+2&&h.y>=t.y-1&&(!b||h.x>b.x+0.5||(Math.abs(h.x-b.x)<=0.5&&h.y<b.y)))b=h;});return b;};
+    const groups=new Map();
+    T.filter(t=>heads.indexOf(t)<0&&t.x>=minX&&t.y>footY+2).forEach(t=>{const h=colOf(t);if(!h)return;if(!groups.has(h))groups.set(h,[]);groups.get(h).push(t);});
+    const fields=[];
+    [...groups.keys()].sort((a,b)=>a.x-b.x||b.y-a.y).forEach(h=>{
+      const items=groups.get(h).sort((a,b)=>b.y-a.y||a.x-b.x);
+      const rows=[];
+      items.forEach(t=>{const l=rows[rows.length-1];if(l&&Math.abs(l.y-t.y)<0.6&&l.font===t.font&&t.x>=l.x){const gap=t.x-(l.x+l.w);l.s+=(gap>t.fs*0.12?' ':'')+t.s;l.w=Math.max(l.w,t.x+t.w-l.x);}else rows.push(Object.assign({},t));});
+      let cur=null,top=null;
+      rows.forEach(t=>{
+        if(t.font===labFont&&t.fs<headFs-0.2){
+          const nested=t.x>h.x+4;
+          const f={col:h.s,label:t.s,parent:(nested&&top)?top.label:'',lab:t,lines:[],maxX:colRight(h.x)};
+          if(!nested)top=f;fields.push(f);cur=f;
+        }else if(cur)cur.lines.push(t);
+      });
+    });
+    const ds=fields.filter(f=>f.lines.length).map(f=>f.lab.y-f.lines[0].y).sort((a,b)=>a-b);
+    const dy=ds.length?ds[Math.floor(ds.length/2)]:9;
+    const seen={};
+    fields.forEach(f=>{f.value=f.lines.map(l=>l.s).join(' ');f.dy=dy;const nm=(f.parent?f.parent+' › ':'')+f.label;seen[nm]=(seen[nm]||0)+1;f.name=nm+(seen[nm]>1?' ('+seen[nm]+')':'');f.id=f.col+'|'+f.name;});
+    const regionX=Math.min.apply(null,heads.map(h=>h.x));
+    const colText=T.filter(t=>t.x>=regionX-3&&t.y>footY+2);
+    const lowest=colText.length?Math.min.apply(null,colText.map(t=>t.y-t.fs*0.35)):vp.height*0.5;
+    return {fields:fields,W:vp.width,H:vp.height,regionX:regionX,lowest:lowest};
+  }finally{try{pdf.destroy();}catch(e){}}
+}
+
+// ── ③ 입력한 항목 이름 → PDF 항목 (영어 이름 그대로 · 일부 한글 · 「Color」 생략 · 부분 일치) ──
+const ORV_KO=[['새끼손가락','pinky'],['새끼','pinky'],['엄지','thumb'],['손바닥','palm'],['팜','palm'],['레이싱','lacing'],['레이스','laces'],['끈','laces'],['웹','web'],['스티칭','stitching'],['스티치','stitching'],['웰팅','welting'],['바인딩','binding'],['손목','wrist'],['로고','logo'],['사이즈','size'],['크기','size'],['모델','model'],['텍스트','text'],['문구','text'],['각인','text'],['자수','text'],['글씨체','font'],['폰트','font'],['글씨','text'],['실','thread'],['색상','color'],['컬러','color'],['색','color'],['가죽','leather'],['패치','patch'],['국기','flag'],['깃발','flag'],['윙팁','wingtip'],['스탬프','stamp'],['타입','type'],['경도','stiffness'],['안감','lining'],['특이사항','special instructions'],['요청사항','special instructions']];
+function orvNorm(s){let t=String(s||'').toLowerCase();ORV_KO.forEach(p=>{t=t.split(p[0]).join(' '+p[1]+' ');});return t.replace(/[^0-9a-z]+/g,'');}
+function orvRedirect(fields,f,val){ // 「Thumb Text: J. SMITH」 → Yes/No 칸이면 그 아래 Text 칸으로
+  if(!/^(yes|no)$/i.test(f.value)||/^(yes|no)$/i.test(String(val||'').trim()))return f;
+  const kids=fields.filter(k=>k.parent===f.label&&k.col===f.col);
+  return kids.find(k=>/^text$/i.test(k.label))||(kids.length===1?kids[0]:f);
+}
+function orvMatch(fields,raw,val){
+  const q=orvNorm(raw);if(!q)return {cands:[]};
+  const strip=s=>s.replace(/colou?r$/,''),full=f=>orvNorm((f.parent?f.parent+' ':'')+f.label),lab=f=>orvNorm(f.label);
+  const tries=[f=>full(f)===q,f=>lab(f)===q,f=>strip(full(f))===strip(q)||strip(lab(f))===strip(q),
+    f=>{const a=strip(full(f)),b=strip(q);return b.length>=3&&(a.indexOf(b)>=0||(a.length>=4&&b.indexOf(a)>=0));}];
+  for(const t of tries){
+    let c=fields.filter(t);
+    if(c.length>1){const tops=c.filter(f=>!f.parent);if(tops.length===1)c=tops;}
+    if(c.length===1)return {field:orvRedirect(fields,c[0],val),cands:c};
+    if(c.length>1)return {cands:c};
+  }
+  return {cands:[]};
+}
+
+// ── ④ 수정본 만들기 (pdf-lib): 옛 값 지우기 → 노란 형광 + 빨간 굵은 새 값 → 왼쪽 빨간 줄 · REVISED 도장 · 변경 내역 상자 ──
+function orvMeasure(font,s,size){try{return font.widthOfTextAtSize(s,size);}catch(e){const c=orvMeasure._c||(orvMeasure._c=document.createElement('canvas').getContext('2d'));c.font='700 100px Arial, Helvetica, sans-serif';return c.measureText(s).width*size/100;}}
+function orvWrap(font,s,size,maxW){
+  const out=[];let cur='';
+  String(s).split(/\s+/).filter(Boolean).forEach(w=>{
+    const t=cur?cur+' '+w:w;
+    if(orvMeasure(font,t,size)<=maxW){cur=t;return;}
+    if(cur)out.push(cur);
+    let piece='';for(const ch of w){if(piece&&orvMeasure(font,piece+ch,size)>maxW){out.push(piece);piece=ch;}else piece+=ch;}
+    cur=piece;
+  });
+  if(cur)out.push(cur);
+  return out.length?out:[''];
+}
+async function orvPng(doc,bytesBlob){return doc.embedPng(await bytesBlob.arrayBuffer());}
+function orvCanvasBlob(cv){return new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('이미지 만들기 실패')),'image/png'));}
+// 글꼴(Helvetica)로 못 쓰는 글자(한글 등)는 그림으로 그려 넣음
+async function orvDrawText(doc,page,font,s,x,base,size,rgb,css){
+  try{font.encodeText(s);page.drawText(s,{x:x,y:base,size:size,font:font,color:rgb});return;}catch(e){}
+  const S=5;const cv=document.createElement('canvas');const ctx=cv.getContext('2d');const f='700 '+(size*S)+"px Arial, Helvetica, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
+  ctx.font=f;const w=Math.ceil(ctx.measureText(s).width)+4;const h=Math.ceil(size*S*1.32);
+  cv.width=w;cv.height=h;ctx.font=f;ctx.fillStyle=css;ctx.textBaseline='alphabetic';ctx.fillText(s,2,Math.round(size*S));
+  const png=await orvPng(doc,await orvCanvasBlob(cv));
+  page.drawImage(png,{x:x-2/S,y:base-(h/S-size),width:w/S,height:h/S});
+}
+// 변경 내역 상자 (그림으로 — 한글 메모도 그대로)
+function orvLogCanvas(entries,widthPt,hasColor){
+  const S=4,P=7,FS=7.2,LH=10.2,TFS=8.6;
+  const fam="Arial, Helvetica, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
+  const fnt=(b,sz,it)=>(it?'italic ':'')+(b?'700 ':'400 ')+(sz*S)+'px '+fam;
+  const cv=document.createElement('canvas');const ctx=cv.getContext('2d');
+  const maxW=(widthPt-P*2)*S;
+  const lines=[];
+  const multi=new Set(entries.map(e=>e.d).filter(Boolean)).size>1; // 여러 번 고친 오더면 줄마다 날짜
+  entries.forEach(e=>{
+    const segs=(e.note?[{t:'• NOTE: ',b:1,c:'#1e3a8a'},{t:e.note,c:'#111827'}]
+      :[{t:'• '+e.name+': ',b:1,c:'#111827'}].concat(e.old!==''?[{t:e.old,c:'#6b7280',strike:1},{t:'  →  ',b:1,c:'#b91c1c'}]:[{t:'(new)  ',c:'#6b7280'}]).concat([{t:e.nw,b:1,c:'#b91c1c'}]))
+      .concat(multi&&e.d?[{t:'  ('+e.d.slice(5)+')',c:'#6b7280'}]:[]);
+    // 단어 단위 줄바꿈
+    let line=[],x=0;const words=[];
+    segs.forEach(sg=>{String(sg.t).split(/(\s+)/).filter(w=>w!=='').forEach(w=>words.push(Object.assign({},sg,{t:w})));});
+    words.forEach(w=>{ctx.font=fnt(w.b,FS);const ww=ctx.measureText(w.t).width;if(x+ww>maxW&&line.length&&!/^\s+$/.test(w.t)){lines.push(line);line=[];x=0;if(/^\s+$/.test(w.t))return;}if(!line.length&&/^\s+$/.test(w.t))return;line.push(Object.assign({},w,{x:x,ww:ww}));x+=ww;});
+    if(line.length)lines.push(line);
+  });
+  const foot=hasColor?'* The glove photos still show the ORIGINAL design — follow the changes above.':'';
+  const hPt=P+TFS*1.3+4+lines.length*LH+(foot?LH:0)+P-2;
+  cv.width=Math.round(widthPt*S);cv.height=Math.round(hPt*S);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.strokeStyle='#dc2626';ctx.lineWidth=1.4*S;ctx.strokeRect(0.7*S,0.7*S,cv.width-1.4*S,cv.height-1.4*S);
+  ctx.fillStyle='#fef2f2';ctx.fillRect(1.4*S,1.4*S,cv.width-2.8*S,(P+TFS*1.3)*S);
+  let y=(P+TFS)*S;
+  ctx.font=fnt(1,TFS);ctx.fillStyle='#b91c1c';ctx.fillText('REVISED '+ymd()+'  —  CHANGES ('+entries.length+')',P*S,y);
+  y+=(TFS*0.3+4)*S;
+  lines.forEach(line=>{y+=LH*S;line.forEach(w=>{ctx.font=fnt(w.b,FS);ctx.fillStyle=w.c;ctx.fillText(w.t,P*S+w.x,y-2*S);if(w.strike){ctx.fillRect(P*S+w.x,y-2*S-FS*S*0.32,w.ww,Math.max(1,0.6*S));}});});
+  if(foot){y+=LH*S;ctx.font=fnt(0,FS*0.92,1);ctx.fillStyle='#6b7280';ctx.fillText(foot,P*S,y-2*S);}
+  return {cv:cv,wPt:widthPt,hPt:hPt};
+}
+function orvApplied(o){
+  const byId={};(o.info?o.info.fields:[]).forEach(f=>{byId[f.id]=f;});
+  const done=[],loose=[],last={};
+  o.rows.forEach((r,j)=>{if(r.fid&&String(r.val||'').trim())last[r.fid]=j;}); // 같은 항목을 두 번 적으면 아래 줄이 적용
+  o.rows.forEach((r,j)=>{const v=String(r.val||'').trim();if(!v)return;const f=r.fid&&byId[r.fid];if(f){if(last[r.fid]===j)done.push({f:f,v:v,d:r.d||''});}else loose.push({raw:r.raw||'(항목 미지정)',v:v,d:r.d||''});});
+  return {done:done,loose:loose,last:last,notes:String(o.note||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)};
+}
+async function orvBuild(o){
+  const L=await orvLib();
+  const doc=await L.PDFDocument.load(o.bytes,{ignoreEncryption:true});
+  const page=doc.getPage(0);const W=o.info.W,H=o.info.H;
+  const bold=await doc.embedFont(L.StandardFonts.HelveticaBold);
+  const RED=L.rgb(0.80,0.07,0.07),YEL=L.rgb(1,0.89,0.25),WHITE=L.rgb(1,1,1);
+  const ap=orvApplied(o);
+  for(const c of ap.done){
+    const f=c.f;const fs=f.lines.length?f.lines[0].fs:f.lab.fs;
+    const x0=f.lines.length?Math.min.apply(null,f.lines.map(l=>l.x)):f.lab.x;
+    const slots=Math.max(1,f.lines.length);
+    const gap=f.lines.length>1?(f.lines[0].y-f.lines[1].y):fs*1.2;
+    const base0=f.lines.length?f.lines[0].y:f.lab.y-f.dy;
+    const maxW=Math.max(30,f.maxX-x0);
+    let size=fs,lines=orvWrap(bold,c.v,size,maxW);
+    while(lines.length>slots&&size>4.2){size-=0.25;lines=orvWrap(bold,c.v,size,maxW);}
+    f.lines.forEach(l=>page.drawRectangle({x:l.x-0.8,y:l.y-l.fs*0.3,width:l.w+1.6,height:l.fs*1.24,color:WHITE})); // 옛 값 지우기
+    let lastBase=base0;
+    for(let i=0;i<lines.length;i++){
+      const b=base0-i*gap;lastBase=b;const w=orvMeasure(bold,lines[i],size);
+      page.drawRectangle({x:x0-1.2,y:b-size*0.3,width:w+2.4,height:size*1.24,color:YEL});
+      await orvDrawText(doc,page,bold,lines[i],x0,b,size,RED,'#cc1212');
+    }
+    page.drawRectangle({x:x0-3.6,y:lastBase-size*0.32,width:1.5,height:(f.lab.y+f.lab.fs*0.85)-(lastBase-size*0.32),color:RED}); // 왼쪽 빨간 줄 (항목 이름~새 값)
+  }
+  // REVISED 도장 (오른쪽 위)
+  const st='REVISED  '+ymd();const sz=9;const sw=bold.widthOfTextAtSize(st,sz);
+  page.drawRectangle({x:W-14-sw-12,y:H-12-sz*1.9,width:sw+12,height:sz*1.9,color:RED});
+  page.drawText(st,{x:W-14-sw-6,y:H-12-sz*1.9+sz*0.6,size:sz,font:bold,color:WHITE});
+  // 변경 내역 상자: 칸들 아래 빈 곳 (모자라면 2쪽에)
+  const entries=ap.done.map(c=>({name:c.f.name,old:c.f.value,nw:c.v,d:c.d})).concat(ap.loose.map(c=>({name:c.raw,old:'',nw:c.v,d:c.d}))).concat(ap.notes.map(n=>({note:n})));
+  if(entries.length){
+    const hasColor=ap.done.some(c=>c.f.col==='Colors'||/colou?r|lace|leather|web|welting|stitch|binding|palm|wrist|logo|wingtip|pennant|mesh|strap|tips/i.test(c.f.label))||ap.loose.length>0;
+    const bx=o.info.regionX-4,bw=Math.min(W-12-bx,430);
+    const lg=orvLogCanvas(entries,bw,hasColor);
+    const png=await orvPng(doc,await orvCanvasBlob(lg.cv));
+    const top=o.info.lowest-6,bottom=10,avail=top-bottom;
+    if(lg.hPt<=avail)page.drawImage(png,{x:bx,y:top-lg.hPt,width:lg.wPt,height:lg.hPt});
+    else if(lg.hPt*0.75<=avail){const k=avail/lg.hPt;page.drawImage(png,{x:bx,y:bottom,width:lg.wPt*k,height:lg.hPt*k});}
+    else{const p2=doc.addPage([W,H]);p2.drawImage(png,{x:30,y:H-30-lg.hPt,width:lg.wPt,height:lg.hPt});p2.drawText('(continued) '+o.key,{x:30,y:H-22,size:8,font:bold,color:RED});}
+  }
+  // 변경 내역을 파일 안(문서 정보)에 기록 → 나중에 같은 오더를 또 고치면 이전 변경을 불러와 원본에서 다시 만듦
+  // 원본 PDF를 수정본 안에 첨부 → 원본을 지워도 나중에 같은 오더를 다시 고칠 때 원본에서 다시 만들 수 있음
+  try{await doc.attach(o.bytes,'k44-original.pdf',{mimeType:'application/pdf',description:'K44 original order PDF (used to re-revise this order)',creationDate:new Date(),modificationDate:new Date()});}catch(e){console.warn('[orv] 원본 첨부 실패',e);}
+  doc.setSubject('K44REV1:'+JSON.stringify({rows:o.rows.filter((r,j)=>String(r.val||'').trim()&&!(r.fid&&ap.last[r.fid]!==j)).map(r=>({fid:r.fid||'',raw:r.raw||'',val:String(r.val).trim(),d:r.d||ymd()})),notes:ap.notes}));
+  return await doc.save();
+}
+async function orvPreview(bytes){
+  const pdf=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
+  try{
+    const page=await pdf.getPage(1);const vp=page.getViewport({scale:1.9});
+    const cv=document.createElement('canvas');cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+    const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+    await page.render({canvasContext:ctx,viewport:vp,intent:'print'}).promise; // print = 다른 탭에 가 있어도 멈추지 않고 그림
+    return URL.createObjectURL(await orvCanvasBlob(cv));
+  }finally{try{pdf.destroy();}catch(e){}}
+}
+
+// ── 화면 ──
+function orvFieldOpts(o,r){
+  const fs=o.info?o.info.fields:[];const cut=s=>s.length>34?s.slice(0,33)+'…':s;
+  const opt=f=>'<option value="'+esc(f.id)+'"'+(f.id===r.fid?' selected':'')+'>'+esc(f.name)+(f.value?' — '+esc(cut(f.value)):'')+'</option>';
+  let h='<option value="">— 항목 고르기 (안 고르면 메모로) —</option>';
+  if(r.cands&&r.cands.length>1)h+='<optgroup label="후보">'+r.cands.map(id=>{const f=fs.find(x=>x.id===id);return f?opt(f):'';}).join('')+'</optgroup>';
+  const cols=[];fs.forEach(f=>{if(cols.indexOf(f.col)<0)cols.push(f.col);});
+  cols.forEach(c=>{h+='<optgroup label="'+esc(c)+'">'+fs.filter(f=>f.col===c).map(opt).join('')+'</optgroup>';});
+  return h;
+}
+function orvTableHtml(o,i){
+  const fs=o.info?o.info.fields:[];
+  let h='<table class="orv-t"><thead><tr><th style="width:44%">항목</th><th>지금 값</th><th style="width:30%">새 값</th><th style="width:26px"></th></tr></thead><tbody>';
+  if(!o.rows.length)h+='<tr><td colspan="4" style="color:var(--text3);font-size:12px;padding:10px">바꿀 항목이 없어요. 「＋ 항목 추가」로 넣거나 아래 메모만 적어도 돼요.</td></tr>';
+  const ap=orvApplied(o);
+  o.rows.forEach((r,j)=>{
+    const f=fs.find(x=>x.id===r.fid);const need=!f&&String(r.val||'').trim();
+    const dup=f&&String(r.val||'').trim()&&ap.last[r.fid]!==j;
+    h+='<tr'+(need||dup?' class="need"':'')+'><td><select data-orv="fid" data-o="'+i+'" data-r="'+j+'">'+orvFieldOpts(o,r)+'</select>'
+      +(need?'<div class="orv-warn">「'+esc(r.raw||'?')+'」 '+(r.cands&&r.cands.length>1?'— 후보가 여러 개예요. 골라 주세요':'— 이 항목을 못 찾았어요. 골라 주세요 (안 고르면 메모로 표시)')+'</div>':'')
+      +(dup?'<div class="orv-warn">같은 항목을 아래에 또 적었어요 — 아래 줄 값이 적용되고 이 줄은 빠져요</div>':'')+'</td>'
+      +'<td class="orv-old">'+(f?esc(f.value||'(비어 있음)'):'')+(r.prev?'<div class="orv-prevtag" title="예전에 만든 -changed 수정본에서 불러온 변경">이전 변경'+(r.d?' · '+esc(r.d.slice(5)):'')+'</div>':'')+'</td>'
+      +'<td><input class="new" data-orv="val" data-o="'+i+'" data-r="'+j+'" value="'+esc(r.val)+'" placeholder="새 값"></td>'
+      +'<td><button type="button" class="orv-x" data-orv="del" data-o="'+i+'" data-r="'+j+'" title="이 줄 빼기">✕</button></td></tr>';
+  });
+  return h+'</tbody></table><button type="button" class="orv-small" data-orv="add" data-o="'+i+'">＋ 항목 추가</button>'
+    +'<textarea class="orv-note" data-orv="note" data-o="'+i+'" placeholder="메모 — 변경 내역 상자에 그대로 들어가요 (줄마다 하나)">'+esc(o.note)+'</textarea>';
+}
+function orvChips(o){
+  const ap=orvApplied(o);
+  const cc=o.cand&&o.cand[o.pick];
+  return (cc&&ORV_CHG.test(cc.name)?'<span class="orv-chip note" title="원본 PDF가 폴더에 없어서 -changed 파일 안에 넣어 둔 원본으로 다시 만들어요">원본 없음 · 수정본 안의 원본 사용</span>':'')
+    +(o.prev?'<span class="orv-chip note" title="'+esc(o.prev.path)+'">'+(o.prev.unknown?'기존 -changed 파일 있음 (내역 모름 · 저장하면 덮어씀)':'이전 수정본에서 '+o.prev.n+'건 불러옴')+'</span>':'')
+    +(ap.done.length?'<span class="orv-chip ok">✔ 변경 '+ap.done.length+'</span>':'')+(ap.loose.length?'<span class="orv-chip warn">확인 필요 '+ap.loose.length+'</span>':'')+(ap.notes.length?'<span class="orv-chip note">메모 '+ap.notes.length+'</span>':'')
+    +(o.saved?'<span class="orv-chip ok" title="'+esc(o.savedPath||'')+'">💾 폴더에 저장됨</span>':'');
+}
+function orvCardHtml(o,i){
+  const c=o.cand[o.pick];
+  let h='<div class="orv-ch"><span class="orv-no">'+(i+1)+'</span><span class="orv-id">'+esc(o.key)+'</span><span class="orv-path" title="'+esc(c?c.path:'')+'">'+(c?'&lrm;'+esc(c.path)+'&lrm;':'')+'</span>'
+    +(o.cand.length>1?'<select data-orv="alt" data-o="'+i+'" title="같은 번호 파일 '+o.cand.length+'개" style="max-width:260px;font-size:11px;border:1px solid var(--border);border-radius:6px;padding:3px">'+o.cand.map((x,j)=>'<option value="'+j+'"'+(j===o.pick?' selected':'')+'>'+esc(x.path)+'</option>').join('')+'</select>':'')
+    +'<span class="orv-chips" id="orv-chips'+i+'">'+orvChips(o)+'</span></div>';
+  if(o.err)return h+'<div class="orv-msg err">⚠ '+esc(o.err)+'</div>';
+  if(!o.cand.length)return h+'<div class="orv-msg err">❌ 폴더에서 이 번호의 오더 PDF를 찾지 못했어요</div>';
+  if(!o.info)return h+'<div class="orv-msg">⏳ 불러오는 중…</div>';
+  return h+'<div class="orv-body"><div><div id="orv-tbl'+i+'">'+orvTableHtml(o,i)+'</div>'
+    +'<div class="orv-acts"><button type="button" class="pri" data-orv="fsave" data-o="'+i+'" title="원본이 있던 폴더에 '+esc(c?orvChangedName(c):'')+' 로 저장">💾 폴더에 저장</button><button type="button" data-orv="print" data-o="'+i+'">🖨 인쇄</button><button type="button" data-orv="save" data-o="'+i+'">⬇ 다운로드</button><button type="button" data-orv="open" data-o="'+i+'">🔍 PDF 크게 열기</button></div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:6px">저장 이름: <b>'+esc(c?orvChangedName(c):'')+'</b> (원본과 같은 폴더)</div></div>'
+    +'<div class="orv-prev" id="orv-prev'+i+'">'+(o.url?'<img src="'+o.url+'" alt="수정본 미리보기" title="클릭하면 크게">':'<div class="orv-msg">⏳ 수정본 만드는 중…</div>')+'</div></div>';
+}
+function orvDraw(i){const el=document.getElementById('orv-c'+i);const o=orvOrders[i];if(!el||!o)return;el.className='orv-card'+(!o.cand.length||o.err?' miss':'');el.innerHTML=orvCardHtml(o,i);}
+function orvSum(){
+  const ok=orvOrders.filter(o=>o.out).length,miss=orvOrders.filter(o=>!o.cand.length||o.err).length,need=orvOrders.reduce((a,o)=>a+(o.info?orvApplied(o).loose.length:0),0);
+  $('orv-sum').innerHTML='수정본 <b style="color:var(--text)">'+ok+'</b>개'+(miss?' · <b style="color:#b91c1c">못 찾음·오류 '+miss+'</b>':'')+(need?' · <b style="color:#b45309">항목 확인 필요 '+need+'</b>':'');
+}
+async function orvRebuild(i){
+  const o=orvOrders[i];if(!o||!o.info)return;const tok=++o.tok;
+  o.saved=false; // 내용이 바뀌면 다시 저장해야 함
+  {const ch=$('orv-chips'+i);if(ch)ch.innerHTML=orvChips(o);orvSum();} // 개수 표시는 바로 (미리보기는 만들어지는 대로)
+  try{
+    const out=await orvBuild(o);if(tok!==o.tok)return;
+    const url=await orvPreview(out);if(tok!==o.tok){URL.revokeObjectURL(url);return;}
+    if(o.url)URL.revokeObjectURL(o.url);o.out=out;o.url=url;
+    const p=$('orv-prev'+i);if(p)p.innerHTML='<img src="'+url+'" alt="수정본 미리보기" title="클릭하면 크게">';
+  }catch(e){console.error('[orv] 수정본',o.key,e);const p=$('orv-prev'+i);if(p)p.innerHTML='<div class="orv-msg err">⚠ 수정본을 만들지 못했어요: '+esc(e.message||e)+'</div>';o.out=null;}
+  const ch=$('orv-chips'+i);if(ch)ch.innerHTML=orvChips(o);orvSum();
+}
+const _orvT={};
+function orvSoon(i){clearTimeout(_orvT[i]);_orvT[i]=setTimeout(()=>orvRebuild(i),450);}
+// 수정본 이름 = 원본 이름 끝에 -changed (원본과 같은 폴더)
+const ORV_CHG=/-changed(?:\s*\(\d+\))?\.pdf$/i;
+function orvBaseName(c){return c.name.replace(/-changed(?:\s*\(\d+\))?(\.pdf)$/i,'$1');} // 원본 이름 (수정본이면 -changed 뗀 이름)
+function orvChangedName(c){return orvBaseName(c).replace(/\.pdf$/i,'')+'-changed.pdf';}
+function orvChangedPath(c){return c.path.replace(/[^/]*$/,'')+orvChangedName(c);}
+async function orvReadPrev(bytes){ // 예전 수정본 안에 기록해 둔 변경 내역
+  try{const L=await orvLib();const d=await L.PDFDocument.load(bytes,{ignoreEncryption:true,updateMetadata:false});const s=d.getSubject()||'';if(s.indexOf('K44REV1:')!==0)return null;return JSON.parse(s.slice(8));}
+  catch(e){console.warn('[orv] 이전 수정본 읽기',e);return null;}
+}
+// 항상 원본에서 다시 만듦 — 같은 폴더에 -changed 가 이미 있으면 그 안의 변경 내역을 먼저 불러오고, 이번에 적은 변경을 뒤에 붙임(같은 항목이면 이번 값)
+async function orvOriginalFromChanged(bytes){ // 수정본 안에 첨부해 둔 원본 꺼내기
+  const pdf=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
+  try{const at=await pdf.getAttachments();if(!at)return null;const a=at['k44-original.pdf']||Object.values(at).find(x=>x&&/k44-original/i.test(x.filename||''));return a&&a.content?new Uint8Array(a.content):null;}
+  finally{try{pdf.destroy();}catch(e){}}
+}
+async function orvLoad(o){
+  const c=o.cand[o.pick];
+  const f=await c.get();o.bytes=new Uint8Array(await f.arrayBuffer());
+  if(ORV_CHG.test(c.name)){ // 원본을 지우고 수정본만 남은 경우 → 수정본 안의 원본으로
+    const orig=await orvOriginalFromChanged(o.bytes);
+    if(!orig)throw new Error('원본 PDF가 폴더에 없고, 이 -changed 파일 안에도 원본이 들어 있지 않아요 (이 기능 이전에 만든 수정본). 원본 PDF를 같은 폴더에 다시 넣어 주세요');
+    o.bytes=orig;
+  }
+  o.info=await orvReadFields(o.bytes);
+  const fields=o.info.fields;
+  const fresh=o.items.filter(it=>!it.note).map(it=>{const m=orvMatch(fields,it.raw,it.val);return {raw:it.raw,val:it.val,fid:m.field?m.field.id:'',cands:m.cands.map(x=>x.id),d:ymd()};});
+  let prevRows=[],prevNotes=[];o.prev=null;o.saved=false;
+  const sib=(o.changed||[]).find(x=>x.path===orvChangedPath(c));
+  if(sib){
+    let p=null;try{p=await orvReadPrev(new Uint8Array(await (await sib.get()).arrayBuffer()));}catch(e){}
+    if(p){
+      prevRows=(p.rows||[]).map(r=>{const ok=r.fid&&fields.some(x=>x.id===r.fid);const m=ok?null:orvMatch(fields,r.raw,r.val);return {raw:r.raw||'',val:r.val||'',fid:ok?r.fid:(m&&m.field?m.field.id:''),cands:m?m.cands.map(x=>x.id):[],d:r.d||'',prev:true};});
+      prevNotes=(p.notes||[]).map(String);
+      o.prev={n:prevRows.length+prevNotes.length,path:sib.path};
+    }else o.prev={n:0,path:sib.path,unknown:true};
+  }
+  o.rows=prevRows.concat(fresh);
+  const newNotes=o.items.filter(it=>it.note).map(it=>it.note);
+  o.note=prevNotes.concat(newNotes.filter(n=>prevNotes.indexOf(n)<0)).join('\n');
+}
+// 원래 폴더에 -changed 로 저장 (쓰기 권한은 이때 한 번 물어봄). 폴더에 못 쓰면(Safari·끌어놓은 파일·권한 거절) 같은 이름으로 다운로드
+async function orvSaveToFolder(list){
+  const root=K().root();let can=false;
+  if(root&&root.requestPermission){try{can=(await root.requestPermission({mode:'readwrite'}))==='granted';}catch(e){console.warn('[orv] 쓰기 권한',e);}}
+  const r={saved:[],dl:[],fail:[]};
+  for(const o of list){
+    if(!o.out)continue;
+    const c=o.cand[o.pick];const nm=orvChangedName(c);
+    if(o.prev&&o.prev.unknown&&!confirm('「'+o.prev.path+'」 파일이 이미 있는데, 이 페이지가 만든 수정본이 아니라 변경 내역을 알 수 없어요.\n새 수정본으로 덮어쓸까요?'))continue;
+    if(can&&c.dir){
+      try{
+        const fh=await c.dir.getFileHandle(nm,{create:true});const w=await fh.createWritable();await w.write(o.out);await w.close();
+        const p=orvChangedPath(c);K().noteSaved(nm,p,c.dir,fh);
+        if(!(o.changed||[]).some(x=>x.path===p))(o.changed=o.changed||[]).push({name:nm,path:p,dir:c.dir,get:()=>fh.getFile()});
+        o.saved=true;o.savedPath=p;r.saved.push(p);continue;
+      }catch(e){console.error('[orv] 폴더 저장',o.key,e);r.fail.push(o.key+': '+(e.message||e));}
+    }
+    orvDownload(o.out,nm);r.dl.push(nm);
+  }
+  orvOrders.forEach((o,i)=>{const ch=$('orv-chips'+i);if(ch)ch.innerHTML=orvChips(o);});
+  if(r.saved.length&&!r.dl.length&&!r.fail.length)toast('💾 '+r.saved.length+'개를 원래 폴더에 저장했어요'+(r.saved.length===1?' — '+r.saved[0].split('/').pop():''),4000);
+  if(r.dl.length)alert('폴더에 바로 저장할 수 없어서 '+r.dl.length+'개를 다운로드했어요.\n(Safari이거나, 끌어다 놓은 파일이거나, 「파일 수정」 권한을 허락하지 않은 경우)\n\n다운로드 폴더의 아래 파일을 원래 오더 폴더로 옮겨 주세요:\n· '+r.dl.join('\n· ')+(r.saved.length?'\n\n(나머지 '+r.saved.length+'개는 원래 폴더에 저장됨)':''));
+  if(r.fail.length)alert('저장하지 못한 파일이 있어요:\n'+r.fail.join('\n'));
+  return r;
+}
+async function orvRun(){
+  const parsed=orvParse($('orv-input').value);
+  if(!parsed.length){alert('오더번호를 적어 주세요.\n예) WZCWYRVA / Laces: Black');return;}
+  await K().ready();
+  if(!K().hasSource()){alert('오더 폴더를 먼저 선택하거나, 오더 PDF를 끌어다 놓으세요.');return;}
+  if(typeof pdfjsLib==='undefined'){alert('PDF 모듈이 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요.');return;}
+  $('orv-status').textContent='PDF 편집 모듈 준비 중…';
+  try{await orvLib();}catch(e){$('orv-status').textContent='';alert(e.message||e);return;}
+  const tok=++orvRunTok;
+  orvOrders.forEach(o=>{if(o.url)URL.revokeObjectURL(o.url);});
+  orvOrders=parsed.map(p=>{const all=K().candidates(p.key);const orig=all.filter(x=>!ORV_CHG.test(x.name)),chg=all.filter(x=>ORV_CHG.test(x.name));
+    // 원본이 있으면 원본에서, 원본을 지웠으면 -changed 안에 첨부된 원본에서 다시 만듦.
+    // 원본을 잃은 -changed(그 폴더에 원본이 없음)가 있으면 그게 최신 상태 → 다른 폴더의 사본보다 먼저
+    const orphan=chg.filter(c=>!orig.some(x=>orvChangedPath(x)===c.path));
+    return {key:p.key,items:p.items,cand:orphan.concat(orig),changed:chg,pick:0,rows:[],note:p.items.filter(it=>it.note).map(it=>it.note).join('\n'),info:null,bytes:null,out:null,url:'',err:'',tok:0,saved:false};});
+  $('orv-list').innerHTML=orvOrders.map((o,i)=>'<div class="orv-card" id="orv-c'+i+'"></div>').join('');
+  orvOrders.forEach((o,i)=>orvDraw(i));$('orv-out').style.display='';orvSum();
+  $('orv-runBtn').disabled=true;
+  try{
+    for(let i=0;i<orvOrders.length;i++){
+      const o=orvOrders[i];if(!o.cand.length)continue;if(tok!==orvRunTok)return;
+      $('orv-status').textContent='불러오는 중… '+(i+1)+' / '+orvOrders.length;
+      try{await orvLoad(o);}catch(e){console.error('[orv] 읽기',o.key,e);o.err='PDF를 읽지 못했어요: '+(e.message||e);}
+      if(tok!==orvRunTok)return;
+      orvDraw(i);if(!o.err)await orvRebuild(i);
+    }
+    $('orv-status').textContent='완료 — 수정본 '+orvOrders.filter(o=>o.out).length+'개'+(parsed.orphan?' · 오더번호 없이 적힌 줄 '+parsed.orphan+'개는 건너뜀':'');
+  }finally{if(tok===orvRunTok)$('orv-runBtn').disabled=false;}
+}
+function orvName(o){const c=o.cand[o.pick];return c?orvChangedName(c):o.key+'-changed.pdf';}
+function orvDownload(bytes,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}
+function orvOpen(bytes){const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const w=window.open(u,'_blank');if(!w)alert('팝업이 막혔어요. 브라우저 주소창 옆에서 팝업을 허용해 주세요.');setTimeout(()=>URL.revokeObjectURL(u),120000);return w;}
+function orvPrint(bytes){
+  const safari=/^((?!chrome|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent);
+  if(safari){if(orvOpen(bytes))toast('새 탭에 열린 PDF에서 ⌘P 로 인쇄하세요',4000);return;}
+  const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+  const fr=document.createElement('iframe');fr.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0';fr.src=u;document.body.appendChild(fr);
+  fr.onload=()=>setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print();}catch(e){orvOpen(bytes);}},350);
+  setTimeout(()=>{fr.remove();URL.revokeObjectURL(u);},180000);
+}
+async function orvMerged(){
+  const L=await orvLib();const out=await L.PDFDocument.create();
+  for(const o of orvOrders){if(!o.out)continue;const src=await L.PDFDocument.load(o.out);(await out.copyPages(src,src.getPageIndices())).forEach(p=>out.addPage(p));}
+  return out.getPageCount()?await out.save():null;
+}
+// 폴더 상태 — 「오더 카드」 페이지와 같은 폴더
+function orvSyncDir(){
+  const st=K().status();$('orv-dirName').textContent=st.text;$('orv-rescanBtn').style.display=st.rescan?'':'none';
+  const rb=$('orv-recentBtn');if(st.recent){rb.textContent=st.recent;rb.style.display='';}else rb.style.display='none';
+}
+K().subscribe(orvSyncDir);orvSyncDir();
+$('orv-dirBtn').addEventListener('click',()=>K().pick());
+$('orv-recentBtn').addEventListener('click',()=>K().recent());
+$('orv-rescanBtn').addEventListener('click',()=>K().rescan());
+(function(){ // PDF 끌어다 놓기
+  const page=$('page-order-revise'),zone=$('orv-drop');
+  const hasFiles=e=>e.dataTransfer&&[...(e.dataTransfer.types||[])].indexOf('Files')>=0;
+  page.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();zone.style.borderColor='var(--accent)';});
+  page.addEventListener('dragleave',e=>{if(!page.contains(e.relatedTarget))zone.style.borderColor='';});
+  page.addEventListener('drop',e=>{
+    if(!hasFiles(e))return;e.preventDefault();zone.style.borderColor='';
+    const fs=[...e.dataTransfer.files].filter(f=>/\.pdf$/i.test(f.name));const r=K().addFiles(fs);
+    zone.textContent='끌어놓은 오더 PDF '+r.n+'개 추가'+(r.skip?' · 번호를 못 읽은 파일 '+r.skip+'개 제외':'');
+    const ta=$('orv-input');if(r.n&&!ta.value.trim())ta.value=fs.map(f=>K().keyOfName(f.name)).filter(Boolean).map(k=>k+' / ').join('\n'); // 번호를 미리 채워 둠
+  });
+})();
+$('orv-runBtn').addEventListener('click',orvRun);
+const list=$('orv-list');
+list.addEventListener('input',e=>{
+  const t=e.target;const a=t.dataset.orv;if(!a)return;const i=+t.dataset.o;const o=orvOrders[i];if(!o)return;
+  if(a==='val'){const r=o.rows[+t.dataset.r];if(r){r.val=t.value;orvSoon(i);}}
+  else if(a==='note'){o.note=t.value;orvSoon(i);}
+});
+list.addEventListener('change',async e=>{
+  const t=e.target;const a=t.dataset.orv;if(!a)return;const i=+t.dataset.o;const o=orvOrders[i];if(!o)return;
+  if(a==='fid'){const r=o.rows[+t.dataset.r];if(r){r.fid=t.value;const tb=$('orv-tbl'+i);if(tb)tb.innerHTML=orvTableHtml(o,i);orvRebuild(i);}}
+  else if(a==='alt'){o.pick=+t.value;o.info=null;o.out=null;o.err='';orvDraw(i);try{await orvLoad(o);}catch(err){o.err='PDF를 읽지 못했어요: '+(err.message||err);}orvDraw(i);if(!o.err)orvRebuild(i);}
+});
+list.addEventListener('click',e=>{
+  const img=e.target.closest('.orv-prev img');if(img){const z=$('orv-zoom');z.innerHTML='<img src="'+img.src+'" alt="">';z.style.display='block';return;}
+  const b=e.target.closest('button[data-orv]');if(!b)return;const a=b.dataset.orv;const i=+b.dataset.o;const o=orvOrders[i];if(!o)return;
+  if(a==='add'){o.rows.push({raw:'',val:'',fid:'',cands:[]});const tb=$('orv-tbl'+i);if(tb)tb.innerHTML=orvTableHtml(o,i);return;}
+  if(a==='del'){o.rows.splice(+b.dataset.r,1);const tb=$('orv-tbl'+i);if(tb)tb.innerHTML=orvTableHtml(o,i);orvRebuild(i);return;}
+  if(!o.out){toast('수정본을 만드는 중이에요 — 잠시 후 다시 눌러 주세요');return;}
+  if(a==='fsave'){orvSaveToFolder([o]);return;}
+  if(a==='print')orvPrint(o.out);
+  else if(a==='save')orvDownload(o.out,orvName(o));
+  else if(a==='open')orvOpen(o.out);
+});
+$('orv-zoom').addEventListener('click',()=>{$('orv-zoom').style.display='none';$('orv-zoom').innerHTML='';});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('orv-zoom').style.display==='block'){$('orv-zoom').style.display='none';$('orv-zoom').innerHTML='';}});
+$('orv-saveAll').addEventListener('click',()=>{const ok=orvOrders.filter(o=>o.out);if(!ok.length){toast('저장할 수정본이 없어요');return;}orvSaveToFolder(ok);});
+$('orv-printAll').addEventListener('click',async()=>{const m=await orvMerged();if(!m){toast('인쇄할 수정본이 없어요');return;}orvPrint(m);});
+$('orv-mergeAll').addEventListener('click',async()=>{const m=await orvMerged();if(!m){toast('저장할 수정본이 없어요');return;}orvDownload(m,'오더수정본_'+ymd().replace(/-/g,'')+'.pdf');});
+$('orv-zipAll').addEventListener('click',async()=>{
+  const ok=orvOrders.filter(o=>o.out);if(!ok.length){toast('저장할 수정본이 없어요');return;}
+  if(typeof JSZip==='undefined'){ok.forEach(o=>orvDownload(o.out,orvName(o)));return;}
+  const z=new JSZip();ok.forEach(o=>z.file(orvName(o),o.out));
+  const a=document.createElement('a');a.href=URL.createObjectURL(await z.generateAsync({type:'blob'}));a.download='오더수정본_'+ymd().replace(/-/g,'')+'.zip';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+});
+window.orvParse=orvParse;window.orvReadFields=orvReadFields;window.orvMatch=orvMatch; // 점검용
 })();
 </script>
 
