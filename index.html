@@ -5353,6 +5353,11 @@ window.schSelectColor = schSelectColor;
         <div style="font-size:12px;color:var(--text2);margin-top:2px">Box#1 (10pcs) 구조 인식 · 번호는 7자리 <code>#NNNNNNN</code> 또는 새 양식 <code>S151703-1</code> / <code>S151703</code> / Glove ID <code>P8XHC8RY</code> (S 없이 <code>151703-1</code> · <code>151703</code> 로 적어도 인식)</div>
         <input id="ob-fileInput" type="file" accept=".docx" style="display:none">
       </div>
+      <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);cursor:pointer;font-size:13px;color:var(--text)">
+        <input type="checkbox" id="ob-autoSort" style="margin-top:2px;width:16px;height:16px">
+        <span><b>🔢 자동 정렬</b> — 이동이 끝나면 패킹리스트 박스별 표를 <b>S번호 순</b>으로 정렬한 워드 파일을 출고 폴더에 저장합니다 (워드 서식 그대로).<br>
+        <span style="color:var(--text2);font-size:12px">원본 폴더에서 파일을 찾은 번호만 정렬하고, 못 찾은 번호(⚠ 못 찾음 · ? 확인 필요 · ↻ 중복 기재)는 패킹리스트에 적은 칸 그대로 둡니다.</span></span>
+      </label>
       <div id="ob-parseInfo" class="pa-file-section">
         <div class="pa-file-head">
           <span id="ob-parseSummary"></span>
@@ -10530,6 +10535,8 @@ window.k44GloveId = function(name){
 if (typeof JSZip === 'undefined') return;
 
 let obBoxes = [];           // [{boxNum, orders: [...]}, ...]
+let obWordFile = null;      // 올린 패킹리스트 워드 (자동 정렬 때 다시 읽음)
+let obSortUrl = '';         // 정렬된 워드 다운로드 링크
 let obSrcHandle = null;     // FileSystemDirectoryHandle
 let obDestHandle = null;    // FileSystemDirectoryHandle
 
@@ -10548,42 +10555,88 @@ async function obParseDocx(file){
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   const NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
-  // paragraph 단위로 텍스트 추출
+  // paragraph 단위로 텍스트 추출 (자동 정렬용으로 문단 요소도 같이 보관)
   const paras = [];
   for (const p of doc.getElementsByTagNameNS(NS, 'p')){
     const ts = p.getElementsByTagNameNS(NS, 't');
     let s = '';
     for (const t of ts) s += t.textContent || '';
     s = s.trim();
-    if (s) paras.push(s);
+    if (s) paras.push({ s, p });
   }
 
-  // Box# 패턴으로 분할
+  // Box# 패턴으로 분할 — box.slots[i] = box.orders[i] 가 적힌 문단 (자동 정렬 때 그 칸의 내용을 옮김)
   const boxes = [];
   let cur = null;
-  for (const line of paras){
+  for (const { s: line, p } of paras){
     const m = line.match(/Box\s*#?\s*(\d+)/i);
     if (m){
       if (cur) boxes.push(cur);
       const pc = line.match(/\((\d+)\s*pcs?\)/i);   // "Box#1 (10pcs)" → 10 (인식 개수와 비교용 — 이동에는 안 씀)
-      cur = { boxNum: parseInt(m[1]), orders: [], pcs: pc ? parseInt(pc[1]) : null };
+      cur = { boxNum: parseInt(m[1]), orders: [], slots: [], pcs: pc ? parseInt(pc[1]) : null };
       continue;
     }
     if (!cur) continue;
     // 새 양식 번호를 S 없이 적은 경우 "151703-1" → 순번까지 보존 (이동 단계에서 "S151703-1" 로 찾음).
     // 예전 패킹리스트에는 "숫자-숫자" 줄이 없음 (2025~26 실제 패킹리스트 475개 확인).
     const dn = line.match(/\b(\d{5,7})-(\d{1,2})\b/);
-    if (dn){ cur.orders.push(dn[1] + '-' + dn[2]); continue; }
+    if (dn){ cur.orders.push(dn[1] + '-' + dn[2]); cur.slots.push(p); continue; }
     // 라인에 6~8자리 숫자가 있으면 오더번호로 추출
     // ("AMBI 1248726", "PROPLAYER 1234567" 등 prefix 붙은 경우도 처리)
     const om = line.match(/\b(\d{6,8})\b/);
-    if (om){ cur.orders.push(om[1]); continue; }
+    if (om){ cur.orders.push(om[1]); cur.slots.push(p); continue; }
     // 새 오더 양식(2026-09~): "S151703-1-P8XHC8RY" / "S151703-1" / "S151703" / Glove ID "P8XHC8RY" 어느 쪽으로 적어도 인식
     const nt = obNewToken(line);
-    if (nt) cur.orders.push(nt);
+    if (nt){ cur.orders.push(nt); cur.slots.push(p); }
   }
   if (cur) boxes.push(cur);
+  boxes.zip = zip; boxes.doc = doc;   // 자동 정렬 때 이 워드 문서를 고쳐 저장
   return boxes;
+}
+
+/* ── 자동 정렬 (패킹리스트 정렬 프로그램 v3 와 같은 규칙) ──
+   박스마다: 원본 폴더에서 파일을 찾은 번호만 S번호 순(예전 7자리 번호는 숫자 순, 맨 앞)으로 정렬해
+   그 번호들이 있던 칸에 차례로 넣고, 못 찾은 번호의 칸은 그대로 둔다. 칸 서식(w:tcPr)은 제자리, 칸 내용만 옮긴다. */
+const obCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+function obSortKey(fileName){
+  const m = String(fileName || '').match(/#\s*(\d{4,10})/);
+  if (m) return [0, m[1]];                                         // 예전 7자리 번호
+  const nf = obNewName(fileName);
+  if (nf && nf.order) return [1, nf.order + '-' + nf.item];        // S번호-순번
+  return [2, nf ? nf.design : String(fileName || '')];             // S번호 없는 44pro-ID 등 → 뒤
+}
+function obCmpKey(a, b){ return (a[0] - b[0]) || obCollator.compare(a[1], b[1]); }
+// 문단 → 옮길 단위: 그 문단만 들어 있는 표 칸이면 칸(tc), 아니면 문단 자체
+function obSlotUnit(p, itemParas){
+  const NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  let tc = p.parentNode;
+  while (tc && !(tc.namespaceURI === NS && tc.localName === 'tc')) tc = tc.parentNode;
+  if (tc && itemParas.filter(x => tc.contains(x)).length === 1) return { el: tc, keep: 'tcPr', kind: 'tc' };
+  return { el: p, keep: 'pPr', kind: 'p' };
+}
+// boxes(새로 읽은 워드) + match[boxIndex][i] = 정렬 키(찾은 번호) 또는 null(못 찾음) → 정렬된 워드 Blob + 요약
+async function obBuildSortedDocx(boxes, match){
+  const report = [];
+  boxes.forEach((box, bi) => {
+    const mt = match[bi] || [];
+    const n = box.orders.length;
+    const okIdx = [...Array(n).keys()].filter(i => mt[i]);
+    const fixed = [...Array(n).keys()].filter(i => !mt[i]);
+    const sortedIdx = okIdx.slice().sort((a, b) => obCmpKey(mt[a], mt[b]) || (a - b));
+    const units = box.slots.map(p => obSlotUnit(p, box.slots));
+    const changed = okIdx.some((pos, k) => sortedIdx[k] !== pos);
+    const mixed = new Set(units.map(u => u.kind)).size > 1;   // 칸/문단이 섞인 박스는 구조가 달라 건드리지 않음
+    const rep = { boxNum: box.boxNum, total: n, sorted: okIdx.length, fixed: fixed.map(i => box.orders[i]), changed: changed && !mixed, skipped: mixed ? '표 구조가 달라 정렬 안 함' : '' };
+    report.push(rep);
+    if (!changed || mixed) return;
+    const contents = units.map(u => [...u.el.childNodes].filter(c => c.localName !== u.keep));
+    okIdx.forEach(pos => contents[pos].forEach(c => c.parentNode.removeChild(c)));
+    okIdx.forEach((pos, k) => contents[sortedIdx[k]].forEach(c => units[pos].el.appendChild(c)));
+    rep.order = okIdx.map((pos, k) => box.orders[sortedIdx[k]]);
+  });
+  boxes.zip.file('word/document.xml', new XMLSerializer().serializeToString(boxes.doc));
+  const blob = await boxes.zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  return { blob, report };
 }
 
 // ── 새 오더 양식(2026-09~) ──
@@ -10626,6 +10679,7 @@ async function obHandleWord(file){
   }
   try {
     obBoxes = await obParseDocx(file);
+    obWordFile = file;
     const totalOrders = obBoxes.reduce((s,b) => s + b.orders.length, 0);
     obQ('ob-parseSummary').textContent = `${obBoxes.length}박스 / 총 ${totalOrders}개 오더 (파일: ${file.name})`;
     const list = obQ('ob-parseDetail');
@@ -10657,9 +10711,29 @@ obQ('ob-drop').addEventListener('drop', e => {
 });
 obQ('ob-resetWord').addEventListener('click', () => {
   obBoxes = [];
+  obWordFile = null;
   obQ('ob-parseInfo').classList.remove('show');
   obRefreshMoveBtn();
 });
+// 자동 정렬 선택은 이 브라우저에 기억
+(function(){
+  const cb = obQ('ob-autoSort'); if (!cb) return;
+  try { cb.checked = localStorage.getItem('ob_autoSort') === '1'; } catch(e){}
+  cb.addEventListener('change', () => { try { localStorage.setItem('ob_autoSort', cb.checked ? '1' : '0'); } catch(e){} });
+})();
+// 같은 이름이 있으면 " 2", " 3" … 을 붙여 새로 저장 (기존 파일을 덮어쓰지 않음). 저장한 파일 이름 반환
+async function obSaveUnique(dir, base, ext, blob){
+  for (let i = 1; i < 100; i++){
+    const name = base + (i > 1 ? ' ' + i : '') + ext;
+    let exists = true;
+    try { await dir.getFileHandle(name); } catch(e){ exists = false; }
+    if (exists) continue;
+    const fh = await dir.getFileHandle(name, { create: true });
+    const w = await fh.createWritable(); await w.write(blob); await w.close();
+    return name;
+  }
+  return '';
+}
 
 // ── 폴더 선택 ──
 async function obPickDir(role){
@@ -10849,9 +10923,11 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
   const rows = [];   // {box, order, name, status, method, error}
   const counts = { moved: 0, copied: 0, notFound: 0, failed: 0, ambiguous: 0, withChanged: 0, cloud: 0, again: 0 };   // ambiguous = 새 양식 전용 · withChanged = 원본과 같이 옮긴 수정본 · cloud = iCloud 미다운로드 · again = 패킹리스트에 두 번 적힘
   const movedTo = new Map();   // 이번 실행에서 옮긴 파일의 모든 번호 → 박스 (같은 번호가 두 번 적혔을 때 「못 찾음」 대신 알려줌)
+  // 자동 정렬용 일치 여부: sortMatch[박스][줄] = 정렬 키(원본에서 그 번호의 파일을 찾음) / null(못 찾음·확인 필요·중복 기재 → 칸 그대로)
+  const sortMatch = obBoxes.map(b => b.orders.map(() => null));
 
-  for (const box of obBoxes){
-    for (const order of box.orders){
+  for (const [bi, box] of obBoxes.entries()){
+    for (const [oi, order] of box.orders.entries()){
       done++;
       obQ('ob-progressBar').style.width = (15 + done/total*80) + '%';
       obQ('ob-status').textContent = `이동 중 ${done}/${total}: Box${String(box.boxNum).padStart(2,'0')} - #${order}`;
@@ -10878,6 +10954,7 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
         // iCloud 에서 아직 내려받지 않은 파일 — 자리표시자를 옮기면 원본이 꼬일 수 있어 옮기지 않고 알려줌
         rows.push({ box: box.boxNum, order, name: (f.dir || '') + f.name, status: 'cloud' });
         counts.cloud++;
+        sortMatch[bi][oi] = obSortKey(f.name);   // 파일은 원본에 있음 (내려받기만 안 됨) → 정렬 대상
         continue;
       }
       if (f.ambiguous){
@@ -10886,6 +10963,7 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
         counts.ambiguous++;
         continue;
       }
+      sortMatch[bi][oi] = obSortKey(f.name);   // 원본과 일치 → 정렬 대상 (이동 실패해도 번호는 맞음)
       try {
         const dest = await getBoxDir(box.boxNum);
         const method = await obMoveFile(f.handle, f.parent, dest, f.name);
@@ -10969,6 +11047,44 @@ obQ('ob-moveBtn').addEventListener('click', async () => {
     if (r.companion && r.status !== 'failed') statusCell += ' <span style="font-size:11px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:5px;padding:1px 6px">수정본</span>';
     tr.innerHTML = `<td>Box${String(r.box).padStart(2,'0')}</td><td>${obEsc(r.order)}</td><td style="font-family:ui-monospace,monospace;font-size:12px">${obEsc(r.name)}</td><td>${statusCell}</td>`;
     body.appendChild(tr);
+  }
+
+  // ── 자동 정렬: 원본과 일치한 번호만 S번호 순으로 정렬한 패킹리스트 워드를 출고 폴더에 저장 ──
+  if (obQ('ob-autoSort') && obQ('ob-autoSort').checked && obWordFile){
+    const statusBefore = obQ('ob-status').textContent;
+    obQ('ob-status').textContent = statusBefore + ' · 패킹리스트 정렬 중…';
+    let html;
+    try {
+      // 올린 워드를 새로 읽어서 고친다 (처음 읽은 내용과 다르면 중단)
+      const fresh = await obParseDocx(obWordFile);
+      const same = fresh.length === obBoxes.length && fresh.every((b, i) => b.boxNum === obBoxes[i].boxNum && b.orders.join('|') === obBoxes[i].orders.join('|'));
+      if (!same) throw new Error('워드 파일을 다시 읽은 내용이 처음과 달라 정렬하지 않았습니다. 워드를 다시 올린 뒤 실행해 주세요.');
+      const { blob, report } = await obBuildSortedDocx(fresh, sortMatch);
+      const base = obWordFile.name.replace(/\.docx$/i, '') + ' (정렬)';
+      let saved = '';
+      try { saved = await obSaveUnique(obDestHandle, base, '.docx', blob); } catch(e){ console.error('[출고] 정렬 워드 저장 실패', e); }
+      if (obSortUrl) URL.revokeObjectURL(obSortUrl);
+      obSortUrl = URL.createObjectURL(blob);
+      const nChanged = report.filter(r => r.changed).length;
+      const nFixed = report.reduce((s, r) => s + r.fixed.length, 0);
+      const lines = report.map(r => {
+        const bx = 'Box' + String(r.boxNum).padStart(2, '0');
+        const fx = r.fixed.length ? ` · <span style="color:#b45309">그대로 둔 칸 ${r.fixed.length}: ${r.fixed.map(obEsc).join(', ')}</span>` : '';
+        const st = r.skipped ? `<span style="color:#b45309">${obEsc(r.skipped)}</span>`
+                 : r.changed ? `정렬 ${r.sorted}개` : (r.sorted ? '이미 순서대로 (변경 없음)' : '정렬할 번호 없음');
+        return `<div style="font-size:12px">${bx} — ${st}${fx}</div>`;
+      }).join('');
+      html = `<div style="flex-basis:100%;border:1px solid #c7d2fe;background:#eef2ff;border-radius:10px;padding:10px 14px;font-size:13px;color:#1e3a8a">`
+        + `<b>🔢 패킹리스트 자동 정렬</b> — 정렬한 박스 ${nChanged}개 / 전체 ${report.length}개${nFixed ? ` · 못 찾아서 그대로 둔 칸 ${nFixed}개` : ''}`
+        + `<div style="margin-top:4px">${saved ? `출고 폴더 「${obEsc(obDestHandle.name)}」에 저장: <b>${obEsc(saved)}</b>` : '<span style="color:#b45309">⚠ 출고 폴더에 저장하지 못했습니다 — 아래 버튼으로 받으세요.</span>'}</div>`
+        + `<div style="margin-top:6px"><a href="${obSortUrl}" download="${obEsc(saved || base + '.docx')}" class="pa-btn" style="text-decoration:none;display:inline-block">⬇ 정렬된 패킹리스트 받기</a></div>`
+        + `<details style="margin-top:6px"${nFixed ? ' open' : ''}><summary style="cursor:pointer;font-size:12px">박스별 결과</summary><div style="margin-top:4px">${lines}</div></details>`
+        + `</div>`;
+    } catch(e){
+      html = `<div style="flex-basis:100%;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;padding:10px 14px;font-size:13px;color:#991b1b">🔢 자동 정렬 실패: ${obEsc(e && e.message || e)}</div>`;
+    }
+    obQ('ob-summary').insertAdjacentHTML('beforeend', html);
+    obQ('ob-status').textContent = statusBefore;
   }
   obQ('ob-results').classList.add('show');
 
